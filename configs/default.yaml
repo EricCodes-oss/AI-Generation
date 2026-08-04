@@ -1,0 +1,28 @@
+video:
+  width: 1080
+  height: 1920
+  min_duration_seconds: 35
+  max_duration_seconds: 50
+  target_audio_min_seconds: 40
+  target_audio_max_seconds: 46
+  avatar_ratio_min: 0.55
+  avatar_ratio_max: 0.65
+content:
+  pillars:
+    - slug: career_pressure
+      display_name: 职场打拼与现实压力
+      monthly_count: 11
+    - slug: parent_child_communication
+      display_name: 子女教育与家庭沟通
+      monthly_count: 9
+    - slug: self_growth
+      display_name: 自我成长与人生感悟
+      monthly_count: 10
+approvals:
+  required:
+    - topic
+    - script
+    - video
+storage:
+  workspace: workspace
+  contracts_directory: skills/contracts
