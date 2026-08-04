@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify pinned research Skill metadata without making any live calls."""
+"""Verify pinned research Skills and local prerequisites without live platform calls."""
 
 from __future__ import annotations
 
@@ -9,25 +9,32 @@ import shutil
 import subprocess
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from hashlib import sha256
 from pathlib import Path
 
 import yaml
 
+Status = str
+
 
 @dataclass(frozen=True)
 class SkillVerification:
-    """Local, non-network readiness for one third-party Skill."""
+    """Separate installed source integrity from runtime and user prerequisites."""
 
     name: str
     installed: bool
+    source_installed: bool
+    source_verified: bool
     locally_ready: bool
     real_calls_enabled: bool
+    prerequisites: Mapping[str, Status] = field(default_factory=dict)
+    probe_status: Status = "skipped"
     issues: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class VerificationReport:
-    """Result of validating the lock and local prerequisites."""
+    """Result of validating the lock and local capability prerequisites."""
 
     manifest_valid: bool
     skills: Mapping[str, SkillVerification] = field(default_factory=dict)
@@ -35,7 +42,11 @@ class VerificationReport:
 
     @property
     def ok(self) -> bool:
-        return self.manifest_valid and all(skill.locally_ready for skill in self.skills.values())
+        """Installation audit succeeds even when live-use prerequisites remain manual."""
+
+        return self.manifest_valid and all(
+            skill.source_installed and skill.source_verified for skill in self.skills.values()
+        )
 
 
 _REQUIRED_FIELDS = {
@@ -46,11 +57,15 @@ _REQUIRED_FIELDS = {
     "role",
     "install_path",
     "installed",
+    "source_tree_sha256",
     "audit_path",
     "requires",
+    "capability_probe",
     "real_calls_enabled",
 }
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_PROBE_STATUSES = {"ready", "missing", "skipped"}
 
 
 def _default_node_version_reader(node_path: str) -> str:
@@ -82,6 +97,15 @@ def _node_major(version: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _source_tree_sha256(root: Path) -> str:
+    digest = sha256()
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        digest.update(path.relative_to(root).as_posix().encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
 def verify_manifest(
     project_root: Path,
     *,
@@ -89,7 +113,7 @@ def verify_manifest(
     node_version_reader: Callable[[str], str] = _default_node_version_reader,
     chrome_exists: Callable[[], bool] = _default_chrome_exists,
 ) -> VerificationReport:
-    """Validate the lock and inspect local prerequisites without executing a Skill."""
+    """Validate locked source trees and report each prerequisite truthfully."""
 
     root = Path(project_root).resolve()
     lock_path = root / "skills" / "third_party.lock.yaml"
@@ -129,6 +153,9 @@ def verify_manifest(
 
         if not isinstance(entry["commit"], str) or not _COMMIT_RE.fullmatch(entry["commit"]):
             manifest_issues.append(f"{name}: commit must be a 40-character lowercase SHA")
+        expected_checksum = entry["source_tree_sha256"]
+        if not isinstance(expected_checksum, str) or not _SHA256_RE.fullmatch(expected_checksum):
+            manifest_issues.append(f"{name}: source_tree_sha256 must be a lowercase SHA-256")
 
         audit_path = entry["audit_path"]
         if not isinstance(audit_path, str) or not (root / audit_path).is_file():
@@ -138,16 +165,31 @@ def verify_manifest(
         if not isinstance(requires, dict):
             manifest_issues.append(f"{name}: requires must be a mapping")
             requires = {}
+        probe = entry["capability_probe"]
+        if not isinstance(probe, dict):
+            manifest_issues.append(f"{name}: capability_probe must be a mapping")
+            probe = {}
+        probe_status = probe.get("status", "skipped")
+        if probe_status not in _PROBE_STATUSES:
+            manifest_issues.append(f"{name}: invalid capability probe status")
+            probe_status = "skipped"
 
         issues: list[str] = []
+        prerequisites: dict[str, Status] = {}
         install_path_value = entry["install_path"]
         install_path = root / install_path_value if isinstance(install_path_value, str) else None
-        if install_path is None or not install_path.is_dir():
+        source_installed = install_path is not None and install_path.is_dir()
+        if not source_installed:
             issues.append("install path is missing")
-
         installed = entry["installed"] is True
         if not installed:
             issues.append("manifest marks skill as not installed")
+
+        source_verified = False
+        if source_installed and isinstance(expected_checksum, str):
+            source_verified = _source_tree_sha256(install_path) == expected_checksum
+            if not source_verified:
+                issues.append("source tree checksum does not match lock")
 
         executables = requires.get("executables", [])
         if not isinstance(executables, list):
@@ -155,11 +197,15 @@ def verify_manifest(
             executables = []
         resolved: dict[str, str] = {}
         for executable in executables:
-            path = executable_resolver(executable) if isinstance(executable, str) else None
-            if path is None:
-                issues.append(f"required executable is missing: {executable}")
-            else:
-                resolved[executable] = path
+            if not isinstance(executable, str):
+                manifest_issues.append(f"{name}: executable names must be strings")
+                continue
+            executable_path = executable_resolver(executable)
+            prerequisites[executable] = "ready" if executable_path else "missing"
+            if executable_path:
+                resolved[executable] = executable_path
+                continue
+            issues.append(f"required executable is missing: {executable}")
 
         minimum = requires.get("node_min_major")
         if minimum is not None:
@@ -170,21 +216,45 @@ def verify_manifest(
                     major = _node_major(node_version_reader(resolved["node"]))
                 except (OSError, subprocess.SubprocessError, ValueError) as exc:
                     issues.append(f"cannot read Node.js version: {exc}")
+                    prerequisites["node"] = "missing"
                 else:
-                    if major is None:
-                        issues.append("cannot parse Node.js version")
-                    elif major < minimum:
-                        issues.append(f"Node.js {major} is below required major {minimum}")
+                    if major is None or major < minimum:
+                        issues.append(f"Node.js is below required major {minimum}")
+                        prerequisites["node"] = "missing"
 
-        if requires.get("chrome") is True and not chrome_exists():
-            issues.append("Chrome or Chromium is missing")
+        if requires.get("chrome") is True:
+            chrome_status = "ready" if chrome_exists() else "missing"
+            prerequisites["chrome"] = chrome_status
+            if chrome_status == "missing":
+                issues.append("Chrome or Chromium is missing")
+        if requires.get("chrome_extension"):
+            prerequisites["chrome_extension"] = "manual_action_required"
+            issues.append("Chrome extension requires manual verification")
+        if requires.get("authenticated_sites"):
+            prerequisites["authenticated_sites"] = "manual_action_required"
+            issues.append("platform login state requires manual verification")
+        if requires.get("npm_packages"):
+            prerequisites["npm_packages"] = "manual_action_required"
+            issues.append("pinned local npm dependencies require manual installation")
 
         real_calls_enabled = entry["real_calls_enabled"] is True
+        blocking = {"missing", "manual_action_required"}
+        locally_ready = (
+            installed
+            and source_installed
+            and source_verified
+            and all(status not in blocking for status in prerequisites.values())
+            and probe_status == "ready"
+        )
         reports[name] = SkillVerification(
             name=name,
             installed=installed,
-            locally_ready=not issues,
+            source_installed=source_installed,
+            source_verified=source_verified,
+            locally_ready=locally_ready,
             real_calls_enabled=real_calls_enabled,
+            prerequisites=prerequisites,
+            probe_status=probe_status,
             issues=tuple(issues),
         )
 
@@ -198,17 +268,23 @@ def verify_manifest(
 def _format_report(report: VerificationReport) -> str:
     lines = [
         f"manifest_valid: {str(report.manifest_valid).lower()}",
-        f"ok: {str(report.ok).lower()}",
+        f"installation_audit_ok: {str(report.ok).lower()}",
     ]
     for issue in report.manifest_issues:
         lines.append(f"manifest_issue: {issue}")
     for name, skill in sorted(report.skills.items()):
         lines.append(
-            f"{name}: installed={str(skill.installed).lower()} "
+            f"{name}: source_installed={str(skill.source_installed).lower()} "
+            f"source_verified={str(skill.source_verified).lower()} "
             f"locally_ready={str(skill.locally_ready).lower()} "
-            f"real_calls_enabled={str(skill.real_calls_enabled).lower()}"
+            f"real_calls_enabled={str(skill.real_calls_enabled).lower()} "
+            f"probe={skill.probe_status}"
         )
-        lines.extend(f"  - {issue}" for issue in skill.issues)
+        lines.extend(
+            f"  prerequisite.{key}: {status}"
+            for key, status in sorted(skill.prerequisites.items())
+        )
+        lines.extend(f"  issue: {issue}" for issue in skill.issues)
     return "\n".join(lines)
 
 

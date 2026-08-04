@@ -71,3 +71,14 @@ Safe for a later, supervised local capability probe only after:
 - raw-output redaction, throttling, and run-level provenance are active.
 
 The verifier in this project performs only static/local prerequisite checks. It never invokes `opencli`, starts a daemon, opens Chrome, logs in, or accesses a platform.
+
+## 2026-08-04 installation and capability probe record
+
+- Installed only the pinned Skill subtree at `.local/third-party-skills/opinions-crawler` using a temporary sparse Git checkout of commit `2bd6db6fe5678650e8272adafabbdceba61c3544`.
+- Installed source-tree SHA-256: `a6c85c151688dfa1045e707330b7818dd25d62a5b52673c366ea27740ff7bb95`.
+- The upstream `scripts/setup.sh` was **not executed**.
+- Local observations: Node.js `v23.11.0` ready; npm `10.9.2` ready; Google Chrome present; `opencli` missing.
+- OpenCLI Browser Bridge and authenticated platform sessions remain `manual_action_required`; they were not inspected or changed.
+- Capability probe status: `missing`. The proposed safe command is `opencli --version`, but it could not run because the executable is absent.
+- No OpenCLI daemon, Chrome automation, login, search, comment collection, or platform request was started.
+- Current decision: source installed and checksum-verified; local collection readiness is false; `real_calls_enabled` remains false.

@@ -59,3 +59,14 @@ The project records Node.js 18 as its conservative minimum for probing; the upst
 Status: **audited but not installed; live calls disabled**.
 
 A later supervised probe is acceptable only after dependency pinning, reuse-term review, explicit enablement, strict request caps, output-path confinement, raw-response provenance, and stop-on-challenge behavior are implemented. The project verifier performs no HTTP request and does not execute the Skill script.
+
+## 2026-08-04 installation and capability probe record
+
+- Installed only the pinned Skill subtree at `.local/third-party-skills/wechat-article-search` using a temporary sparse Git checkout of commit `c9307752f2744fecf6f62c243f32df9015c0c416`.
+- Installed source-tree SHA-256: `a8970aa2bae0e4f1f0b78b3c5b3dcb92cff062db4f0f169a2200a0ac59ccef90`.
+- No global npm installation was executed.
+- Local observations: Node.js `v23.11.0` ready; npm `10.9.2` ready; the required `cheerio` package is missing from the Skill-local resolution path.
+- Non-network capability probe `node --check .local/third-party-skills/wechat-article-search/scripts/search_wechat.js` passed.
+- The script's `--help` path was not used because it initializes `cheerio` before argument handling; with the dependency absent it is not a safe independent help probe.
+- No Sogou/WeChat HTTP request, cookie exchange, search, or output-file write was performed.
+- Current decision: source installed and checksum-verified; local collection readiness is false until a pinned isolated dependency environment is approved; `real_calls_enabled` remains false.

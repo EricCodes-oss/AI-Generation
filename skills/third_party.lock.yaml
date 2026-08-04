@@ -7,7 +7,13 @@ skills:
     path: experts/databrain-opinion-expert/skills/opinions-crawler
     role: Cross-platform discovery and engagement-data collector; capability must be checked per platform before each run.
     install_path: .local/third-party-skills/opinions-crawler
-    installed: false
+    installed: true
+    source_tree_sha256: a6c85c151688dfa1045e707330b7818dd25d62a5b52673c366ea27740ff7bb95
+    capability_probe:
+      command: [opencli, --version]
+      status: missing
+      observed_at: "2026-08-04"
+      detail: OpenCLI is not installed; no daemon, browser, login, or platform command was invoked.
     audit_path: skills/audits/opinions-crawler.md
     requires:
       node_min_major: 20
@@ -26,7 +32,13 @@ skills:
     path: skills/wechat-article-search
     role: Supplemental WeChat Official Account article discovery through Sogou Weixin search; not WeChat Channels search.
     install_path: .local/third-party-skills/wechat-article-search
-    installed: false
+    installed: true
+    source_tree_sha256: a8970aa2bae0e4f1f0b78b3c5b3dcb92cff062db4f0f169a2200a0ac59ccef90
+    capability_probe:
+      command: [node, --check, scripts/search_wechat.js]
+      status: ready
+      observed_at: "2026-08-04"
+      detail: Static syntax check passed; cheerio is missing and no HTTP request was made.
     audit_path: skills/audits/wechat-article-search.md
     requires:
       node_min_major: 18
