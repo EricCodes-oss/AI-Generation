@@ -1,0 +1,4 @@
+interface:
+  display_name: "受众评论洞察"
+  short_description: "从匿名评论样本提取具体场景、情绪冲突、问题与隐性需求"
+  default_prompt: "分析A级内容的评论样本并输出匿名、可追溯的受众洞察卡。"

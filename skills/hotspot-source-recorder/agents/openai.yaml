@@ -1,0 +1,4 @@
+interface:
+  display_name: "热点来源记录器"
+  short_description: "标准化热点来源、互动指标、原始证据与完整采集溯源信息"
+  default_prompt: "把原始采集结果标准化为可追溯的热点来源记录。"
