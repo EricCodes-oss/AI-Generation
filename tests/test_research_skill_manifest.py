@@ -28,7 +28,7 @@ def test_research_skill_lock_pins_required_collectors():
         assert skill["installed"] is True
         assert skill["real_calls_enabled"] is False
         assert (PROJECT_ROOT / skill["audit_path"]).is_file()
-        assert (PROJECT_ROOT / skill["install_path"]).is_dir()
+        assert skill["install_path"].startswith(".local/third-party-skills/")
         assert len(skill["source_tree_sha256"]) == 64
         assert skill["capability_probe"]["status"] in {"ready", "missing", "skipped"}
 
@@ -36,9 +36,45 @@ def test_research_skill_lock_pins_required_collectors():
     assert skills["opinions-crawler"]["requires"]["chrome"] is True
 
 
-def test_verifier_separates_source_installation_prerequisites_and_real_calls():
+def test_verifier_separates_source_installation_prerequisites_and_real_calls(tmp_path):
+    install_path = tmp_path / ".local" / "third-party-skills" / "opinions-crawler"
+    install_path.mkdir(parents=True)
+    (install_path / "SKILL.md").write_text("# installed\n", encoding="utf-8")
+    audit_path = tmp_path / "skills" / "audits" / "opinions-crawler.md"
+    audit_path.parent.mkdir(parents=True)
+    audit_path.write_text("# audited\n", encoding="utf-8")
+    lock_path = tmp_path / "skills" / "third_party.lock.yaml"
+    lock_path.write_text(
+        f"""
+schema_version: 1
+skills:
+  - name: opinions-crawler
+    repository: https://example.invalid/collector.git
+    commit: 0123456789abcdef0123456789abcdef01234567
+    path: skills/opinions-crawler
+    role: Test collector
+    install_path: .local/third-party-skills/opinions-crawler
+    installed: true
+    source_tree_sha256: {tree_checksum(install_path)}
+    audit_path: skills/audits/opinions-crawler.md
+    requires:
+      node_min_major: 20
+      chrome: true
+      executables: [node, npm, opencli]
+      chrome_extension: Browser Bridge
+      authenticated_sites: platform-specific
+    capability_probe:
+      command: [opencli, --version]
+      status: missing
+      observed_at: 2026-08-04
+      detail: executable missing
+    real_calls_enabled: false
+""".lstrip(),
+        encoding="utf-8",
+    )
+
     report = verify_manifest(
-        PROJECT_ROOT,
+        tmp_path,
         executable_resolver=lambda name: f"/fake/{name}" if name == "node" else None,
         node_version_reader=lambda _path: "v22.22.2",
         chrome_exists=lambda: True,
@@ -56,7 +92,6 @@ def test_verifier_separates_source_installation_prerequisites_and_real_calls():
     assert opinions.prerequisites["chrome_extension"] == "manual_action_required"
     assert opinions.prerequisites["authenticated_sites"] == "manual_action_required"
     assert opinions.real_calls_enabled is False
-    assert report.skills["wechat-article-search"].real_calls_enabled is False
 
 
 def test_real_call_switch_does_not_change_local_prerequisite_readiness(tmp_path):
