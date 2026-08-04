@@ -1,0 +1,17 @@
+kind: avatar
+contract_version: "1.0"
+display_name: 数字人视频生成
+required_inputs:
+  - image_path
+  - audio_path
+optional_inputs:
+  - text
+required_outputs:
+  - video_path
+  - task_id
+supported_aspect_ratios:
+  - "9:16"
+max_duration_seconds: 50
+real_generation_enabled: false
+primary_mode: image_plus_audio
+fallback_mode: image_plus_text

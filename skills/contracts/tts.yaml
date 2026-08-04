@@ -1,0 +1,18 @@
+kind: tts
+contract_version: "1.0"
+display_name: 独立语音合成
+required_inputs:
+  - text
+  - voice_id
+optional_inputs:
+  - speaking_rate
+  - emotion
+required_outputs:
+  - audio_path
+  - timestamps
+supported_aspect_ratios:
+  - "9:16"
+max_duration_seconds: 50
+real_generation_enabled: false
+recommended_audio_format: wav
+timestamps_supported: true
