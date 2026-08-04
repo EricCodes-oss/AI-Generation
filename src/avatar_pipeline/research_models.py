@@ -100,9 +100,11 @@ class QueryGroup(ResearchModel):
     pillar: ContentPillarSlug
     intent: str = Field(min_length=1)
     scene: str = Field(min_length=1)
+    natural_query: str = Field(min_length=1)
     platform_expressions: dict[ResearchPlatform, list[str]] = Field(min_length=1)
     time_window: TimeWindow
     target_count: int | None = Field(default=None, ge=1)
+    result_count: int | None = Field(default=None, ge=0)
     is_expansion: bool = False
     parent_query_id: str | None = None
     expansion_reason: str | None = None
@@ -128,6 +130,8 @@ class DailyResearchPlan(ResearchModel):
     expansion_groups: list[QueryGroup] = Field(default_factory=list)
     time_window_shares: dict[TimeWindow, float]
     user_directive: str | None = None
+    produced_topic_terms: list[str] = Field(default_factory=list)
+    planning_notes: list[str] = Field(default_factory=list)
     created_at: AwareTimestamp = Field(default_factory=utc_now)
 
     @model_validator(mode="after")

@@ -1,5 +1,7 @@
 """Application configuration loading and validation."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import yaml
@@ -23,7 +25,7 @@ class VideoConfig(StrictModel):
     avatar_ratio_max: float = Field(ge=0, le=1)
 
     @model_validator(mode="after")
-    def validate_ranges(self) -> "VideoConfig":
+    def validate_ranges(self) -> VideoConfig:
         if self.min_duration_seconds > self.max_duration_seconds:
             raise ValueError("minimum duration must not exceed maximum duration")
         if self.target_audio_min_seconds > self.target_audio_max_seconds:
@@ -43,7 +45,7 @@ class ContentConfig(StrictModel):
     pillars: list[ContentPillar] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def validate_unique_pillars(self) -> "ContentConfig":
+    def validate_unique_pillars(self) -> ContentConfig:
         slugs = [pillar.slug for pillar in self.pillars]
         if len(slugs) != len(set(slugs)):
             raise ValueError("content pillar slugs must be unique")
@@ -59,16 +61,92 @@ class StorageConfig(StrictModel):
     contracts_directory: Path
 
 
+class SourceRangeConfig(StrictModel):
+    min_sources: int = Field(ge=0)
+    max_sources: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_range(self) -> SourceRangeConfig:
+        if self.min_sources > self.max_sources:
+            raise ValueError("minimum source target must not exceed maximum")
+        return self
+
+
+class PlatformTargetsConfig(StrictModel):
+    douyin: SourceRangeConfig
+    wechat_channels: SourceRangeConfig
+    xiaohongshu: SourceRangeConfig
+    supplementary: SourceRangeConfig
+    wechat_official_accounts: SourceRangeConfig
+
+
+class TimeWindowSharesConfig(StrictModel):
+    last_72_hours: float = Field(ge=0, le=1)
+    last_7_days: float = Field(ge=0, le=1)
+    last_30_days: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def validate_total(self) -> TimeWindowSharesConfig:
+        total = self.last_72_hours + self.last_7_days + self.last_30_days
+        if abs(total - 1.0) > 1e-9:
+            raise ValueError("research time-window shares must sum to 1.0")
+        return self
+
+
+class ResearchQueryConfig(StrictModel):
+    core_group_count: int = Field(gt=0)
+    groups_per_pillar: int = Field(gt=0)
+    expansion_cap: int = Field(ge=0)
+    exact_query_cooldown_days: int = Field(gt=0)
+    scene_cooldown_days: int = Field(gt=0)
+    history_days: int = Field(gt=0)
+    empty_result_threshold: int = Field(gt=0)
+    empty_result_cooldown_days: int = Field(gt=0)
+
+
+class CommentTargetsConfig(StrictModel):
+    a_grade_sources_min: int = Field(gt=0)
+    a_grade_sources_max: int = Field(gt=0)
+    per_source_min: int = Field(gt=0)
+    per_source_max: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_ranges(self) -> CommentTargetsConfig:
+        if self.a_grade_sources_min > self.a_grade_sources_max:
+            raise ValueError("minimum A-grade source target must not exceed maximum")
+        if self.per_source_min > self.per_source_max:
+            raise ValueError("minimum comment target must not exceed maximum")
+        return self
+
+
+class ResearchConfig(StrictModel):
+    query: ResearchQueryConfig
+    time_window_shares: TimeWindowSharesConfig
+    platform_targets: PlatformTargetsConfig
+    comments: CommentTargetsConfig
+    excluded_topics: list[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_query_shape(self) -> ResearchConfig:
+        pillar_count = 3
+        if self.query.core_group_count != self.query.groups_per_pillar * pillar_count:
+            raise ValueError("core query count must equal groups per pillar times 3")
+        if any(not topic.strip() for topic in self.excluded_topics):
+            raise ValueError("excluded research topics must not be blank")
+        return self
+
+
 class AppConfig(StrictModel):
     video: VideoConfig
     content: ContentConfig
     approvals: ApprovalConfig
     storage: StorageConfig
+    research: ResearchConfig
 
 
-def load_config(path: Path) -> AppConfig:
+def load_config(path: Path | str) -> AppConfig:
     """Load and validate application configuration from a YAML file."""
 
-    with path.open("r", encoding="utf-8") as handle:
+    with Path(path).open("r", encoding="utf-8") as handle:
         raw = yaml.safe_load(handle)
     return AppConfig.model_validate(raw)

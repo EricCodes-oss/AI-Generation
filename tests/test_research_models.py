@@ -37,6 +37,7 @@ def make_group(index: int, pillar: ContentPillarSlug, *, expansion: bool = False
         pillar=pillar,
         intent=f"intent-{index}",
         scene=f"scene-{index}",
+        natural_query=f"natural-query-{index}",
         platform_expressions={ResearchPlatform.XIAOHONGSHU: [f"query-{index}"]},
         time_window=TimeWindow.LAST_72_HOURS,
         is_expansion=expansion,
@@ -133,6 +134,36 @@ def test_daily_plan_requires_exactly_nine_core_groups_and_three_per_pillar():
             created_at=NOW,
         )
 
+
+def test_query_group_tracks_natural_query_and_optional_collection_result_count():
+    group = make_group(0, ContentPillarSlug.CAREER_PRESSURE)
+
+    assert group.natural_query == "natural-query-0"
+    assert group.result_count is None
+    assert group.model_copy(update={"result_count": 0}).result_count == 0
+
+    payload = group.model_dump()
+    del payload["natural_query"]
+    with pytest.raises(ValidationError, match="natural_query"):
+        QueryGroup.model_validate(payload)
+
+    payload = group.model_dump()
+    payload["result_count"] = -1
+    with pytest.raises(ValidationError, match="greater than or equal to 0"):
+        QueryGroup.model_validate(payload)
+
+
+def test_daily_plan_records_produced_terms_and_planning_notes():
+    plan = make_plan().model_copy(
+        update={
+            "produced_topic_terms": ["下班后仍无法停止工作"],
+            "planning_notes": ["deprioritized recently produced topic"],
+        }
+    )
+    validated = DailyResearchPlan.model_validate(plan.model_dump())
+
+    assert validated.produced_topic_terms == ["下班后仍无法停止工作"]
+    assert validated.planning_notes == ["deprioritized recently produced topic"]
 
 def test_plan_caps_expansions_and_requires_time_shares_to_sum_to_one():
     assert len(make_plan(expansions=3).expansion_groups) == 3

@@ -33,6 +33,7 @@ def make_plan(day: date) -> DailyResearchPlan:
             pillar=PILLARS[index // 3],
             intent=f"意图 {index}",
             scene=f"场景 {index}",
+            natural_query=f"自然查询 {index}",
             platform_expressions={ResearchPlatform.XIAOHONGSHU: [f"查询 {index}"]},
             time_window=TimeWindow.LAST_72_HOURS,
         )

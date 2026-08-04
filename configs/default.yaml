@@ -26,3 +26,42 @@ approvals:
 storage:
   workspace: workspace
   contracts_directory: skills/contracts
+research:
+  query:
+    core_group_count: 9
+    groups_per_pillar: 3
+    expansion_cap: 3
+    exact_query_cooldown_days: 7
+    scene_cooldown_days: 3
+    history_days: 30
+    empty_result_threshold: 2
+    empty_result_cooldown_days: 14
+  time_window_shares:
+    last_72_hours: 0.5
+    last_7_days: 0.35
+    last_30_days: 0.15
+  platform_targets:
+    douyin:
+      min_sources: 8
+      max_sources: 10
+    wechat_channels:
+      min_sources: 6
+      max_sources: 8
+    xiaohongshu:
+      min_sources: 8
+      max_sources: 10
+    supplementary:
+      min_sources: 4
+      max_sources: 6
+    wechat_official_accounts:
+      min_sources: 3
+      max_sources: 5
+  comments:
+    a_grade_sources_min: 5
+    a_grade_sources_max: 8
+    per_source_min: 20
+    per_source_max: 40
+  excluded_topics:
+    - 父母养老与照护压力
+    - 养老
+    - 照护老人
