@@ -1,0 +1,39 @@
+schema_version: 1
+reviewed_at: "2026-08-04"
+skills:
+  - name: opinions-crawler
+    repository: https://github.com/infometa/workbuddyskills.git
+    commit: 2bd6db6fe5678650e8272adafabbdceba61c3544
+    path: experts/databrain-opinion-expert/skills/opinions-crawler
+    role: Cross-platform discovery and engagement-data collector; capability must be checked per platform before each run.
+    install_path: .local/third-party-skills/opinions-crawler
+    installed: false
+    audit_path: skills/audits/opinions-crawler.md
+    requires:
+      node_min_major: 20
+      chrome: true
+      executables:
+        - node
+        - npm
+        - opencli
+      chrome_extension: OpenCLI Browser Bridge
+      authenticated_sites: platform-specific
+    real_calls_enabled: false
+
+  - name: wechat-article-search
+    repository: https://github.com/wuchubuzai2018/expert-skills-hub.git
+    commit: c9307752f2744fecf6f62c243f32df9015c0c416
+    path: skills/wechat-article-search
+    role: Supplemental WeChat Official Account article discovery through Sogou Weixin search; not WeChat Channels search.
+    install_path: .local/third-party-skills/wechat-article-search
+    installed: false
+    audit_path: skills/audits/wechat-article-search.md
+    requires:
+      node_min_major: 18
+      chrome: false
+      executables:
+        - node
+        - npm
+      npm_packages:
+        - cheerio
+    real_calls_enabled: false
