@@ -2,7 +2,7 @@
 
 - 文档版本：V1.0
 - 日期：2026-08-04
-- 状态：方案已获用户口头确认，等待书面设计复核
+- 状态：总体方案已确认；Skill 门控交互设计见关联文档
 
 ## 1. 项目目标
 
@@ -80,7 +80,7 @@ IP 定位为“温暖、清醒、不说教的人生陪伴者”，不冒充心�
   → 次日及周度复盘，反馈选题评分
 ```
 
-第一阶段保留三个强制人工确认点：选题、脚本、成片。未经确认不得进入下一高成本或公开发布阶段。
+生产系统采用“每一步加载对应 Skill、返回可审阅成果、用户确认后进入下一步”的门控交互。选题、脚本、成片仍是不可跳过的关键审批点，其他重要环节同样支持通过、修改、重做、退回和暂存。详细定义见 `docs/superpowers/specs/2026-08-04-skill-gated-content-workflow-design.md`。
 
 ## 5. 选题研究与评分
 
@@ -263,7 +263,7 @@ IP 定位为“温暖、清醒、不说教的人生陪伴者”，不冒充心�
 - 三平台发布包装、链接和发布时间；
 - 后续播放、留存、互动、收藏、转发和关注数据。
 
-任务状态建议：`researched → topic_approved → script_draft → script_approved → audio_ready → assets_generating → compositing → qc_failed/qc_passed → video_approved → published → analyzed`。
+任务状态在宏观上仍沿用 `researched → topic_approved → script_draft → script_approved → audio_ready → assets_generating → compositing → qc_failed/qc_passed → video_approved → published → analyzed`；每个宏观状态内部增加版本化 Skill 运行记录和 `waiting_for_user_approval/approved/revision_requested` 等步骤状态。
 
 ## 13. 首月验证与成功标准
 
@@ -298,7 +298,7 @@ IP 定位为“温暖、清醒、不说教的人生陪伴者”，不冒充心�
 6. 核验并接入用户提供的数字人 Skill 和 Seedance 2.0 Skill；
 7. 建设视频合成和自动质量检查；
 8. 建设三平台发布包装；
-9. 建设人工审批界面或最小可用审批机制；
+9. 建设覆盖所有重要环节的 Skill 门控审批机制；
 10. 运行首条端到端样片；
 11. 运行 7 天小规模试产并修正；
 12. 进入 30 天正式验证；
