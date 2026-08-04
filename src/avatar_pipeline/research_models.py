@@ -42,6 +42,9 @@ class ResearchReviewAction(StrEnum):
     REDO = "redo"
     RETURN = "return"
     HOLD = "hold"
+    SUPPLEMENT_PLATFORM = "supplement_platform"
+    SUPPLEMENT_TOPIC = "supplement_topic"
+    RECOLLECT_COMMENTS = "recollect_comments"
 
 
 class ResearchGrade(StrEnum):
@@ -273,6 +276,24 @@ class SkillExecutionRecord(ResearchModel):
         return self
 
 
+class ResearchApprovalRecord(ResearchModel):
+    actor: str = Field(min_length=1)
+    approved_at: AwareTimestamp = Field(default_factory=utc_now)
+    revision: int = Field(ge=1)
+    accepted_gaps: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def normalize_approval(self) -> ResearchApprovalRecord:
+        self.actor = self.actor.strip()
+        if not self.actor:
+            raise ValueError("actor must not be blank")
+        normalized_gaps = [gap.strip() for gap in self.accepted_gaps]
+        if any(not gap for gap in normalized_gaps):
+            raise ValueError("accepted gaps must not contain blank entries")
+        self.accepted_gaps = normalized_gaps
+        return self
+
+
 class ResearchRun(ResearchModel):
     day: date
     status: ResearchRunStatus = ResearchRunStatus.DRAFT
@@ -286,6 +307,8 @@ class ResearchRun(ResearchModel):
     failures: list[CollectionFailure] = Field(default_factory=list)
     summary: ResearchReportSummary = Field(default_factory=ResearchReportSummary)
     skill_executions: list[SkillExecutionRecord] = Field(default_factory=list)
+    approvals: list[ResearchApprovalRecord] = Field(default_factory=list)
+    report_artifact_path: str | None = None
     created_at: AwareTimestamp = Field(default_factory=utc_now)
     updated_at: AwareTimestamp = Field(default_factory=utc_now)
 
@@ -304,6 +327,8 @@ class ResearchRun(ResearchModel):
             raise ValueError("insight cards must reference sources in the run")
         if self.parent_revision is not None and self.parent_revision >= self.revision:
             raise ValueError("parent_revision must precede revision")
+        if any(approval.revision > self.revision for approval in self.approvals):
+            raise ValueError("approval revision cannot exceed the run revision")
         return self
 
     def is_approvable(self) -> bool:

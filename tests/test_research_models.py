@@ -13,9 +13,11 @@ from avatar_pipeline.research_models import (
     EngagementMetrics,
     ImplicitNeed,
     QueryGroup,
+    ResearchApprovalRecord,
     ResearchGrade,
     ResearchPlatform,
     ResearchReportSummary,
+    ResearchReviewAction,
     ResearchRun,
     ResearchRunStatus,
     ResearchSource,
@@ -278,4 +280,33 @@ def test_eldercare_pillar_and_topic_or_script_fields_are_rejected():
                 "topic_candidates": [],
                 "script_text": "not allowed",
             }
+        )
+
+
+def test_review_actions_and_approval_metadata_are_strictly_persisted():
+    assert ResearchReviewAction.SUPPLEMENT_PLATFORM.value == "supplement_platform"
+    assert ResearchReviewAction.SUPPLEMENT_TOPIC.value == "supplement_topic"
+    assert ResearchReviewAction.RECOLLECT_COMMENTS.value == "recollect_comments"
+
+    approval = ResearchApprovalRecord(
+        actor=" 用户 ",
+        revision=1,
+        accepted_gaps=[" 样本量不足 "],
+        approved_at=NOW,
+    )
+    run = ResearchRun(
+        day=date(2026, 8, 4),
+        approvals=[approval],
+        report_artifact_path="reports/daily-research-revision-1.md",
+    )
+
+    assert run.approvals[0].actor == "用户"
+    assert run.approvals[0].accepted_gaps == ["样本量不足"]
+    assert run.report_artifact_path == "reports/daily-research-revision-1.md"
+
+    with pytest.raises(ValidationError, match="actor"):
+        ResearchApprovalRecord(actor="   ", revision=1, approved_at=NOW)
+    with pytest.raises(ValidationError, match="accepted gaps"):
+        ResearchApprovalRecord(
+            actor="用户", revision=1, accepted_gaps=["   "], approved_at=NOW
         )
