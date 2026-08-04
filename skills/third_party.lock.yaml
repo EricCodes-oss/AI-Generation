@@ -10,10 +10,10 @@ skills:
     installed: true
     source_tree_sha256: a6c85c151688dfa1045e707330b7818dd25d62a5b52673c366ea27740ff7bb95
     capability_probe:
-      command: [opencli, --version]
-      status: missing
+      command: [.local/bin/opencli, --version]
+      status: ready
       observed_at: "2026-08-04"
-      detail: OpenCLI is not installed; no daemon, browser, login, or platform command was invoked.
+      detail: Project-local OpenCLI 1.8.6 version probe passed; daemon, browser bridge, login, and platform commands were not invoked.
     audit_path: skills/audits/opinions-crawler.md
     requires:
       node_min_major: 20
@@ -22,7 +22,18 @@ skills:
         - node
         - npm
         - opencli
+      local_executables:
+        opencli: .local/bin/opencli
+      pinned_runtime:
+        package: "@jackwener/opencli"
+        version: "1.8.6"
+        package_json: .local/tools/opencli/node_modules/@jackwener/opencli/package.json
+        integrity: sha512-2+phJOV7JkSeQR4uOnapAkhSwQDjNzHYzlCXZJBYiYi7bUxQz95nGbGuXeTseprZWES0kysVGySH63B1HG51hw==
       chrome_extension: OpenCLI Browser Bridge
+      chrome_extension_package:
+        version: "1.0.22"
+        install_path: .local/tools/opencli-extension/v1.0.22
+        archive_sha256: 9d2e3d053948beab5d97124aa79b1532d2122e33e461eca56cac113afd33207a
       authenticated_sites: platform-specific
     real_calls_enabled: false
 
@@ -38,7 +49,7 @@ skills:
       command: [node, --check, scripts/search_wechat.js]
       status: ready
       observed_at: "2026-08-04"
-      detail: Static syntax check passed; cheerio is missing and no HTTP request was made.
+      detail: Static syntax check and project-local Cheerio 1.2.0 load probe passed; no HTTP request was made.
     audit_path: skills/audits/wechat-article-search.md
     requires:
       node_min_major: 18
@@ -47,5 +58,8 @@ skills:
         - node
         - npm
       npm_packages:
-        - cheerio
+        - name: cheerio
+          version: "1.2.0"
+          package_json: .local/tools/wechat-article-search/node_modules/cheerio/package.json
+          integrity: sha512-WDrybc/gKFpTYQutKIK6UvfcuxijIZfMfXaYm8NMsPQxSYvf+13fXUJ4rztGGbJcBQ/GF55gvrZ0Bc0bj/mqvg==
     real_calls_enabled: false

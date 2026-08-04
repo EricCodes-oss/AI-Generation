@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -195,17 +196,65 @@ def verify_manifest(
         if not isinstance(executables, list):
             manifest_issues.append(f"{name}: requires.executables must be a list")
             executables = []
+        local_executables = requires.get("local_executables", {})
+        if not isinstance(local_executables, dict):
+            manifest_issues.append(f"{name}: requires.local_executables must be a mapping")
+            local_executables = {}
+
         resolved: dict[str, str] = {}
         for executable in executables:
             if not isinstance(executable, str):
                 manifest_issues.append(f"{name}: executable names must be strings")
                 continue
             executable_path = executable_resolver(executable)
+            local_path_value = local_executables.get(executable)
+            if not executable_path and isinstance(local_path_value, str):
+                local_path = root / local_path_value
+                if local_path.is_file():
+                    executable_path = str(local_path)
             prerequisites[executable] = "ready" if executable_path else "missing"
             if executable_path:
                 resolved[executable] = executable_path
                 continue
             issues.append(f"required executable is missing: {executable}")
+
+        pinned_runtime = requires.get("pinned_runtime")
+        if pinned_runtime is not None:
+            if not isinstance(pinned_runtime, dict):
+                manifest_issues.append(f"{name}: requires.pinned_runtime must be a mapping")
+            else:
+                runtime_package = pinned_runtime.get("package")
+                runtime_version = pinned_runtime.get("version")
+                runtime_package_json = pinned_runtime.get("package_json")
+                runtime_fields = (runtime_package, runtime_version, runtime_package_json)
+                if not all(isinstance(value, str) and value for value in runtime_fields):
+                    manifest_issues.append(
+                        f"{name}: pinned_runtime requires package, version, and package_json"
+                    )
+                else:
+                    runtime_key = f"runtime:{runtime_package}"
+                    runtime_path = root / runtime_package_json
+                    runtime_ready = False
+                    if runtime_path.is_file():
+                        try:
+                            runtime_metadata = json.loads(
+                                runtime_path.read_text(encoding="utf-8")
+                            )
+                        except (OSError, json.JSONDecodeError) as exc:
+                            issues.append(
+                                f"cannot read runtime metadata for {runtime_package}: {exc}"
+                            )
+                        else:
+                            runtime_ready = (
+                                runtime_metadata.get("name") == runtime_package
+                                and runtime_metadata.get("version") == runtime_version
+                            )
+                    prerequisites[runtime_key] = "ready" if runtime_ready else "missing"
+                    if not runtime_ready:
+                        issues.append(
+                            f"required runtime is missing or has the wrong version: "
+                            f"{runtime_package}@{runtime_version}"
+                        )
 
         minimum = requires.get("node_min_major")
         if minimum is not None:
@@ -233,9 +282,48 @@ def verify_manifest(
         if requires.get("authenticated_sites"):
             prerequisites["authenticated_sites"] = "manual_action_required"
             issues.append("platform login state requires manual verification")
-        if requires.get("npm_packages"):
-            prerequisites["npm_packages"] = "manual_action_required"
-            issues.append("pinned local npm dependencies require manual installation")
+        npm_packages = requires.get("npm_packages", [])
+        if npm_packages and not isinstance(npm_packages, list):
+            manifest_issues.append(f"{name}: requires.npm_packages must be a list")
+            npm_packages = []
+        for package in npm_packages:
+            if isinstance(package, str):
+                prerequisites["npm_packages"] = "manual_action_required"
+                issues.append("pinned local npm dependencies require manual installation")
+                continue
+            if not isinstance(package, dict):
+                manifest_issues.append(
+                    f"{name}: npm package requirements must be strings or mappings"
+                )
+                continue
+            package_name = package.get("name")
+            expected_version = package.get("version")
+            package_json_value = package.get("package_json")
+            package_fields = (package_name, expected_version, package_json_value)
+            if not all(isinstance(value, str) and value for value in package_fields):
+                manifest_issues.append(
+                    f"{name}: npm package mapping requires name, version, and package_json"
+                )
+                continue
+            package_key = f"npm_package:{package_name}"
+            package_json_path = root / package_json_value
+            package_ready = False
+            if package_json_path.is_file():
+                try:
+                    package_metadata = json.loads(package_json_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as exc:
+                    issues.append(f"cannot read npm package metadata for {package_name}: {exc}")
+                else:
+                    package_ready = (
+                        package_metadata.get("name") == package_name
+                        and package_metadata.get("version") == expected_version
+                    )
+            prerequisites[package_key] = "ready" if package_ready else "missing"
+            if not package_ready:
+                issues.append(
+                    f"required npm package is missing or has the wrong version: "
+                    f"{package_name}@{expected_version}"
+                )
 
         real_calls_enabled = entry["real_calls_enabled"] is True
         blocking = {"missing", "manual_action_required"}

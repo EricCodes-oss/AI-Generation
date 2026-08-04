@@ -70,3 +70,9 @@ A later supervised probe is acceptable only after dependency pinning, reuse-term
 - The script's `--help` path was not used because it initializes `cheerio` before argument handling; with the dependency absent it is not a safe independent help probe.
 - No Sogou/WeChat HTTP request, cookie exchange, search, or output-file write was performed.
 - Current decision: source installed and checksum-verified; local collection readiness is false until a pinned isolated dependency environment is approved; `real_calls_enabled` remains false.
+
+## Supervised local runtime preparation — 2026-08-04
+
+With explicit operator authorization to prepare the collection environment, the project installed `cheerio@1.2.0` under `.local/tools/wechat-article-search` using `npm install --ignore-scripts`. No global npm package was changed. The package reports MIT, its npm integrity is pinned in `skills/third_party.lock.yaml`, the Skill script passed `node --check`, and a local `cheerio.load()` probe passed with `NODE_PATH` pointed at the isolated dependency directory. An npm production dependency audit against `registry.npmjs.org` reported zero known vulnerabilities on 2026-08-04.
+
+No Sogou Weixin or WeChat HTTP request was made during preparation. `real_calls_enabled` remains `false`; a first low-volume live query requires a separate, explicit collection authorization and must be recorded as supplemental WeChat Official Account evidence, never as WeChat Channels evidence.

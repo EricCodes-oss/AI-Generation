@@ -49,11 +49,33 @@ python scripts/verify_research_skills.py --project-root .
 
 截至 2026 年 8 月 4 日，本地状态为：
 
-- `opinions-crawler`：固定提交源码已安装并校验；OpenCLI 缺失；浏览器扩展和平台登录仍需人工确认；真实调用关闭。
-- `wechat-article-search`：固定提交源码已安装并校验；JavaScript 静态语法检查通过；`cheerio` 尚未在隔离环境安装；真实调用关闭。
+- `opinions-crawler`：固定提交源码已安装并校验；OpenCLI 1.8.6 已使用 `--ignore-scripts` 安装到项目 `.local/tools`，安全版本探测通过；Browser Bridge 1.0.22 已下载、校验并解压，但其广泛浏览器权限要求操作者手动加载；平台登录仍需人工确认；真实调用关闭。
+- `wechat-article-search`：固定提交源码已安装并校验；`cheerio@1.2.0` 已隔离安装，JavaScript 静态语法和依赖加载探测通过；尚未发送 HTTP 请求；真实调用关闭。
+- 两组 npm 生产依赖在 2026 年 8 月 4 日通过官方 npm 审计接口检查，未报告已知漏洞。
 - 视频号不能由微信公众号文章搜索替代；当前应使用人工授权导入或用户后续提供的专用能力。
 
 源码位于 `.local/third-party-skills/`，该目录不进入 Git；仓库只保存固定提交、源码树摘要和审计记录。不得运行第三方 `setup.sh`，也不得擅自进行全局 npm/Python 安装。
+
+### 2.1 项目隔离运行时
+
+本项目不依赖全局 OpenCLI 或全局 Cheerio。当前本机隔离路径为：
+
+```text
+.local/bin/opencli
+.local/tools/opencli
+.local/tools/opencli-extension/v1.0.22
+.local/tools/wechat-article-search
+```
+
+运行安全探测时显式使用项目本地路径：
+
+```bash
+PATH="$PWD/.local/bin:$PATH" opencli --version
+NODE_PATH="$PWD/.local/tools/wechat-article-search/node_modules" \
+  node --check .local/third-party-skills/wechat-article-search/scripts/search_wechat.js
+```
+
+OpenCLI 扩展目录只做了下载、摘要校验和解压。扩展请求 cookies、调试器、全部网站等广泛权限，必须由操作者在 Chrome 中人工检查并加载；自动化流程不得替用户接受扩展权限。
 
 ## 3. 工作区结构
 

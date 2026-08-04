@@ -82,3 +82,9 @@ The verifier in this project performs only static/local prerequisite checks. It 
 - Capability probe status: `missing`. The proposed safe command is `opencli --version`, but it could not run because the executable is absent.
 - No OpenCLI daemon, Chrome automation, login, search, comment collection, or platform request was started.
 - Current decision: source installed and checksum-verified; local collection readiness is false; `real_calls_enabled` remains false.
+
+## Supervised local runtime preparation — 2026-08-04
+
+With explicit operator authorization to prepare the collection environment, the project installed `@jackwener/opencli@1.8.6` under `.local/tools/opencli` using `npm install --ignore-scripts`. No global npm package, shell completion, OpenCLI daemon, browser session, login, or platform command was started. The package reports Apache-2.0, its npm integrity is pinned in `skills/third_party.lock.yaml`, and an npm production dependency audit against `registry.npmjs.org` reported zero known vulnerabilities on 2026-08-04.
+
+The matching official GitHub release `v1.8.6` supplied `opencli-extension-v1.0.22.zip`. The archive was downloaded to `.local/tools/opencli-extension`, verified against the release digest `9d2e3d053948beab5d97124aa79b1532d2122e33e461eca56cac113afd33207a`, and extracted locally. The manifest requests `debugger`, `tabs`, `cookies`, `activeTab`, `alarms`, `storage`, `tabGroups`, `downloads`, and `<all_urls>` access. Because this is broad browser/account access, loading or enabling the extension remains an explicit manual operator action. Platform login state also remains unverified, and `real_calls_enabled` remains `false`.

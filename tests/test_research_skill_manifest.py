@@ -32,8 +32,25 @@ def test_research_skill_lock_pins_required_collectors():
         assert len(skill["source_tree_sha256"]) == 64
         assert skill["capability_probe"]["status"] in {"ready", "missing", "skipped"}
 
-    assert skills["opinions-crawler"]["requires"]["node_min_major"] == 20
-    assert skills["opinions-crawler"]["requires"]["chrome"] is True
+    opinions = skills["opinions-crawler"]
+    wechat = skills["wechat-article-search"]
+    assert opinions["requires"]["node_min_major"] == 20
+    assert opinions["requires"]["chrome"] is True
+    assert opinions["requires"]["local_executables"]["opencli"] == ".local/bin/opencli"
+    assert opinions["requires"]["pinned_runtime"]["version"] == "1.8.6"
+    assert opinions["requires"]["chrome_extension_package"]["version"] == "1.0.22"
+    assert len(opinions["requires"]["chrome_extension_package"]["archive_sha256"]) == 64
+    assert wechat["requires"]["npm_packages"] == [
+        {
+            "name": "cheerio",
+            "version": "1.2.0",
+            "package_json": ".local/tools/wechat-article-search/node_modules/cheerio/package.json",
+            "integrity": (
+                "sha512-WDrybc/gKFpTYQutKIK6UvfcuxijIZfMfXaYm8NMsPQxSYvf+13fXUJ4rztGGbJ"
+                "cBQ/GF55gvrZ0Bc0bj/mqvg=="
+            ),
+        }
+    ]
 
 
 def test_verifier_separates_source_installation_prerequisites_and_real_calls(tmp_path):
@@ -184,3 +201,85 @@ skills:
 
     assert report.skills["collector"].source_verified is False
     assert "source tree checksum does not match lock" in report.skills["collector"].issues
+
+
+def test_verifier_resolves_project_local_executables_and_node_packages(tmp_path):
+    install_path = tmp_path / ".local" / "third-party-skills" / "collector"
+    install_path.mkdir(parents=True)
+    (install_path / "SKILL.md").write_text("# installed\n", encoding="utf-8")
+    audit_path = tmp_path / "skills" / "audits" / "collector.md"
+    audit_path.parent.mkdir(parents=True)
+    audit_path.write_text("# audited\n", encoding="utf-8")
+
+    local_bin = tmp_path / ".local" / "bin"
+    local_bin.mkdir(parents=True)
+    (local_bin / "opencli").write_text("#!/bin/sh\n", encoding="utf-8")
+    runtime_path = (
+        tmp_path
+        / ".local"
+        / "tools"
+        / "opencli"
+        / "node_modules"
+        / "@jackwener"
+        / "opencli"
+    )
+    runtime_path.mkdir(parents=True)
+    (runtime_path / "package.json").write_text(
+        '{"name":"@jackwener/opencli","version":"1.8.6"}\n', encoding="utf-8"
+    )
+    package_path = tmp_path / ".local" / "tools" / "wechat" / "node_modules" / "cheerio"
+    package_path.mkdir(parents=True)
+    (package_path / "package.json").write_text(
+        '{"name":"cheerio","version":"1.2.0"}\n', encoding="utf-8"
+    )
+
+    lock_path = tmp_path / "skills" / "third_party.lock.yaml"
+    lock_path.write_text(
+        f"""
+schema_version: 1
+skills:
+  - name: collector
+    repository: https://example.invalid/collector.git
+    commit: 0123456789abcdef0123456789abcdef01234567
+    path: skills/collector
+    role: Test collector
+    install_path: .local/third-party-skills/collector
+    installed: true
+    source_tree_sha256: {tree_checksum(install_path)}
+    audit_path: skills/audits/collector.md
+    requires:
+      node_min_major: 20
+      chrome: false
+      executables: [node, opencli]
+      local_executables:
+        opencli: .local/bin/opencli
+      pinned_runtime:
+        package: "@jackwener/opencli"
+        version: "1.8.6"
+        package_json: .local/tools/opencli/node_modules/@jackwener/opencli/package.json
+      npm_packages:
+        - name: cheerio
+          version: 1.2.0
+          package_json: .local/tools/wechat/node_modules/cheerio/package.json
+    capability_probe:
+      command: [opencli, --version]
+      status: ready
+      observed_at: 2026-08-04
+      detail: project-local executable probe passed
+    real_calls_enabled: false
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    report = verify_manifest(
+        tmp_path,
+        executable_resolver=lambda name: "/fake/node" if name == "node" else None,
+        node_version_reader=lambda _path: "v23.11.0",
+        chrome_exists=lambda: False,
+    )
+
+    collector = report.skills["collector"]
+    assert collector.prerequisites["opencli"] == "ready"
+    assert collector.prerequisites["runtime:@jackwener/opencli"] == "ready"
+    assert collector.prerequisites["npm_package:cheerio"] == "ready"
+    assert collector.locally_ready is True
