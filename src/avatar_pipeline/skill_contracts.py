@@ -44,13 +44,14 @@ class SkillManifest(BaseModel):
 
     @model_validator(mode="after")
     def validate_kind_specific_fields(self) -> "SkillManifest":
-        if isinstance(self.required_inputs, dict):
-            if any(not key or not value for key, value in self.required_inputs.items()):
-                raise ValueError("required input names and constraints must be non-empty")
-            self._validate_content_first_inputs()
-        if self.kind is SkillKind.AVATAR:
-            if not self.primary_mode or not self.fallback_mode:
-                raise ValueError("avatar contract requires primary_mode and fallback_mode")
+        if isinstance(self.required_inputs, dict) and any(
+            not key or not value for key, value in self.required_inputs.items()
+        ):
+            raise ValueError("required input names and constraints must be non-empty")
+        if self.kind is SkillKind.HOST_IMAGE:
+            self._validate_host_image_contract()
+        elif self.kind is SkillKind.AVATAR:
+            self._validate_avatar_contract()
         elif self.primary_mode is not None or self.fallback_mode is not None:
             raise ValueError("generation modes are only valid for the avatar contract")
         if self.kind is SkillKind.TTS:
@@ -60,42 +61,65 @@ class SkillManifest(BaseModel):
             raise ValueError("audio fields are only valid for the tts contract")
         return self
 
-    def _validate_content_first_inputs(self) -> None:
+    def _validate_host_image_contract(self) -> None:
+        if self.provider != "giggle-gpt-image-2" or self.name != "giggle-gpt-image-2":
+            raise ValueError("host image contract requires the giggle-gpt-image-2 skill")
+        required_outputs = {"image_path", "identity_notes", "safety_check"}
+        if not required_outputs <= set(self.required_outputs):
+            raise ValueError("host image contract is missing required outputs")
+        if not isinstance(self.required_inputs, dict):
+            raise ValueError("host image contract requires constrained input definitions")
+
         inputs = self.required_inputs
-        if self.kind is SkillKind.HOST_IMAGE:
-            expected = {
-                "prompt": "string",
-                "negative_prompt": "string",
-                "layout": "seated_studio_anchor",
-                "aspect_ratio": "9:16",
-                "shot": "waist_up_seated",
-            }
-            if inputs != expected:
-                raise ValueError("host image contract must require the seated content-first inputs")
-            if not self.negative_prompt:
-                raise ValueError("host image contract requires negative_prompt")
-            required_terms = {
-                "police uniform",
-                "police badge",
-                "military uniform",
-                "government emblem",
-                "real media logo",
-                "seductive pose",
-                "revealing clothing",
-                "readable text",
-                "extra people",
-            }
-            terms = {term.strip().lower() for term in self.negative_prompt.split(",")}
-            if not required_terms <= terms:
-                raise ValueError("host image negative_prompt is missing required safety terms")
-        elif self.kind is SkillKind.AVATAR:
-            if (
-                inputs.get("audio_path") != "string"
-                or inputs.get("layout") != "seated_studio_anchor"
-            ):
-                raise ValueError("avatar contract must require audio_path and seated layout")
-            if inputs.get("image_path") != "string" and inputs.get("reference_image") != "string":
-                raise ValueError("avatar contract must require image_path or reference_image")
+        expected = {
+            "prompt": "string",
+            "negative_prompt": "string",
+            "layout": "seated_studio_anchor",
+            "aspect_ratio": "9:16",
+            "shot": "waist_up_seated",
+        }
+        if inputs != expected:
+            raise ValueError("host image contract must require the seated content-first inputs")
+        if not self.negative_prompt:
+            raise ValueError("host image contract requires negative_prompt")
+        required_terms = {
+            "police uniform",
+            "police badge",
+            "military uniform",
+            "government emblem",
+            "real media logo",
+            "seductive pose",
+            "revealing clothing",
+            "readable text",
+            "extra people",
+        }
+        terms = {term.strip().lower() for term in self.negative_prompt.split(",")}
+        if not required_terms <= terms:
+            raise ValueError("host image negative_prompt is missing required safety terms")
+
+    def _validate_avatar_contract(self) -> None:
+        expected_skill = "giggle-generation-tv-avatar-video"
+        if self.provider != expected_skill or self.name != expected_skill:
+            raise ValueError("avatar contract requires the giggle-generation-tv-avatar-video skill")
+        if self.primary_mode != "image_plus_audio" or not self.fallback_mode:
+            raise ValueError(
+                "avatar contract requires image_plus_audio primary mode and fallback_mode"
+            )
+        required_outputs = {"video_path", "task_id"}
+        if not required_outputs <= set(self.required_outputs):
+            raise ValueError("avatar contract is missing required outputs")
+        if not isinstance(self.required_inputs, dict):
+            raise ValueError("avatar contract requires constrained input definitions")
+
+        inputs = self.required_inputs
+        if (
+            inputs.get("image_path") != "string"
+            or inputs.get("audio_path") != "string"
+            or inputs.get("layout") != "seated_studio_anchor"
+        ):
+            raise ValueError(
+                "avatar contract must require image_path, audio_path, and seated layout"
+            )
 
 
 def load_skill_manifest(path: Path) -> SkillManifest:

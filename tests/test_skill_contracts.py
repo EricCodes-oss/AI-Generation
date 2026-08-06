@@ -38,3 +38,11 @@ def test_target_skill_contracts_expose_provider_and_content_first_fields():
     assert contracts[SkillKind.HOST_IMAGE].required_inputs["prompt"] == "string"
     assert contracts[SkillKind.AVATAR].provider == "giggle-generation-tv-avatar-video"
     assert contracts[SkillKind.AVATAR].required_inputs["audio_path"] == "string"
+
+
+def test_other_skill_contracts_keep_legacy_required_input_lists():
+    contracts = load_contracts(Path("skills/contracts"))
+
+    for kind, contract in contracts.items():
+        if kind not in {SkillKind.HOST_IMAGE, SkillKind.AVATAR}:
+            assert isinstance(contract.required_inputs, list)

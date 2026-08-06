@@ -50,6 +50,64 @@ def test_avatar_contract_requires_image_audio_and_seated_layout():
     assert {"video_path", "task_id"} <= set(contract.required_outputs)
 
 
+def test_avatar_contract_rejects_reference_image_as_image_path_replacement():
+    contract = load_contracts(CONTRACTS)[SkillKind.AVATAR]
+    payload = contract.model_dump()
+    del payload["required_inputs"]["image_path"]
+    payload["required_inputs"]["reference_image"] = "string"
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize("kind", [SkillKind.HOST_IMAGE, SkillKind.AVATAR])
+def test_target_contracts_reject_legacy_required_input_lists(kind):
+    contract = load_contracts(CONTRACTS)[kind]
+    payload = contract.model_dump()
+    payload["required_inputs"] = list(payload["required_inputs"])
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("kind", "field", "value"),
+    [
+        (SkillKind.HOST_IMAGE, "provider", "other-image-provider"),
+        (SkillKind.HOST_IMAGE, "name", "other-image-skill"),
+        (SkillKind.AVATAR, "provider", "other-avatar-provider"),
+        (SkillKind.AVATAR, "name", "other-avatar-skill"),
+        (SkillKind.AVATAR, "primary_mode", "image_plus_text"),
+    ],
+)
+def test_target_contracts_reject_wrong_skill_identity_or_primary_mode(kind, field, value):
+    contract = load_contracts(CONTRACTS)[kind]
+    payload = contract.model_dump()
+    payload[field] = value
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("kind", "required_output"),
+    [
+        (SkillKind.HOST_IMAGE, "image_path"),
+        (SkillKind.HOST_IMAGE, "identity_notes"),
+        (SkillKind.HOST_IMAGE, "safety_check"),
+        (SkillKind.AVATAR, "video_path"),
+        (SkillKind.AVATAR, "task_id"),
+    ],
+)
+def test_target_contracts_reject_missing_required_outputs(kind, required_output):
+    contract = load_contracts(CONTRACTS)[kind]
+    payload = contract.model_dump()
+    payload["required_outputs"].remove(required_output)
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
 @pytest.mark.parametrize(
     ("kind", "field", "value"),
     [
