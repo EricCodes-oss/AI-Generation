@@ -14,13 +14,18 @@ REQUIRED_NEGATIVE_TERMS = {
     "real media logo",
     "seductive pose",
     "revealing clothing",
+    "exaggerated jewelry",
     "readable text",
+    "distorted hands",
     "extra people",
     "interrogation room",
     "police station",
     "prison bars",
+    "epaulets",
     "wanted poster",
     "missing person poster",
+    "mini skirt",
+    "high heels",
     "real public figure resemblance",
 }
 

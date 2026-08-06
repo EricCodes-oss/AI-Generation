@@ -64,15 +64,16 @@ class SkillManifest(BaseModel):
         expected_skill = "giggle-generation-speech"
         if self.provider != expected_skill or self.name != expected_skill:
             raise ValueError("tts contract requires the giggle-generation-speech skill")
+        self._validate_required_outputs({"audio_path", "timestamps"}, "tts")
         if self.recommended_audio_format != "wav" or self.timestamps_supported is not True:
             raise ValueError("tts contract must recommend wav and support timestamps")
 
     def _validate_host_image_contract(self) -> None:
         if self.provider != "giggle-gpt-image-2" or self.name != "giggle-gpt-image-2":
             raise ValueError("host image contract requires the giggle-gpt-image-2 skill")
-        required_outputs = {"image_path", "identity_notes", "safety_check"}
-        if not required_outputs <= set(self.required_outputs):
-            raise ValueError("host image contract is missing required outputs")
+        self._validate_required_outputs(
+            {"image_path", "identity_notes", "safety_check"}, "host image"
+        )
         if not isinstance(self.required_inputs, dict):
             raise ValueError("host image contract requires constrained input definitions")
 
@@ -102,13 +103,18 @@ class SkillManifest(BaseModel):
             "real media logo",
             "seductive pose",
             "revealing clothing",
+            "exaggerated jewelry",
             "readable text",
+            "distorted hands",
             "extra people",
             "interrogation room",
             "police station",
             "prison bars",
+            "epaulets",
             "wanted poster",
             "missing person poster",
+            "mini skirt",
+            "high heels",
             "real public figure resemblance",
         }
         terms = {term.strip().lower() for term in self.negative_prompt.split(",")}
@@ -124,9 +130,7 @@ class SkillManifest(BaseModel):
                 "avatar contract requires image_plus_audio primary mode and "
                 "image_plus_text fallback mode"
             )
-        required_outputs = {"video_path", "task_id"}
-        if not required_outputs <= set(self.required_outputs):
-            raise ValueError("avatar contract is missing required outputs")
+        self._validate_required_outputs({"video_path", "task_id"}, "avatar")
         if not isinstance(self.required_inputs, dict):
             raise ValueError("avatar contract requires constrained input definitions")
 
@@ -144,6 +148,12 @@ class SkillManifest(BaseModel):
             raise ValueError("avatar contract must allow only text as optional input")
         if self.supported_aspect_ratios != ["9:16"]:
             raise ValueError("avatar contract must support only the 9:16 aspect ratio")
+
+    def _validate_required_outputs(self, required: set[str], contract_name: str) -> None:
+        if len(self.required_outputs) != len(set(self.required_outputs)):
+            raise ValueError(f"{contract_name} contract required outputs must be unique")
+        if not required <= set(self.required_outputs):
+            raise ValueError(f"{contract_name} contract is missing required outputs")
 
 
 def load_skill_manifest(path: Path) -> SkillManifest:

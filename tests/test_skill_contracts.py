@@ -87,3 +87,43 @@ def test_tts_contract_keeps_wav_and_timestamps_constraints(field, value):
 
     with pytest.raises(ValidationError):
         SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "required_output",
+    ["audio_path", "timestamps"],
+)
+def test_tts_contract_rejects_missing_required_outputs(required_output):
+    contract = load_contracts(Path("skills/contracts"))[SkillKind.TTS]
+    payload = contract.model_dump()
+    payload["required_outputs"].remove(required_output)
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [SkillKind.HOST_IMAGE, SkillKind.AVATAR, SkillKind.TTS],
+)
+def test_target_contracts_reject_duplicate_required_outputs(kind):
+    contract = load_contracts(Path("skills/contracts"))[kind]
+    payload = contract.model_dump()
+    payload["required_outputs"].extend(["future_output", "future_output"])
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [SkillKind.HOST_IMAGE, SkillKind.AVATAR, SkillKind.TTS],
+)
+def test_target_contracts_allow_additional_non_conflicting_outputs(kind):
+    contract = load_contracts(Path("skills/contracts"))[kind]
+    payload = contract.model_dump()
+    payload["required_outputs"].append("future_output")
+
+    validated = SkillManifest.model_validate(payload)
+
+    assert "future_output" in validated.required_outputs
