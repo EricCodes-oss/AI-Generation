@@ -371,7 +371,12 @@ def test_legacy_host_gets_safe_seated_defaults_without_identity_drift():
 
 
 def test_legacy_non_seated_host_requires_review():
-    payload = {"id": "host", "display_name": "主持人", "reference_image": "old.png", "layout": "standing_anchor"}
+    payload = {
+        "id": "host",
+        "display_name": "主持人",
+        "reference_image": "old.png",
+        "layout": "standing_anchor",
+    }
     with pytest.raises(MigrationError):
         migrate_host_profile(payload)
 ```

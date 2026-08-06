@@ -152,7 +152,9 @@ from avatar_pipeline.models import DailyTask, TaskStatus, TopicCandidate
 
 def test_daily_task_accepts_exactly_three_ranked_candidates():
     candidates = [
-        TopicCandidate(id=f"topic-{index}", title=f"候选 {index}", pillar="self_growth", score=90-index)
+        TopicCandidate(
+            id=f"topic-{index}", title=f"候选 {index}", pillar="self_growth", score=90 - index
+        )
         for index in range(1, 4)
     ]
     task = DailyTask(day=date(2026, 8, 4), status=TaskStatus.RESEARCHED, candidates=candidates)
@@ -189,6 +191,7 @@ class ContentPillarSlug(StrEnum):
     CAREER_PRESSURE = "career_pressure"
     PARENT_CHILD_COMMUNICATION = "parent_child_communication"
     SELF_GROWTH = "self_growth"
+
 
 class TaskStatus(StrEnum):
     CREATED = "created"
@@ -323,7 +326,11 @@ from datetime import date
 import pytest
 
 from avatar_pipeline.models import DailyTask
-from avatar_pipeline.repository import DailyTaskAlreadyExists, DailyTaskNotFound, DailyTaskRepository
+from avatar_pipeline.repository import (
+    DailyTaskAlreadyExists,
+    DailyTaskNotFound,
+    DailyTaskRepository,
+)
 
 
 def test_repository_round_trips_utf8_json(tmp_path):
@@ -454,7 +461,9 @@ from avatar_pipeline.service import DailyWorkflowService, WorkflowPreconditionEr
 def candidates():
     return [
         TopicCandidate(id="t1", title="工作受挫后", pillar="career_pressure", score=94),
-        TopicCandidate(id="t2", title="父母先稳住情绪", pillar="parent_child_communication", score=91),
+        TopicCandidate(
+            id="t2", title="父母先稳住情绪", pillar="parent_child_communication", score=91
+        ),
         TopicCandidate(id="t3", title="停止自我否定", pillar="self_growth", score=89),
     ]
 

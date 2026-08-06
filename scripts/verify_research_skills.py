@@ -237,9 +237,7 @@ def verify_manifest(
                     runtime_ready = False
                     if runtime_path.is_file():
                         try:
-                            runtime_metadata = json.loads(
-                                runtime_path.read_text(encoding="utf-8")
-                            )
+                            runtime_metadata = json.loads(runtime_path.read_text(encoding="utf-8"))
                         except (OSError, json.JSONDecodeError) as exc:
                             issues.append(
                                 f"cannot read runtime metadata for {runtime_package}: {exc}"
@@ -369,8 +367,7 @@ def _format_report(report: VerificationReport) -> str:
             f"probe={skill.probe_status}"
         )
         lines.extend(
-            f"  prerequisite.{key}: {status}"
-            for key, status in sorted(skill.prerequisites.items())
+            f"  prerequisite.{key}: {status}" for key, status in sorted(skill.prerequisites.items())
         )
         lines.extend(f"  issue: {issue}" for issue in skill.issues)
     return "\n".join(lines)
