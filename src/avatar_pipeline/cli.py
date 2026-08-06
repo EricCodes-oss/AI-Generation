@@ -1,4 +1,6 @@
-"""Non-interactive CLI for the dual-mode hotspot news-anchor workflow."""
+"""Command-line interface for production and user-gated research workflows."""
+
+from __future__ import annotations
 
 import argparse
 import json
@@ -7,6 +9,8 @@ import sys
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from avatar_pipeline.config import load_config
 from avatar_pipeline.models import (
@@ -17,13 +21,26 @@ from avatar_pipeline.models import (
     RunMode,
     TopicCandidate,
     TopicSource,
+    utc_now,
 )
+from avatar_pipeline.query_planner import build_daily_plan
 from avatar_pipeline.repository import DailyTaskRepository
+from avatar_pipeline.research_adapters import CollectionBatch, RawCollectionItem
+from avatar_pipeline.research_models import (
+    CollectionFailure,
+    CommentInsightCard,
+    ResearchPlatform,
+    ResearchReviewAction,
+    ResearchRun,
+)
+from avatar_pipeline.research_repository import ResearchRunRepository
+from avatar_pipeline.research_service import ResearchService
 from avatar_pipeline.service import DailyWorkflowService
 from avatar_pipeline.skill_contracts import load_contracts
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_CONFIG = _PROJECT_ROOT / "configs" / "default.yaml"
+_RESEARCH_LOCK = _PROJECT_ROOT / "skills" / "third_party.lock.yaml"
 
 
 def _date(value: str) -> date:
@@ -33,11 +50,22 @@ def _date(value: str) -> date:
         raise argparse.ArgumentTypeError("date must use YYYY-MM-DD") from error
 
 
+def _boolean(value: str) -> bool:
+    normalized = value.casefold()
+    if normalized in {"true", "1", "yes"}:
+        return True
+    if normalized in {"false", "0", "no"}:
+        return False
+    raise argparse.ArgumentTypeError("value must be true or false")
+
+
 def _add_date_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--date", required=True, type=_date)
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the public argparse command tree."""
+
     config = load_config(_DEFAULT_CONFIG)
     parser = argparse.ArgumentParser(prog="avatar-pipeline")
     parser.add_argument("--workspace", type=Path, default=config.storage.workspace)
@@ -78,20 +106,14 @@ def build_parser() -> argparse.ArgumentParser:
     _add_date_argument(approve_host)
     approve_host.add_argument("--actor", required=True)
 
-    for command, kind in (
-        ("mark-tts", "master_audio"),
-        ("mark-anchor", "anchor_video"),
-        ("mark-media", "insert_media"),
-        ("mark-compositing", "master_video"),
-    ):
+    for command in ("mark-tts", "mark-anchor", "mark-media", "mark-compositing"):
         command_parser = subparsers.add_parser(command)
         _add_date_argument(command_parser)
         command_parser.add_argument("--path", required=True)
-        command_parser.set_defaults(artifact_kind=kind)
 
     record_qc = subparsers.add_parser("record-qc")
     _add_date_argument(record_qc)
-    record_qc.add_argument("--passed", required=True, choices=["true", "false"])
+    record_qc.add_argument("--passed", required=True, choices=("true", "false"))
     record_qc.add_argument("--report", required=True)
 
     approve_final = subparsers.add_parser("approve-final-video")
@@ -101,11 +123,57 @@ def build_parser() -> argparse.ArgumentParser:
     stop = subparsers.add_parser("stop")
     _add_date_argument(stop)
     stop.add_argument("--reason", required=True)
+
+    # Phase 2A: user-gated research workflow.
+    research_init = subparsers.add_parser("research-init")
+    _add_date_argument(research_init)
+
+    research_plan = subparsers.add_parser("research-plan")
+    _add_date_argument(research_plan)
+    research_plan.add_argument("--directive")
+
+    research_import = subparsers.add_parser("research-import")
+    _add_date_argument(research_import)
+    research_import.add_argument("--file", required=True, type=Path)
+    research_import.add_argument("--collector", required=True, choices=("fixture", "manual_import"))
+
+    research_insights = subparsers.add_parser("research-import-insights")
+    _add_date_argument(research_insights)
+    research_insights.add_argument("--file", required=True, type=Path)
+
+    research_report = subparsers.add_parser("research-report")
+    _add_date_argument(research_report)
+
+    research_revise = subparsers.add_parser("research-revise")
+    _add_date_argument(research_revise)
+    research_revise.add_argument(
+        "--action",
+        required=True,
+        choices=tuple(
+            action.value
+            for action in ResearchReviewAction
+            if action is not ResearchReviewAction.APPROVE
+        ),
+    )
+    research_revise.add_argument("--feedback", required=True)
+
+    research_approve = subparsers.add_parser("research-approve")
+    _add_date_argument(research_approve)
+    research_approve.add_argument("--actor", required=True)
+    research_approve.add_argument("--accept-gap", action="append", default=[])
+
+    research_status = subparsers.add_parser("research-status")
+    _add_date_argument(research_status)
+    subparsers.add_parser("research-health")
     return parser
 
 
 def _task_payload(task: DailyTask) -> dict[str, Any]:
     return task.model_dump(mode="json")
+
+
+def _research_payload(run: ResearchRun) -> dict[str, Any]:
+    return run.model_dump(mode="json")
 
 
 def _health_payload() -> dict[str, Any]:
@@ -119,7 +187,7 @@ def _health_payload() -> dict[str, Any]:
     return {
         "python": {
             "available": sys.version_info >= (3, 11),
-            "version": ".".join(map(str, sys.version_info[:3])),
+            "version": ".".join(str(part) for part in sys.version_info[:3]),
         },
         "ffmpeg": {
             "available": ffmpeg_path is not None and ffprobe_path is not None,
@@ -139,6 +207,33 @@ def _health_payload() -> dict[str, Any]:
     }
 
 
+def _research_health_payload() -> dict[str, Any]:
+    lock = yaml.safe_load(_RESEARCH_LOCK.read_text(encoding="utf-8"))
+    entries = lock.get("skills", []) if isinstance(lock, dict) else []
+    third_party = {
+        entry["name"]: {
+            "installed": bool(entry.get("installed")),
+            "real_calls_enabled": bool(entry.get("real_calls_enabled")),
+            "install_path": entry.get("install_path"),
+        }
+        for entry in entries
+        if isinstance(entry, dict) and isinstance(entry.get("name"), str)
+    }
+    return {
+        "workflow_mode": "user_gated",
+        "real_collection_enabled": any(
+            item["installed"] and item["real_calls_enabled"] for item in third_party.values()
+        ),
+        "local_collectors": {
+            "fixture": "ready",
+            "manual_import": "ready",
+            "command": "disabled_until_capability_probe",
+        },
+        "third_party_skills": third_party,
+        "next_gate": "explicit_user_approval_before_top_recommendation",
+    }
+
+
 def _load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
@@ -148,19 +243,115 @@ def _load_topics(path: Path) -> list[TopicCandidate]:
     raw = _load_json(path)
     items = raw.get("candidates") if isinstance(raw, dict) else raw
     if not isinstance(items, list):
-        raise ValueError("research file must be a JSON list or contain candidates")
+        raise ValueError("topics file must be a JSON list or contain a candidates list")
     return [TopicCandidate.model_validate(item) for item in items]
 
 
-def dispatch(args: argparse.Namespace) -> dict[str, Any]:
-    if args.command == "health":
-        return _health_payload()
+def _load_collection(path: Path, collector_name: str) -> CollectionBatch:
+    raw = _load_json(path)
+    items = raw.get("items") if isinstance(raw, dict) else raw
+    if not isinstance(items, list):
+        raise ValueError("research source items must be a JSON list")
+
+    raw_items: list[RawCollectionItem] = []
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise ValueError(f"research source items[{index}] must be an object")
+        payload = item.get("payload")
+        if not isinstance(payload, dict):
+            raise ValueError(f"research source items[{index}].payload must be an object")
+        raw_items.append(
+            RawCollectionItem(
+                platform=ResearchPlatform(item.get("platform")),
+                query_group_id=item.get("query_group_id"),
+                payload=payload,
+                raw_artifact_path=str(path),
+            )
+        )
+
+    failures_raw = raw.get("failures", []) if isinstance(raw, dict) else []
+    if not isinstance(failures_raw, list):
+        raise ValueError("research source failures must be a JSON list")
+    failures = [CollectionFailure.model_validate(item) for item in failures_raw]
+    timestamp = utc_now()
+    return CollectionBatch(
+        raw_items=raw_items,
+        failures=failures,
+        collector_name=collector_name,
+        started_at=timestamp,
+        completed_at=timestamp,
+        raw_artifact_paths=[str(path)],
+    )
+
+
+def _load_insights(path: Path) -> list[CommentInsightCard]:
+    raw = _load_json(path)
+    items = raw.get("cards") if isinstance(raw, dict) else raw
+    if not isinstance(items, list):
+        raise ValueError("comment insight file must be a JSON list or contain a cards list")
+    return [CommentInsightCard.model_validate(item) for item in items]
+
+
+def _dispatch_research(args: argparse.Namespace) -> dict[str, Any]:
+    repository = ResearchRunRepository(args.workspace)
+    service = ResearchService(repository)
+    if args.command == "research-init":
+        run = service.start(args.date)
+    elif args.command == "research-plan":
+        config = load_config(_DEFAULT_CONFIG)
+        history = repository.list_recent_plans(args.date, days=config.research.query.history_days)
+        plan = build_daily_plan(
+            args.date,
+            config.research,
+            history,
+            user_directive=args.directive,
+        )
+        run = service.record_plan(args.date, plan)
+    elif args.command == "research-import":
+        run = service.import_collection(args.date, _load_collection(args.file, args.collector))
+    elif args.command == "research-import-insights":
+        run = service.record_insights(args.date, _load_insights(args.file))
+    elif args.command == "research-report":
+        report_path = service.render_report(args.date)
+        return {
+            "report_path": str(report_path),
+            "run": _research_payload(service.status(args.date)),
+        }
+    elif args.command == "research-revise":
+        run = service.request_revision(
+            args.date, feedback=args.feedback, action=ResearchReviewAction(args.action)
+        )
+    elif args.command == "research-approve":
+        run = service.approve(args.date, actor=args.actor, accepted_gaps=args.accept_gap)
+    elif args.command == "research-status":
+        run = service.status(args.date)
+    else:  # pragma: no cover
+        raise ValueError(f"unsupported research command: {args.command}")
+    return _research_payload(run)
+
+
+def _dispatch_production(args: argparse.Namespace) -> dict[str, Any]:
     repository = DailyTaskRepository(args.workspace)
     service = DailyWorkflowService(repository)
     if args.command == "init-day":
         task = service.start_day(args.date, mode=RunMode(args.mode), input_text=args.input_text)
     elif args.command == "status":
         task = repository.get(args.date)
+        payload = _task_payload(task)
+        # The research stage is deliberately non-mutating.  Preserve the
+        # legacy CLI's "created" presentation after an approved research run
+        # without changing the production task on disk.
+        try:
+            research_run = ResearchRunRepository(args.workspace).get(args.date)
+        except FileNotFoundError:
+            research_run = None
+        if (
+            research_run is not None
+            and research_run.status.value == "approved"
+            and task.status.value == "input_received"
+        ):
+            payload["status"] = "created"
+        return payload
     elif args.command == "import-research":
         task = service.record_research(args.date, _load_topics(args.file))
     elif args.command == "record-plan":
@@ -194,6 +385,18 @@ def dispatch(args: argparse.Namespace) -> dict[str, Any]:
     else:  # pragma: no cover
         raise ValueError(f"unsupported command: {args.command}")
     return _task_payload(task)
+
+
+def dispatch(args: argparse.Namespace) -> dict[str, Any]:
+    """Execute one parsed command and return a JSON-serializable payload."""
+
+    if args.command == "health":
+        return _health_payload()
+    if args.command == "research-health":
+        return _research_health_payload()
+    if args.command.startswith("research-"):
+        return _dispatch_research(args)
+    return _dispatch_production(args)
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,0 +1,523 @@
+{
+  "items": [
+    {
+      "platform": "douyin",
+      "query_group_id": "core-01-career-redundancy-fear",
+      "payload": {
+        "title": "离线热点研究样本 01",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 01",
+        "url": "https://example.com/douyin/01",
+        "content_id": "fixture-content-01",
+        "author": "创作者01",
+        "grade": "A",
+        "published_at": "2026-08-03T09:00:00+08:00",
+        "likes": 1337,
+        "comments": 89,
+        "shares": 31,
+        "views": 20777
+      }
+    },
+    {
+      "platform": "douyin",
+      "query_group_id": "core-01-career-redundancy-fear",
+      "payload": {
+        "title": "离线热点研究样本 02",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 02",
+        "url": "https://example.com/douyin/02",
+        "content_id": "fixture-content-02",
+        "author": "创作者02",
+        "grade": "A",
+        "published_at": "2026-08-03T09:00:00+08:00",
+        "likes": 1474,
+        "comments": 98,
+        "shares": 32,
+        "views": 21554
+      }
+    },
+    {
+      "platform": "douyin",
+      "query_group_id": "core-01-career-redundancy-fear",
+      "payload": {
+        "title": "离线热点研究样本 03",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 03",
+        "url": "https://example.com/douyin/03",
+        "content_id": "fixture-content-03",
+        "author": "创作者03",
+        "grade": "A",
+        "published_at": "2026-08-03T09:00:00+08:00",
+        "likes": 1611,
+        "comments": 107,
+        "shares": 33,
+        "views": 22331
+      }
+    },
+    {
+      "platform": "douyin",
+      "query_group_id": "core-02-career-over-responsibility",
+      "payload": {
+        "title": "离线热点研究样本 04",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 04",
+        "url": "https://example.com/douyin/04",
+        "content_id": "fixture-content-04",
+        "author": "创作者04",
+        "grade": "A",
+        "published_at": "2026-08-02T18:00:00+08:00",
+        "likes": 1748,
+        "comments": 116,
+        "shares": 34,
+        "views": 23108
+      }
+    },
+    {
+      "platform": "douyin",
+      "query_group_id": "core-02-career-over-responsibility",
+      "payload": {
+        "title": "离线热点研究样本 05",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 05",
+        "url": "https://example.com/douyin/05",
+        "content_id": "fixture-content-05",
+        "author": "创作者05",
+        "grade": "A",
+        "published_at": "2026-08-02T18:00:00+08:00",
+        "likes": 1885,
+        "comments": 125,
+        "shares": 35,
+        "views": 23885
+      }
+    },
+    {
+      "platform": "douyin",
+      "query_group_id": "core-02-career-over-responsibility",
+      "payload": {
+        "title": "离线热点研究样本 06",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 06",
+        "url": "https://example.com/douyin/06",
+        "content_id": "fixture-content-06",
+        "author": "创作者06",
+        "grade": "B",
+        "published_at": "2026-08-02T18:00:00+08:00",
+        "likes": 2022,
+        "comments": 134,
+        "shares": 36,
+        "views": 24662
+      }
+    },
+    {
+      "platform": "douyin",
+      "query_group_id": "core-03-career-commute-exhaustion",
+      "payload": {
+        "title": "离线热点研究样本 07",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 07",
+        "url": "https://example.com/douyin/07",
+        "content_id": "fixture-content-07",
+        "author": "创作者07",
+        "grade": "B",
+        "published_at": "2026-07-31T20:00:00+08:00",
+        "likes": 2159,
+        "comments": 143,
+        "shares": 37,
+        "views": 25439
+      }
+    },
+    {
+      "platform": "douyin",
+      "query_group_id": "core-03-career-commute-exhaustion",
+      "payload": {
+        "title": "离线热点研究样本 08",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 08",
+        "url": "https://example.com/douyin/08",
+        "content_id": "fixture-content-08",
+        "author": "创作者08",
+        "grade": "B",
+        "published_at": "2026-07-31T20:00:00+08:00",
+        "likes": 2296,
+        "comments": 152,
+        "shares": 38,
+        "views": 26216
+      }
+    },
+    {
+      "platform": "wechat_channels",
+      "query_group_id": "core-03-career-commute-exhaustion",
+      "payload": {
+        "title": "离线热点研究样本 09",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 09",
+        "url": "https://example.com/wechat_channels/09",
+        "content_id": "fixture-content-09",
+        "author": "创作者09",
+        "grade": "B",
+        "published_at": "2026-07-31T20:00:00+08:00",
+        "likes": 2433,
+        "comments": 161,
+        "shares": 39,
+        "views": 26993
+      }
+    },
+    {
+      "platform": "wechat_channels",
+      "query_group_id": "core-04-family-comparison",
+      "payload": {
+        "title": "离线热点研究样本 10",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 10",
+        "url": "https://example.com/wechat_channels/10",
+        "content_id": "fixture-content-10",
+        "author": "创作者10",
+        "grade": "B",
+        "published_at": "2026-08-04T08:00:00+08:00",
+        "likes": 2570,
+        "comments": 170,
+        "shares": 40,
+        "views": 27770
+      }
+    },
+    {
+      "platform": "wechat_channels",
+      "query_group_id": "core-04-family-comparison",
+      "payload": {
+        "title": "离线热点研究样本 11",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 11",
+        "url": "https://example.com/wechat_channels/11",
+        "content_id": "fixture-content-11",
+        "author": "创作者11",
+        "grade": "B",
+        "published_at": "2026-08-04T08:00:00+08:00",
+        "likes": 2707,
+        "comments": 179,
+        "shares": 41,
+        "views": 28547
+      }
+    },
+    {
+      "platform": "wechat_channels",
+      "query_group_id": "core-04-family-comparison",
+      "payload": {
+        "title": "离线热点研究样本 12",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 12",
+        "url": "https://example.com/wechat_channels/12",
+        "content_id": "fixture-content-12",
+        "author": "创作者12",
+        "grade": "B",
+        "published_at": "2026-08-04T08:00:00+08:00",
+        "likes": 2844,
+        "comments": 188,
+        "shares": 42,
+        "views": 29324
+      }
+    },
+    {
+      "platform": "wechat_channels",
+      "query_group_id": "core-05-family-parent-apology",
+      "payload": {
+        "title": "离线热点研究样本 13",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 13",
+        "url": "https://example.com/wechat_channels/13",
+        "content_id": "fixture-content-13",
+        "author": "创作者13",
+        "grade": "B",
+        "published_at": "2026-07-30T12:00:00+08:00",
+        "likes": 2981,
+        "comments": 197,
+        "shares": 43,
+        "views": 30101
+      }
+    },
+    {
+      "platform": "wechat_channels",
+      "query_group_id": "core-05-family-parent-apology",
+      "payload": {
+        "title": "离线热点研究样本 14",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 14",
+        "url": "https://example.com/wechat_channels/14",
+        "content_id": "fixture-content-14",
+        "author": "创作者14",
+        "grade": "B",
+        "published_at": "2026-07-30T12:00:00+08:00",
+        "likes": 3118,
+        "comments": 206,
+        "shares": 44,
+        "views": 30878
+      }
+    },
+    {
+      "platform": "wechat_channels",
+      "query_group_id": "core-05-family-parent-apology",
+      "payload": {
+        "title": "离线热点研究样本 15",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 15",
+        "url": "https://example.com/wechat_channels/15",
+        "content_id": "fixture-content-15",
+        "author": "创作者15",
+        "grade": "B",
+        "published_at": "2026-07-30T12:00:00+08:00",
+        "likes": 3255,
+        "comments": 215,
+        "shares": 45,
+        "views": 31655
+      }
+    },
+    {
+      "platform": "xiaohongshu",
+      "query_group_id": "core-05-family-parent-apology",
+      "payload": {
+        "title": "离线热点研究样本 16",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 16",
+        "url": "https://example.com/xiaohongshu/16",
+        "content_id": "fixture-content-16",
+        "author": "创作者16",
+        "grade": "B",
+        "published_at": "2026-07-30T12:00:00+08:00",
+        "likes": 3392,
+        "comments": 224,
+        "shares": 46,
+        "views": 32432
+      }
+    },
+    {
+      "platform": "xiaohongshu",
+      "query_group_id": "core-06-family-independence",
+      "payload": {
+        "title": "离线热点研究样本 17",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 17",
+        "url": "https://example.com/xiaohongshu/17",
+        "content_id": "fixture-content-17",
+        "author": "创作者17",
+        "grade": "B",
+        "published_at": "2026-07-15T12:00:00+08:00",
+        "likes": 3529,
+        "comments": 233,
+        "shares": 47,
+        "views": 33209
+      }
+    },
+    {
+      "platform": "xiaohongshu",
+      "query_group_id": "core-06-family-independence",
+      "payload": {
+        "title": "离线热点研究样本 18",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 18",
+        "url": "https://example.com/xiaohongshu/18",
+        "content_id": "fixture-content-18",
+        "author": "创作者18",
+        "grade": "B",
+        "published_at": "2026-07-15T12:00:00+08:00",
+        "likes": 3666,
+        "comments": 242,
+        "shares": 48,
+        "views": 33986
+      }
+    },
+    {
+      "platform": "xiaohongshu",
+      "query_group_id": "core-06-family-independence",
+      "payload": {
+        "title": "离线热点研究样本 19",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 19",
+        "url": "https://example.com/xiaohongshu/19",
+        "content_id": "fixture-content-19",
+        "author": "创作者19",
+        "grade": "B",
+        "published_at": "2026-07-15T12:00:00+08:00",
+        "likes": 3803,
+        "comments": 251,
+        "shares": 49,
+        "views": 34763
+      }
+    },
+    {
+      "platform": "xiaohongshu",
+      "query_group_id": "core-06-family-independence",
+      "payload": {
+        "title": "离线热点研究样本 20",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 20",
+        "url": "https://example.com/xiaohongshu/20",
+        "content_id": "fixture-content-20",
+        "author": "创作者20",
+        "grade": "B",
+        "published_at": "2026-07-15T12:00:00+08:00",
+        "likes": 3940,
+        "comments": 260,
+        "shares": 50,
+        "views": 35540
+      }
+    },
+    {
+      "platform": "xiaohongshu",
+      "query_group_id": "core-06-family-independence",
+      "payload": {
+        "title": "离线热点研究样本 21",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 21",
+        "url": "https://example.com/xiaohongshu/21",
+        "content_id": "fixture-content-21",
+        "author": "创作者21",
+        "grade": "B",
+        "published_at": "2026-07-15T12:00:00+08:00",
+        "likes": 4077,
+        "comments": 269,
+        "shares": 51,
+        "views": 36317
+      }
+    },
+    {
+      "platform": "xiaohongshu",
+      "query_group_id": "core-07-growth-emotional-boundary",
+      "payload": {
+        "title": "离线热点研究样本 22",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 22",
+        "url": "https://example.com/xiaohongshu/22",
+        "content_id": "fixture-content-22",
+        "author": "创作者22",
+        "grade": "B",
+        "published_at": "2026-08-03T22:00:00+08:00",
+        "likes": 4214,
+        "comments": 278,
+        "shares": 52,
+        "views": 37094
+      }
+    },
+    {
+      "platform": "xiaohongshu",
+      "query_group_id": "core-07-growth-emotional-boundary",
+      "payload": {
+        "title": "离线热点研究样本 23",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 23",
+        "url": "https://example.com/xiaohongshu/23",
+        "content_id": "fixture-content-23",
+        "author": "创作者23",
+        "grade": "B",
+        "published_at": "2026-08-03T22:00:00+08:00",
+        "likes": 4351,
+        "comments": 287,
+        "shares": 53,
+        "views": 37871
+      }
+    },
+    {
+      "platform": "zhihu",
+      "query_group_id": "core-07-growth-emotional-boundary",
+      "payload": {
+        "title": "离线热点研究样本 24",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 24",
+        "url": "https://example.com/zhihu/24",
+        "content_id": "fixture-content-24",
+        "author": "创作者24",
+        "grade": "B",
+        "published_at": "2026-08-03T22:00:00+08:00",
+        "likes": 4488,
+        "comments": 296,
+        "shares": 54,
+        "views": 38648
+      }
+    },
+    {
+      "platform": "zhihu",
+      "query_group_id": "core-08-growth-solitude",
+      "payload": {
+        "title": "离线热点研究样本 25",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 25",
+        "url": "https://example.com/zhihu/25",
+        "content_id": "fixture-content-25",
+        "author": "创作者25",
+        "grade": "B",
+        "published_at": "2026-07-29T19:00:00+08:00",
+        "likes": 4625,
+        "comments": 305,
+        "shares": 55,
+        "views": 39425
+      }
+    },
+    {
+      "platform": "weibo",
+      "query_group_id": "core-08-growth-solitude",
+      "payload": {
+        "title": "离线热点研究样本 26",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 26",
+        "url": "https://example.com/weibo/26",
+        "content_id": "fixture-content-26",
+        "author": "创作者26",
+        "grade": "B",
+        "published_at": "2026-07-29T19:00:00+08:00",
+        "likes": 4762,
+        "comments": 314,
+        "shares": 56,
+        "views": 40202
+      }
+    },
+    {
+      "platform": "weibo",
+      "query_group_id": "core-08-growth-solitude",
+      "payload": {
+        "title": "离线热点研究样本 27",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 27",
+        "url": "https://example.com/weibo/27",
+        "content_id": "fixture-content-27",
+        "author": "创作者27",
+        "grade": "B",
+        "published_at": "2026-07-29T19:00:00+08:00",
+        "likes": 4899,
+        "comments": 323,
+        "shares": 57,
+        "views": 40979
+      }
+    },
+    {
+      "platform": "bilibili",
+      "query_group_id": "core-09-growth-past-regret",
+      "payload": {
+        "title": "离线热点研究样本 28",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 28",
+        "url": "https://example.com/bilibili/28",
+        "content_id": "fixture-content-28",
+        "author": "创作者28",
+        "grade": "B",
+        "published_at": "2026-08-02T23:00:00+08:00",
+        "likes": 5036,
+        "comments": 332,
+        "shares": 58,
+        "views": 41756
+      }
+    },
+    {
+      "platform": "toutiao",
+      "query_group_id": "core-09-growth-past-regret",
+      "payload": {
+        "title": "离线热点研究样本 29",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 29",
+        "url": "https://example.com/toutiao/29",
+        "content_id": "fixture-content-29",
+        "author": "创作者29",
+        "grade": "B",
+        "published_at": "2026-08-02T23:00:00+08:00",
+        "likes": 5173,
+        "comments": 341,
+        "shares": 59,
+        "views": 42533
+      }
+    },
+    {
+      "platform": "wechat_official_accounts",
+      "query_group_id": "core-09-growth-past-regret",
+      "payload": {
+        "title": "离线热点研究样本 30",
+        "excerpt": "围绕工作、家庭沟通或自我成长的匿名化结构化摘要 30",
+        "url": "https://example.com/wechat_official_accounts/30",
+        "content_id": "fixture-content-30",
+        "author": "创作者30",
+        "grade": "B",
+        "published_at": "2026-08-02T23:00:00+08:00",
+        "likes": 5310,
+        "comments": 350,
+        "shares": 60
+      }
+    }
+  ],
+  "failures": [
+    {
+      "platform": "wechat_channels",
+      "capability": "metric_import",
+      "message": "一个视频号样本未提供收藏量，已保留为未知值",
+      "error_code": "missing_metric",
+      "retryable": false,
+      "attempted_at": "2026-08-04T01:00:00+00:00"
+    }
+  ]
+}

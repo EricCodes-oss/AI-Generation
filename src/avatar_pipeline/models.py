@@ -40,6 +40,16 @@ class FactStatus(StrEnum):
 
 
 class ContentPillarSlug(StrEnum):
+    """Three research pillars retained for the gated research workflow."""
+
+    CAREER_PRESSURE = "career_pressure"
+    PARENT_CHILD_COMMUNICATION = "parent_child_communication"
+    SELF_GROWTH = "self_growth"
+
+
+class NewsPillarSlug(StrEnum):
+    """Production pillars for the hotspot news-anchor workflow."""
+
     SOCIAL_PHENOMENA = "social_phenomena"
     WORKPLACE_LIFE = "workplace_life"
     EDUCATION = "education"
@@ -85,7 +95,7 @@ class SourceEvidence(DomainModel):
 class TopicCandidate(DomainModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
-    pillar: ContentPillarSlug
+    pillar: NewsPillarSlug
     score: float = Field(ge=0, le=100)
     fact_status: FactStatus = FactStatus.PENDING
     target_audience: str | None = None

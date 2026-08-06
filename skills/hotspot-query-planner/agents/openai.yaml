@@ -1,0 +1,4 @@
+interface:
+  display_name: "热点查询计划器"
+  short_description: "为每日多平台热点研究生成去重、分层且可追溯的查询计划"
+  default_prompt: "根据内容支柱与历史记录生成当天的热点检索查询计划。"

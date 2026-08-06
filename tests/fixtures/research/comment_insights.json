@@ -1,0 +1,354 @@
+{
+  "cards": [
+    {
+      "source_id": "douyin-c34de52409a86ce2036e",
+      "sample_count": 20,
+      "sample_type_counts": {
+        "high_like": 4,
+        "lived_experience": 4,
+        "help_seeking": 4,
+        "disagreement": 4,
+        "latest": 4
+      },
+      "role_or_life_stage_clues": [
+        "30—50 岁工作与家庭双重承担者"
+      ],
+      "scenes": [
+        "忙完工作后仍在处理家庭沟通"
+      ],
+      "emotions": [
+        "疲惫",
+        "不被理解"
+      ],
+      "inner_conflicts": [
+        "想照顾所有人又担心失去自己"
+      ],
+      "explicit_questions": [
+        "怎样在责任与自我之间建立边界"
+      ],
+      "implicit_needs": [
+        "being_seen",
+        "being_guided"
+      ],
+      "failed_attempts": [
+        "一味忍耐但压力继续累积"
+      ],
+      "disliked_expressions": [
+        "空泛说教"
+      ],
+      "disagreement_signals": [
+        "少数评论认为应先解决具体行动问题"
+      ],
+      "representative_paraphrases": [
+        "样本 1：不是不努力，只是太久没有被理解"
+      ],
+      "comment_refs": [
+        "douyin-c34de52409a86ce2036e:comment-01",
+        "douyin-c34de52409a86ce2036e:comment-02",
+        "douyin-c34de52409a86ce2036e:comment-03",
+        "douyin-c34de52409a86ce2036e:comment-04",
+        "douyin-c34de52409a86ce2036e:comment-05",
+        "douyin-c34de52409a86ce2036e:comment-06",
+        "douyin-c34de52409a86ce2036e:comment-07",
+        "douyin-c34de52409a86ce2036e:comment-08",
+        "douyin-c34de52409a86ce2036e:comment-09",
+        "douyin-c34de52409a86ce2036e:comment-10",
+        "douyin-c34de52409a86ce2036e:comment-11",
+        "douyin-c34de52409a86ce2036e:comment-12",
+        "douyin-c34de52409a86ce2036e:comment-13",
+        "douyin-c34de52409a86ce2036e:comment-14",
+        "douyin-c34de52409a86ce2036e:comment-15",
+        "douyin-c34de52409a86ce2036e:comment-16",
+        "douyin-c34de52409a86ce2036e:comment-17",
+        "douyin-c34de52409a86ce2036e:comment-18",
+        "douyin-c34de52409a86ce2036e:comment-19",
+        "douyin-c34de52409a86ce2036e:comment-20"
+      ],
+      "privacy_notes": [
+        "已去除用户名和可识别细节"
+      ],
+      "confidence": "high",
+      "created_at": "2026-08-04T01:00:00+00:00"
+    },
+    {
+      "source_id": "douyin-7cffeb58d8e8e4b37264",
+      "sample_count": 20,
+      "sample_type_counts": {
+        "high_like": 4,
+        "lived_experience": 4,
+        "help_seeking": 4,
+        "disagreement": 4,
+        "latest": 4
+      },
+      "role_or_life_stage_clues": [
+        "30—50 岁工作与家庭双重承担者"
+      ],
+      "scenes": [
+        "忙完工作后仍在处理家庭沟通"
+      ],
+      "emotions": [
+        "疲惫",
+        "不被理解"
+      ],
+      "inner_conflicts": [
+        "想照顾所有人又担心失去自己"
+      ],
+      "explicit_questions": [
+        "怎样在责任与自我之间建立边界"
+      ],
+      "implicit_needs": [
+        "being_seen",
+        "being_guided"
+      ],
+      "failed_attempts": [
+        "一味忍耐但压力继续累积"
+      ],
+      "disliked_expressions": [
+        "空泛说教"
+      ],
+      "disagreement_signals": [
+        "少数评论认为应先解决具体行动问题"
+      ],
+      "representative_paraphrases": [
+        "样本 2：不是不努力，只是太久没有被理解"
+      ],
+      "comment_refs": [
+        "douyin-7cffeb58d8e8e4b37264:comment-01",
+        "douyin-7cffeb58d8e8e4b37264:comment-02",
+        "douyin-7cffeb58d8e8e4b37264:comment-03",
+        "douyin-7cffeb58d8e8e4b37264:comment-04",
+        "douyin-7cffeb58d8e8e4b37264:comment-05",
+        "douyin-7cffeb58d8e8e4b37264:comment-06",
+        "douyin-7cffeb58d8e8e4b37264:comment-07",
+        "douyin-7cffeb58d8e8e4b37264:comment-08",
+        "douyin-7cffeb58d8e8e4b37264:comment-09",
+        "douyin-7cffeb58d8e8e4b37264:comment-10",
+        "douyin-7cffeb58d8e8e4b37264:comment-11",
+        "douyin-7cffeb58d8e8e4b37264:comment-12",
+        "douyin-7cffeb58d8e8e4b37264:comment-13",
+        "douyin-7cffeb58d8e8e4b37264:comment-14",
+        "douyin-7cffeb58d8e8e4b37264:comment-15",
+        "douyin-7cffeb58d8e8e4b37264:comment-16",
+        "douyin-7cffeb58d8e8e4b37264:comment-17",
+        "douyin-7cffeb58d8e8e4b37264:comment-18",
+        "douyin-7cffeb58d8e8e4b37264:comment-19",
+        "douyin-7cffeb58d8e8e4b37264:comment-20"
+      ],
+      "privacy_notes": [
+        "已去除用户名和可识别细节"
+      ],
+      "confidence": "high",
+      "created_at": "2026-08-04T01:00:00+00:00"
+    },
+    {
+      "source_id": "douyin-9db8012b533eae9e395a",
+      "sample_count": 20,
+      "sample_type_counts": {
+        "high_like": 4,
+        "lived_experience": 4,
+        "help_seeking": 4,
+        "disagreement": 4,
+        "latest": 4
+      },
+      "role_or_life_stage_clues": [
+        "30—50 岁工作与家庭双重承担者"
+      ],
+      "scenes": [
+        "忙完工作后仍在处理家庭沟通"
+      ],
+      "emotions": [
+        "疲惫",
+        "不被理解"
+      ],
+      "inner_conflicts": [
+        "想照顾所有人又担心失去自己"
+      ],
+      "explicit_questions": [
+        "怎样在责任与自我之间建立边界"
+      ],
+      "implicit_needs": [
+        "being_seen",
+        "being_guided"
+      ],
+      "failed_attempts": [
+        "一味忍耐但压力继续累积"
+      ],
+      "disliked_expressions": [
+        "空泛说教"
+      ],
+      "disagreement_signals": [
+        "少数评论认为应先解决具体行动问题"
+      ],
+      "representative_paraphrases": [
+        "样本 3：不是不努力，只是太久没有被理解"
+      ],
+      "comment_refs": [
+        "douyin-9db8012b533eae9e395a:comment-01",
+        "douyin-9db8012b533eae9e395a:comment-02",
+        "douyin-9db8012b533eae9e395a:comment-03",
+        "douyin-9db8012b533eae9e395a:comment-04",
+        "douyin-9db8012b533eae9e395a:comment-05",
+        "douyin-9db8012b533eae9e395a:comment-06",
+        "douyin-9db8012b533eae9e395a:comment-07",
+        "douyin-9db8012b533eae9e395a:comment-08",
+        "douyin-9db8012b533eae9e395a:comment-09",
+        "douyin-9db8012b533eae9e395a:comment-10",
+        "douyin-9db8012b533eae9e395a:comment-11",
+        "douyin-9db8012b533eae9e395a:comment-12",
+        "douyin-9db8012b533eae9e395a:comment-13",
+        "douyin-9db8012b533eae9e395a:comment-14",
+        "douyin-9db8012b533eae9e395a:comment-15",
+        "douyin-9db8012b533eae9e395a:comment-16",
+        "douyin-9db8012b533eae9e395a:comment-17",
+        "douyin-9db8012b533eae9e395a:comment-18",
+        "douyin-9db8012b533eae9e395a:comment-19",
+        "douyin-9db8012b533eae9e395a:comment-20"
+      ],
+      "privacy_notes": [
+        "已去除用户名和可识别细节"
+      ],
+      "confidence": "high",
+      "created_at": "2026-08-04T01:00:00+00:00"
+    },
+    {
+      "source_id": "douyin-caba5d738d5dfbe6d278",
+      "sample_count": 20,
+      "sample_type_counts": {
+        "high_like": 4,
+        "lived_experience": 4,
+        "help_seeking": 4,
+        "disagreement": 4,
+        "latest": 4
+      },
+      "role_or_life_stage_clues": [
+        "30—50 岁工作与家庭双重承担者"
+      ],
+      "scenes": [
+        "忙完工作后仍在处理家庭沟通"
+      ],
+      "emotions": [
+        "疲惫",
+        "不被理解"
+      ],
+      "inner_conflicts": [
+        "想照顾所有人又担心失去自己"
+      ],
+      "explicit_questions": [
+        "怎样在责任与自我之间建立边界"
+      ],
+      "implicit_needs": [
+        "being_seen",
+        "being_guided"
+      ],
+      "failed_attempts": [
+        "一味忍耐但压力继续累积"
+      ],
+      "disliked_expressions": [
+        "空泛说教"
+      ],
+      "disagreement_signals": [
+        "少数评论认为应先解决具体行动问题"
+      ],
+      "representative_paraphrases": [
+        "样本 4：不是不努力，只是太久没有被理解"
+      ],
+      "comment_refs": [
+        "douyin-caba5d738d5dfbe6d278:comment-01",
+        "douyin-caba5d738d5dfbe6d278:comment-02",
+        "douyin-caba5d738d5dfbe6d278:comment-03",
+        "douyin-caba5d738d5dfbe6d278:comment-04",
+        "douyin-caba5d738d5dfbe6d278:comment-05",
+        "douyin-caba5d738d5dfbe6d278:comment-06",
+        "douyin-caba5d738d5dfbe6d278:comment-07",
+        "douyin-caba5d738d5dfbe6d278:comment-08",
+        "douyin-caba5d738d5dfbe6d278:comment-09",
+        "douyin-caba5d738d5dfbe6d278:comment-10",
+        "douyin-caba5d738d5dfbe6d278:comment-11",
+        "douyin-caba5d738d5dfbe6d278:comment-12",
+        "douyin-caba5d738d5dfbe6d278:comment-13",
+        "douyin-caba5d738d5dfbe6d278:comment-14",
+        "douyin-caba5d738d5dfbe6d278:comment-15",
+        "douyin-caba5d738d5dfbe6d278:comment-16",
+        "douyin-caba5d738d5dfbe6d278:comment-17",
+        "douyin-caba5d738d5dfbe6d278:comment-18",
+        "douyin-caba5d738d5dfbe6d278:comment-19",
+        "douyin-caba5d738d5dfbe6d278:comment-20"
+      ],
+      "privacy_notes": [
+        "已去除用户名和可识别细节"
+      ],
+      "confidence": "high",
+      "created_at": "2026-08-04T01:00:00+00:00"
+    },
+    {
+      "source_id": "douyin-bec9a812109ba81165ca",
+      "sample_count": 20,
+      "sample_type_counts": {
+        "high_like": 4,
+        "lived_experience": 4,
+        "help_seeking": 4,
+        "disagreement": 4,
+        "latest": 4
+      },
+      "role_or_life_stage_clues": [
+        "30—50 岁工作与家庭双重承担者"
+      ],
+      "scenes": [
+        "忙完工作后仍在处理家庭沟通"
+      ],
+      "emotions": [
+        "疲惫",
+        "不被理解"
+      ],
+      "inner_conflicts": [
+        "想照顾所有人又担心失去自己"
+      ],
+      "explicit_questions": [
+        "怎样在责任与自我之间建立边界"
+      ],
+      "implicit_needs": [
+        "being_seen",
+        "being_guided"
+      ],
+      "failed_attempts": [
+        "一味忍耐但压力继续累积"
+      ],
+      "disliked_expressions": [
+        "空泛说教"
+      ],
+      "disagreement_signals": [
+        "少数评论认为应先解决具体行动问题"
+      ],
+      "representative_paraphrases": [
+        "样本 5：不是不努力，只是太久没有被理解"
+      ],
+      "comment_refs": [
+        "douyin-bec9a812109ba81165ca:comment-01",
+        "douyin-bec9a812109ba81165ca:comment-02",
+        "douyin-bec9a812109ba81165ca:comment-03",
+        "douyin-bec9a812109ba81165ca:comment-04",
+        "douyin-bec9a812109ba81165ca:comment-05",
+        "douyin-bec9a812109ba81165ca:comment-06",
+        "douyin-bec9a812109ba81165ca:comment-07",
+        "douyin-bec9a812109ba81165ca:comment-08",
+        "douyin-bec9a812109ba81165ca:comment-09",
+        "douyin-bec9a812109ba81165ca:comment-10",
+        "douyin-bec9a812109ba81165ca:comment-11",
+        "douyin-bec9a812109ba81165ca:comment-12",
+        "douyin-bec9a812109ba81165ca:comment-13",
+        "douyin-bec9a812109ba81165ca:comment-14",
+        "douyin-bec9a812109ba81165ca:comment-15",
+        "douyin-bec9a812109ba81165ca:comment-16",
+        "douyin-bec9a812109ba81165ca:comment-17",
+        "douyin-bec9a812109ba81165ca:comment-18",
+        "douyin-bec9a812109ba81165ca:comment-19",
+        "douyin-bec9a812109ba81165ca:comment-20"
+      ],
+      "privacy_notes": [
+        "已去除用户名和可识别细节"
+      ],
+      "confidence": "high",
+      "created_at": "2026-08-04T01:00:00+00:00"
+    }
+  ]
+}

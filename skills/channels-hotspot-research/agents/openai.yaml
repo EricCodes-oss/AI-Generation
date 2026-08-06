@@ -1,0 +1,4 @@
+interface:
+  display_name: "多平台热点采集"
+  short_description: "按平台能力、时间窗口和采样配额执行热点内容采集并披露失败"
+  default_prompt: "执行已批准的查询计划，并如实记录各平台成功、缺口与失败。"
