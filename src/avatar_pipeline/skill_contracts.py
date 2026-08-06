@@ -55,11 +55,17 @@ class SkillManifest(BaseModel):
         elif self.primary_mode is not None or self.fallback_mode is not None:
             raise ValueError("generation modes are only valid for the avatar contract")
         if self.kind is SkillKind.TTS:
-            if self.recommended_audio_format != "wav" or self.timestamps_supported is not True:
-                raise ValueError("tts contract must recommend wav and support timestamps")
+            self._validate_tts_contract()
         elif self.recommended_audio_format is not None or self.timestamps_supported is not None:
             raise ValueError("audio fields are only valid for the tts contract")
         return self
+
+    def _validate_tts_contract(self) -> None:
+        expected_skill = "giggle-generation-speech"
+        if self.provider != expected_skill or self.name != expected_skill:
+            raise ValueError("tts contract requires the giggle-generation-speech skill")
+        if self.recommended_audio_format != "wav" or self.timestamps_supported is not True:
+            raise ValueError("tts contract must recommend wav and support timestamps")
 
     def _validate_host_image_contract(self) -> None:
         if self.provider != "giggle-gpt-image-2" or self.name != "giggle-gpt-image-2":

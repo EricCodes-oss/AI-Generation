@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from avatar_pipeline.skill_contracts import SkillKind, load_contracts
+import pytest
+from pydantic import ValidationError
+
+from avatar_pipeline.skill_contracts import SkillKind, SkillManifest, load_contracts
 
 
 def test_news_pipeline_skill_contracts_are_declared():
@@ -34,6 +37,8 @@ def test_news_pipeline_skill_contracts_are_declared():
 def test_target_skill_contracts_expose_provider_and_content_first_fields():
     contracts = load_contracts(Path("skills/contracts"))
 
+    assert contracts[SkillKind.TTS].provider == "giggle-generation-speech"
+    assert contracts[SkillKind.TTS].name == "giggle-generation-speech"
     assert contracts[SkillKind.HOST_IMAGE].provider == "giggle-gpt-image-2"
     assert contracts[SkillKind.HOST_IMAGE].required_inputs["prompt"] == "string"
     assert contracts[SkillKind.AVATAR].provider == "giggle-generation-tv-avatar-video"
@@ -46,3 +51,39 @@ def test_other_skill_contracts_keep_legacy_required_input_lists():
     for kind, contract in contracts.items():
         if kind not in {SkillKind.HOST_IMAGE, SkillKind.AVATAR}:
             assert isinstance(contract.required_inputs, list)
+
+
+@pytest.mark.parametrize("field", ["provider", "name"])
+def test_tts_contract_rejects_missing_skill_identity(field):
+    contract = load_contracts(Path("skills/contracts"))[SkillKind.TTS]
+    payload = contract.model_dump()
+    del payload[field]
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize("field", ["provider", "name"])
+def test_tts_contract_rejects_wrong_skill_identity(field):
+    contract = load_contracts(Path("skills/contracts"))[SkillKind.TTS]
+    payload = contract.model_dump()
+    payload[field] = "other-speech-skill"
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("recommended_audio_format", "mp3"),
+        ("timestamps_supported", False),
+    ],
+)
+def test_tts_contract_keeps_wav_and_timestamps_constraints(field, value):
+    contract = load_contracts(Path("skills/contracts"))[SkillKind.TTS]
+    payload = contract.model_dump()
+    payload[field] = value
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
