@@ -102,3 +102,12 @@ def test_config_rejects_non_v1_host_visual_values(field, value):
 
     with pytest.raises(ValidationError):
         type(load_config(Path("configs/default.yaml"))).model_validate(config)
+
+
+@pytest.mark.parametrize("field", ["visual_style", "age_range", "outfit", "background"])
+def test_config_rejects_whitespace_only_host_visual_fields(field):
+    config = load_config(Path("configs/default.yaml")).model_dump()
+    config["host_visual"][field] = " \t\n "
+
+    with pytest.raises(ValidationError):
+        type(load_config(Path("configs/default.yaml"))).model_validate(config)

@@ -3,14 +3,25 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+def validate_non_blank_string(value: str) -> str:
+    """Reject strings that contain no non-whitespace characters."""
+
+    if not value.strip():
+        raise ValueError("must not be blank")
+    return value
+
+
+NonBlankStr = Annotated[str, AfterValidator(validate_non_blank_string)]
 
 
 class VideoConfig(StrictModel):
@@ -145,12 +156,12 @@ class ResearchConfig(StrictModel):
 
 
 class HostVisualConfig(StrictModel):
-    visual_style: str = Field(min_length=1)
-    age_range: str = Field(min_length=1)
-    outfit: str = Field(min_length=1)
+    visual_style: NonBlankStr
+    age_range: NonBlankStr
+    outfit: NonBlankStr
     aspect_ratio: Literal["9:16"]
     shot: Literal["waist_up_seated"]
-    background: str = Field(min_length=1)
+    background: NonBlankStr
     subtitle_default: Literal[False]
 
 
