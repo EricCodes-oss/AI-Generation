@@ -2,43 +2,145 @@ from datetime import date
 
 import pytest
 
-from avatar_pipeline.models import TaskStatus, TopicCandidate
+from avatar_pipeline.models import (
+    FactStatus,
+    HostProfile,
+    MediaKind,
+    MediaPlan,
+    MediaSegment,
+    NewsScript,
+    RunMode,
+    ScriptSegment,
+    SourceEvidence,
+    TaskStatus,
+    TopicCandidate,
+)
 from avatar_pipeline.repository import DailyTaskRepository
 from avatar_pipeline.service import DailyWorkflowService, WorkflowPreconditionError
 
 
-def candidates():
-    return [
-        TopicCandidate(id="t1", title="工作受挫后", pillar="career_pressure", score=94),
-        TopicCandidate(
-            id="t2", title="父母先稳住情绪", pillar="parent_child_communication", score=91
-        ),
-        TopicCandidate(id="t3", title="停止自我否定", pillar="self_growth", score=89),
-    ]
+def candidate(topic_id="t1", score=94):
+    return TopicCandidate(
+        id=topic_id,
+        title="已核实热点",
+        pillar="social_phenomena",
+        score=score,
+        fact_status=FactStatus.VERIFIED,
+        source_evidence=[
+            SourceEvidence(
+                source_id="s1",
+                platform="official",
+                title="官方",
+                url_or_reference="s1",
+                evidence_type="primary",
+            ),
+            SourceEvidence(
+                source_id="s2",
+                platform="media",
+                title="媒体",
+                url_or_reference="s2",
+                evidence_type="corroboration",
+            ),
+        ],
+        verification_summary="两个独立来源确认核心事实",
+        publishable=True,
+    )
 
 
-def test_three_manual_approvals_are_recorded(tmp_path):
+def script_and_plan():
+    script = NewsScript(
+        title="热点解读",
+        spoken_segments=[ScriptSegment(id="seg1", kind="fact", text="事实内容", source_ids=["s1"])],
+        source_ids=["s1", "s2"],
+    )
+    plan = MediaPlan(
+        duration_seconds=10,
+        segments=[
+            MediaSegment(
+                id="a1",
+                kind=MediaKind.ANCHOR,
+                start_seconds=0,
+                end_seconds=3,
+                script_segment_id="seg1",
+            ),
+            MediaSegment(
+                id="d1",
+                kind=MediaKind.AI_DEMO,
+                start_seconds=3,
+                end_seconds=7,
+                script_segment_id="seg1",
+                disclosure="AI生成示意画面",
+            ),
+            MediaSegment(
+                id="a2",
+                kind=MediaKind.ANCHOR,
+                start_seconds=7,
+                end_seconds=10,
+                script_segment_id="seg1",
+            ),
+        ],
+    )
+    return script, plan
+
+
+def test_manual_mode_has_topic_script_host_and_final_gates(tmp_path):
     service = DailyWorkflowService(DailyTaskRepository(tmp_path))
-    day = date(2026, 8, 4)
-    service.start_day(day)
-    service.record_research(day, candidates())
-    service.approve_topic(day, "t1", actor="owner")
-    service.record_script(day, "工作不顺时，先别急着否定自己。")
-    service.approve_script(day, actor="owner")
-    service.mark_audio_ready(day, artifact_path="audio/main.wav")
-    service.mark_assets_generating(day)
-    service.mark_compositing(day)
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANUAL)
+    service.record_research(day, [candidate()])
+    script, plan = script_and_plan()
+    service.record_script_and_media_plan(day, "t1", script, plan)
+    service.approve_topic_script(day, actor="owner")
+    service.set_host(
+        day, HostProfile(id="h1", display_name="林知遥", reference_image="host.png", is_new=True)
+    )
+    service.approve_host(day, actor="owner")
+    service.mark_tts_ready(day, artifact_path="audio/main.wav")
+    service.mark_anchor_ready(day, artifact_path="video/anchor.mp4")
+    service.mark_media_ready(day, artifact_path="media/insert.mp4")
+    service.mark_compositing(day, artifact_path="video/master.mp4")
     service.record_qc(day, passed=True, report_path="qc/report.json")
-    task = service.approve_video(day, actor="owner")
+    task = service.approve_final_video(day, actor="owner")
+    assert task.status == TaskStatus.READY_TO_PUBLISH
+    assert [approval.gate for approval in task.approvals] == ["topic_script", "host", "final_video"]
 
-    assert task.status == TaskStatus.VIDEO_APPROVED
-    assert [approval.gate for approval in task.approvals] == ["topic", "script", "video"]
 
-
-def test_topic_must_be_one_of_top_three(tmp_path):
+def test_saved_host_skips_host_gate(tmp_path):
     service = DailyWorkflowService(DailyTaskRepository(tmp_path))
-    day = date(2026, 8, 4)
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANUAL)
+    service.record_research(day, [candidate()])
+    script, plan = script_and_plan()
+    service.record_script_and_media_plan(day, "t1", script, plan)
+    service.approve_topic_script(day, actor="owner")
+    service.set_host(
+        day, HostProfile(id="h1", display_name="林知遥", reference_image="host.png", is_new=False)
+    )
+    assert service.get(day).status == TaskStatus.GENERATING_TTS
+
+
+def test_managed_mode_has_no_user_approval_records(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANAGED)
+    service.record_research(day, [candidate()])
+    script, plan = script_and_plan()
+    service.record_script_and_media_plan(day, "t1", script, plan)
+    service.set_host(
+        day, HostProfile(id="h1", display_name="林知遥", reference_image="host.png", is_new=True)
+    )
+    assert service.get(day).status == TaskStatus.GENERATING_TTS
+    assert service.get(day).approvals == []
+
+
+def test_unverified_candidate_cannot_be_selected(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
     service.start_day(day)
-    service.record_research(day, candidates())
-    with pytest.raises(WorkflowPreconditionError, match="not in Top 3"):
-        service.approve_topic(day, "unknown", actor="owner")
+    pending = candidate(topic_id="pending")
+    pending = pending.model_copy(update={"fact_status": FactStatus.PENDING, "publishable": False})
+    service.record_research(day, [pending])
+    with pytest.raises(WorkflowPreconditionError, match="no verified hotspot"):
+        service.record_script_and_media_plan(
+            day, "pending", script_and_plan()[0], script_and_plan()[1]
+        )

@@ -1,28 +1,43 @@
+mode: manual
+topic_source: auto_hot
+avatar_source: saved_host
+subtitle: false
+video_structure: studio_anchor_plus_vertical_news_insert
+media_policy: reliable_original_first_ai_demo_fallback
+platforms:
+  - douyin
+  - wechat_channels
+  - xiaohongshu
 video:
   width: 1080
   height: 1920
-  min_duration_seconds: 35
-  max_duration_seconds: 50
-  target_audio_min_seconds: 40
-  target_audio_max_seconds: 46
-  avatar_ratio_min: 0.55
-  avatar_ratio_max: 0.65
+  min_duration_seconds: 45
+  max_duration_seconds: 75
 content:
   pillars:
-    - slug: career_pressure
-      display_name: 职场打拼与现实压力
-      monthly_count: 11
-    - slug: parent_child_communication
-      display_name: 子女教育与家庭沟通
-      monthly_count: 9
-    - slug: self_growth
-      display_name: 自我成长与人生感悟
-      monthly_count: 10
-approvals:
-  required:
-    - topic
-    - script
-    - video
+    - slug: social_phenomena
+      display_name: 社会现象
+    - slug: workplace_life
+      display_name: 职场生活
+    - slug: education
+      display_name: 教育话题
+    - slug: consumer_life
+      display_name: 消费生活
+    - slug: technology_life
+      display_name: 科技生活
+    - slug: family_relationships
+      display_name: 家庭关系
+    - slug: youth_lifestyle
+      display_name: 年轻人情绪与生活方式
+approval_policy:
+  managed:
+    topic_script: auto
+    avatar: auto
+    final_video: final_only
+  manual:
+    topic_script: user_confirm
+    avatar: confirm_if_new_or_changed
+    final_video: user_confirm
 storage:
   workspace: workspace
   contracts_directory: skills/contracts

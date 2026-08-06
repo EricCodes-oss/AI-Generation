@@ -1,16 +1,21 @@
 kind: seedance
 contract_version: "1.0"
-display_name: Seedance 2.0 场景视频生成
+display_name: Seedance 2.0 AI示意画面生成
 required_inputs:
   - prompt
   - duration_seconds
   - aspect_ratio
 optional_inputs:
   - reference_image_path
+  - disclosure_text
 required_outputs:
   - video_path
   - task_id
 supported_aspect_ratios:
   - "9:16"
-max_duration_seconds: 50
+max_duration_seconds: 75
 real_generation_enabled: false
+safety_constraints:
+  - 仅生成说明性或氛围性画面
+  - 不伪装真实新闻现场、人物或证据
+  - 需要时必须显示AI生成示意画面

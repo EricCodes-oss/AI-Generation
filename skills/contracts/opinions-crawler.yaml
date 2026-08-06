@@ -1,0 +1,21 @@
+kind: opinions_crawler
+contract_version: "1.0"
+display_name: 多平台热点与事实线索采集
+required_inputs:
+  - topic_or_auto_hot
+  - platforms
+optional_inputs:
+  - keywords
+  - date_range
+required_outputs:
+  - candidates
+  - source_evidence
+  - skipped_audit
+supported_aspect_ratios:
+  - "9:16"
+max_duration_seconds: 75
+real_generation_enabled: false
+safety_constraints:
+  - 热度只用于核查排序，不代表事实成立
+  - 仅保留可追溯来源，未经证实内容必须进入跳过审计
+  - 不宣称原始内容拥有再发布版权

@@ -1,4 +1,4 @@
-"""Validated interface contracts for external generation Skills."""
+"""Validated interface contracts for external news-production Skills."""
 
 from enum import StrEnum
 from pathlib import Path
@@ -9,16 +9,19 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class SkillKind(StrEnum):
-    """External capability types required by the production pipeline."""
-
+    OPINIONS_CRAWLER = "opinions_crawler"
+    NEWS_SCRIPT_WRITER = "news_script_writer"
+    NEWS_MEDIA_PLANNER = "news_media_planner"
     TTS = "tts"
+    HOST_IMAGE = "host_image"
     AVATAR = "avatar"
+    FOOTAGE_CLIPPER = "footage_clipper"
     SEEDANCE = "seedance"
+    COMPOSITOR = "compositor"
+    QUALITY_CONTROL = "quality_control"
 
 
 class SkillManifest(BaseModel):
-    """Phase 1 manifest describing, but not invoking, an external Skill."""
-
     model_config = ConfigDict(extra="forbid")
 
     kind: SkillKind
@@ -34,6 +37,7 @@ class SkillManifest(BaseModel):
     fallback_mode: str | None = None
     recommended_audio_format: str | None = None
     timestamps_supported: bool | None = None
+    safety_constraints: list[str] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_kind_specific_fields(self) -> "SkillManifest":
@@ -42,7 +46,6 @@ class SkillManifest(BaseModel):
                 raise ValueError("avatar contract requires primary_mode and fallback_mode")
         elif self.primary_mode is not None or self.fallback_mode is not None:
             raise ValueError("generation modes are only valid for the avatar contract")
-
         if self.kind is SkillKind.TTS:
             if self.recommended_audio_format != "wav" or self.timestamps_supported is not True:
                 raise ValueError("tts contract must recommend wav and support timestamps")
@@ -52,25 +55,18 @@ class SkillManifest(BaseModel):
 
 
 def load_skill_manifest(path: Path) -> SkillManifest:
-    """Load one strict YAML Skill manifest."""
-
     with Path(path).open("r", encoding="utf-8") as handle:
-        raw = yaml.safe_load(handle)
-    return SkillManifest.model_validate(raw)
+        return SkillManifest.model_validate(yaml.safe_load(handle))
 
 
 def load_contracts(directory: Path) -> dict[SkillKind, SkillManifest]:
-    """Load exactly one manifest for each external Skill kind."""
-
     manifests: dict[SkillKind, SkillManifest] = {}
     for path in sorted(Path(directory).glob("*.yaml")):
         manifest = load_skill_manifest(path)
         if manifest.kind in manifests:
             raise ValueError(f"duplicate skill contract: {manifest.kind.value}")
         manifests[manifest.kind] = manifest
-
-    required = set(SkillKind)
-    missing = required.difference(manifests)
+    missing = set(SkillKind).difference(manifests)
     if missing:
         names = ", ".join(sorted(kind.value for kind in missing))
         raise ValueError(f"missing skill contracts: {names}")

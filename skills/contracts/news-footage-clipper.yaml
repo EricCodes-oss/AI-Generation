@@ -1,0 +1,19 @@
+kind: footage_clipper
+contract_version: "1.0"
+display_name: 原始新闻视频合规截取
+required_inputs:
+  - source_reference
+  - clip_start_seconds
+  - clip_end_seconds
+  - usage_basis
+required_outputs:
+  - asset_path
+  - provenance_record
+supported_aspect_ratios:
+  - "9:16"
+max_duration_seconds: 75
+real_generation_enabled: false
+safety_constraints:
+  - 保留来源、发布时间、截取区间和使用依据
+  - 不通过剪辑改变原始语义
+  - 不移除必要的来源标识或版权限制

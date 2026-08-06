@@ -1,21 +1,51 @@
 from pathlib import Path
 
+import pytest
+from pydantic import ValidationError
+
 from avatar_pipeline.config import load_config
 
 
-def test_default_config_locks_v1_video_and_content_constraints():
+def test_default_config_locks_news_anchor_v1():
     config = load_config(Path("configs/default.yaml"))
-
+    assert config.mode == "manual"
+    assert config.topic_source == "auto_hot"
+    assert config.avatar_source == "saved_host"
     assert config.video.width == 1080
     assert config.video.height == 1920
-    assert config.video.min_duration_seconds == 35
-    assert config.video.max_duration_seconds == 50
-    assert config.video.avatar_ratio_min == 0.55
-    assert config.video.avatar_ratio_max == 0.65
-    assert [pillar.slug for pillar in config.content.pillars] == [
-        "career_pressure",
-        "parent_child_communication",
-        "self_growth",
-    ]
-    assert sum(pillar.monthly_count for pillar in config.content.pillars) == 30
-    assert config.approvals.required == ["topic", "script", "video"]
+    assert (config.video.min_duration_seconds, config.video.max_duration_seconds) == (45, 75)
+    assert config.subtitle is False
+    assert config.video_structure == "studio_anchor_plus_vertical_news_insert"
+    assert config.media_policy == "reliable_original_first_ai_demo_fallback"
+    assert config.platforms == ["douyin", "wechat_channels", "xiaohongshu"]
+    assert config.approval_policy.manual.topic_script == "user_confirm"
+
+
+def test_config_rejects_subtitles_or_unknown_video_structure():
+    config = {
+        "mode": "manual",
+        "topic_source": "auto_hot",
+        "avatar_source": "saved_host",
+        "subtitle": True,
+        "video_structure": "talking_head_only",
+        "media_policy": "reliable_original_first_ai_demo_fallback",
+        "platforms": ["douyin"],
+        "video": {
+            "width": 1080,
+            "height": 1920,
+            "min_duration_seconds": 45,
+            "max_duration_seconds": 75,
+        },
+        "content": {"pillars": [{"slug": "workplace_life", "display_name": "职场生活"}]},
+        "approval_policy": {
+            "managed": {"topic_script": "auto", "avatar": "auto", "final_video": "final_only"},
+            "manual": {
+                "topic_script": "user_confirm",
+                "avatar": "confirm_if_new_or_changed",
+                "final_video": "user_confirm",
+            },
+        },
+        "storage": {"workspace": "workspace", "contracts_directory": "skills/contracts"},
+    }
+    with pytest.raises(ValidationError):
+        type(load_config(Path("configs/default.yaml"))).model_validate(config)

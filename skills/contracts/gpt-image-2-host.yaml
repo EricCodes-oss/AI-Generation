@@ -1,0 +1,17 @@
+kind: host_image
+contract_version: "1.0"
+display_name: GPT Image 2 主持人和演播室设计
+required_inputs:
+  - host_brief
+  - consistency_reference
+required_outputs:
+  - reference_image_path
+  - consistency_metadata
+supported_aspect_ratios:
+  - "9:16"
+max_duration_seconds: 75
+real_generation_enabled: false
+safety_constraints:
+  - 生成固定栏目主持人与演播室参考图
+  - 不复制参考视频品牌标识和版式
+  - 记录角色版本以保证每日一致性

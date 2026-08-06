@@ -1,0 +1,21 @@
+kind: news_script_writer
+contract_version: "1.0"
+display_name: 热点新闻解读脚本
+required_inputs:
+  - verified_topic
+  - source_evidence
+  - audience_context
+required_outputs:
+  - title
+  - spoken_segments
+  - information_bars
+  - source_ids
+  - disclosure_requirements
+supported_aspect_ratios:
+  - "9:16"
+max_duration_seconds: 75
+real_generation_enabled: false
+safety_constraints:
+  - 严格区分事实、背景、解读和结论
+  - 不补写来源没有支持的事实
+  - 不做医疗法律金融等高风险断言

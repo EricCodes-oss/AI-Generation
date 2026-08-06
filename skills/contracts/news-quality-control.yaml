@@ -1,0 +1,20 @@
+kind: quality_control
+contract_version: "1.0"
+display_name: 新闻视频质量与安全检查
+required_inputs:
+  - master_video_path
+  - news_script
+  - media_plan
+  - provenance_records
+required_outputs:
+  - passed
+  - report_path
+  - issues
+supported_aspect_ratios:
+  - "9:16"
+max_duration_seconds: 75
+real_generation_enabled: false
+safety_constraints:
+  - 检查事实素材匹配、来源记录、AI标识和版权备注
+  - 检查黑帧、冻结帧、音画同步、口型和画面畸变
+  - 检查标题安全区和默认无逐字字幕规则

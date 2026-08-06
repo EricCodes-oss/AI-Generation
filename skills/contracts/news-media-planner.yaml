@@ -1,0 +1,20 @@
+kind: news_media_planner
+contract_version: "1.0"
+display_name: 主持人新闻插播分镜规划
+required_inputs:
+  - news_script
+  - source_media_inventory
+  - host_profile
+required_outputs:
+  - media_plan
+  - timeline
+  - source_labels
+  - ai_demo_labels
+supported_aspect_ratios:
+  - "9:16"
+max_duration_seconds: 75
+real_generation_enabled: false
+safety_constraints:
+  - 固定演播室主持人开场、解释、总结
+  - 竖屏插播必须映射到脚本内容
+  - AI画面必须标注为示意，不得伪装新闻证据

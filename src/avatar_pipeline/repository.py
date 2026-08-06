@@ -5,6 +5,7 @@ import tempfile
 from datetime import date
 from pathlib import Path
 
+from avatar_pipeline.migration import migrate_task_payload
 from avatar_pipeline.models import DailyTask, utc_now
 
 
@@ -38,7 +39,7 @@ class DailyTaskRepository:
         if not path.exists():
             raise DailyTaskNotFound(f"daily task not found: {day.isoformat()}")
         with path.open("r", encoding="utf-8") as handle:
-            return DailyTask.model_validate(json.load(handle))
+            return DailyTask.model_validate(migrate_task_payload(json.load(handle)))
 
     def save(self, task: DailyTask) -> DailyTask:
         """Update an existing task and refresh its modification timestamp."""

@@ -1,0 +1,20 @@
+kind: compositor
+contract_version: "1.0"
+display_name: 新闻主持人栏目视频合成
+required_inputs:
+  - anchor_video_path
+  - media_plan
+  - insert_media_paths
+  - audio_path
+required_outputs:
+  - master_video_path
+  - timeline_report
+supported_aspect_ratios:
+  - "9:16"
+max_duration_seconds: 75
+real_generation_enabled: false
+safety_constraints:
+  - 输出1080x1920竖屏母版
+  - 默认不添加逐字口播字幕
+  - 保留来源标识和AI示意标识
+  - 不复制参考视频Logo、栏目名和版式

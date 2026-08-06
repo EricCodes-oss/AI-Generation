@@ -15,3 +15,7 @@ max_duration_seconds: 50
 real_generation_enabled: false
 primary_mode: image_plus_audio
 fallback_mode: image_plus_text
+safety_constraints:
+  - 固定主持人参考图与TTS音频驱动数字人
+  - 不冒充真实新闻记者或专业权威
+  - 保持主持人形象和演播室一致性
