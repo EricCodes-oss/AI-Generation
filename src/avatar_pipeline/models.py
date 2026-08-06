@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from avatar_pipeline.voice import DEFAULT_TTS_VOICE_ID
+
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
@@ -127,7 +129,7 @@ class HostProfile(DomainModel):
     display_name: str = Field(min_length=1)
     reference_image: str = Field(min_length=1)
     studio_reference: str | None = None
-    voice_id: str | None = None
+    voice_id: str = Field(default=DEFAULT_TTS_VOICE_ID, min_length=1)
     visual_style: str = "成熟陪伴型新闻主持人"
     is_new: bool = False
     version: int = Field(default=1, ge=1)

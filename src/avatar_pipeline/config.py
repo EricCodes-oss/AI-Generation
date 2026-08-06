@@ -8,6 +8,8 @@ from typing import Annotated, Literal
 import yaml
 from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
+from avatar_pipeline.voice import DEFAULT_TTS_VOICE_ID
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -166,6 +168,18 @@ class ResearchConfig(StrictModel):
         return self
 
 
+class TTSConfig(StrictModel):
+    voice_id: NonBlankStr
+    emotion: Literal["neutral"]
+    speaking_rate: float = Field(gt=0, le=2)
+
+    @model_validator(mode="after")
+    def validate_selected_voice(self) -> TTSConfig:
+        if self.voice_id != DEFAULT_TTS_VOICE_ID:
+            raise ValueError("tts must use the selected presenter voice")
+        return self
+
+
 class HostVisualConfig(StrictModel):
     visual_style: NonBlankStr
     age_range: NonBlankStr
@@ -181,6 +195,7 @@ class AppConfig(StrictModel):
     avatar_layout: Literal["seated_studio_anchor"]
     topic_source: Literal["user_topic", "auto_hot"]
     avatar_source: Literal["user_provided", "saved_host", "agent_designed"]
+    tts: TTSConfig
     host_visual: HostVisualConfig
     subtitle: StrictFalse
     video_structure: Literal["studio_anchor_plus_vertical_news_insert"]

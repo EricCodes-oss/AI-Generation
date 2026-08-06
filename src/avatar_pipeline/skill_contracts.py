@@ -7,6 +7,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from avatar_pipeline.voice import DEFAULT_TTS_VOICE_ID
+
 
 class SkillKind(StrEnum):
     OPINIONS_CRAWLER = "opinions_crawler"
@@ -40,6 +42,7 @@ class SkillManifest(BaseModel):
     fallback_mode: str | None = None
     recommended_audio_format: str | None = None
     timestamps_supported: bool | None = None
+    default_voice_id: str | None = Field(default=None, min_length=1)
     safety_constraints: list[str] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -56,7 +59,11 @@ class SkillManifest(BaseModel):
             raise ValueError("generation modes are only valid for the avatar contract")
         if self.kind is SkillKind.TTS:
             self._validate_tts_contract()
-        elif self.recommended_audio_format is not None or self.timestamps_supported is not None:
+        elif (
+            self.recommended_audio_format is not None
+            or self.timestamps_supported is not None
+            or self.default_voice_id is not None
+        ):
             raise ValueError("audio fields are only valid for the tts contract")
         return self
 
@@ -67,6 +74,8 @@ class SkillManifest(BaseModel):
         self._validate_required_outputs({"audio_path", "timestamps"}, "tts")
         if self.recommended_audio_format != "wav" or self.timestamps_supported is not True:
             raise ValueError("tts contract must recommend wav and support timestamps")
+        if self.default_voice_id != DEFAULT_TTS_VOICE_ID:
+            raise ValueError("tts contract must use the selected fixed presenter voice")
 
     def _validate_host_image_contract(self) -> None:
         if self.provider != "giggle-gpt-image-2" or self.name != "giggle-gpt-image-2":

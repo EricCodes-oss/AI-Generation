@@ -19,6 +19,7 @@ from avatar_pipeline.models import (
 from avatar_pipeline.policy import screen_candidates
 from avatar_pipeline.repository import DailyTaskRepository
 from avatar_pipeline.state import ensure_transition
+from avatar_pipeline.voice import DEFAULT_TTS_VOICE_ID
 
 
 class WorkflowPreconditionError(ValueError):
@@ -100,6 +101,8 @@ class DailyWorkflowService:
                 task.avatar_source if task.mode is RunMode.MANAGED else AvatarSource.USER_PROVIDED
             )
         task.avatar_source = effective_source
+        if host.voice_id != DEFAULT_TTS_VOICE_ID:
+            host = host.model_copy(update={"voice_id": DEFAULT_TTS_VOICE_ID})
         requires_manual_review = task.mode is RunMode.MANUAL and (
             effective_source is not AvatarSource.SAVED_HOST or host.is_new or host_changed
         )
@@ -126,7 +129,15 @@ class DailyWorkflowService:
 
     def mark_tts_ready(self, day: date, *, artifact_path: str) -> DailyTask:
         task = self._require_status(day, TaskStatus.GENERATING_TTS)
-        task.artifacts.append(ArtifactRecord(kind="master_audio", path=artifact_path))
+        if task.host_profile is None:
+            raise WorkflowPreconditionError("host profile is required before TTS generation")
+        task.artifacts.append(
+            ArtifactRecord(
+                kind="master_audio",
+                path=artifact_path,
+                metadata={"voice_id": task.host_profile.voice_id},
+            )
+        )
         ensure_transition(task.status, TaskStatus.GENERATING_ANCHOR)
         task.status = TaskStatus.GENERATING_ANCHOR
         return self.repository.save(task)

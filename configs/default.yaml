@@ -2,6 +2,10 @@ mode: manual
 topic_source: auto_hot
 avatar_source: saved_host
 avatar_layout: seated_studio_anchor
+tts:
+  voice_id: "宣传女生Pro:clone_20260806_114837_980375"
+  emotion: neutral
+  speaking_rate: 1.0
 host_visual:
   visual_style: mature_professional_news_anchor
   age_range: 30-36

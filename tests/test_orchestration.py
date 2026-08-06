@@ -94,7 +94,7 @@ def providers(*, host_profile=None, host_provider=None, host_source=None, anchor
     return ManagedProviders(
         script=lambda selected: (script, plan),
         host=host_provider or (lambda: selected_host),
-        tts=lambda script: "audio.wav",
+        tts=lambda script, voice_id: "audio.wav",
         anchor=anchor or (lambda host, audio: "anchor.mp4"),
         media=lambda plan: "demo.mp4",
         composite=lambda task: "master.mp4",
@@ -162,7 +162,7 @@ def test_managed_run_retries_next_verified_candidate_after_downstream_provider_f
     base = providers()
     tts_calls = []
 
-    def tts_provider(script):
+    def tts_provider(script, voice_id):
         tts_calls.append(script.title)
         if len(tts_calls) == 1:
             raise RuntimeError("tts failed for first topic")
@@ -369,7 +369,7 @@ def recording_providers(calls, *, qc_result=(True, "qc-resumed.json")):
     return ManagedProviders(
         script=lambda selected: calls.append("script") or base.script(selected),
         host=lambda: calls.append("host") or base.host(),
-        tts=lambda script: calls.append("tts") or "audio-resumed.wav",
+        tts=lambda script, voice_id: calls.append("tts") or "audio-resumed.wav",
         anchor=lambda host, audio: calls.append("anchor") or "anchor-resumed.mp4",
         media=lambda plan: calls.append("media") or "demo-resumed.mp4",
         composite=lambda task: calls.append("composite") or "master-resumed.mp4",
@@ -557,3 +557,30 @@ def test_managed_run_retries_next_verified_candidate_after_failed_qc(tmp_path):
         and item.metadata["reason"] == "quality check failed: qc-first-failed.json"
         for item in result.artifacts
     )
+
+
+def test_managed_run_passes_selected_host_voice_to_tts_and_records_it(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 7)
+    service.start_day(day, mode=RunMode.MANAGED)
+    base = providers()
+    calls = []
+
+    managed_providers = ManagedProviders(
+        script=base.script,
+        host=base.host,
+        tts=lambda script, voice_id: calls.append((script.title, voice_id)) or "audio.wav",
+        anchor=base.anchor,
+        media=base.media,
+        composite=base.composite,
+        qc=base.qc,
+    )
+
+    result = run_managed(service, day, [topic("verified")], managed_providers)
+
+    expected_voice = "宣传女生Pro:clone_20260806_114837_980375"
+    assert result.status is TaskStatus.READY_TO_PUBLISH
+    assert calls == [("标题", expected_voice)]
+    assert result.host_profile.voice_id == expected_voice
+    audio = next(item for item in result.artifacts if item.kind == "master_audio")
+    assert audio.metadata["voice_id"] == expected_voice

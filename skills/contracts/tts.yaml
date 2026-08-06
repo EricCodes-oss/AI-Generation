@@ -18,6 +18,7 @@ max_duration_seconds: 50
 real_generation_enabled: false
 recommended_audio_format: wav
 timestamps_supported: true
+default_voice_id: "宣传女生Pro:clone_20260806_114837_980375"
 safety_constraints:
   - 使用固定主持人音色和清晰稳定语速
   - 不使用夸张煽动或误导性语气

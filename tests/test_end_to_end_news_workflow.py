@@ -75,7 +75,7 @@ def saved_host() -> HostProfile:
         display_name="固定坐播主持人",
         reference_image="assets/fixed-seated-anchor.png",
         studio_reference="assets/quiet-news-studio.png",
-        voice_id="mature-news-voice",
+        voice_id="宣传女生Pro:clone_20260806_114837_980375",
         is_new=False,
     )
 
@@ -174,9 +174,10 @@ def managed_providers(
         calls["host"] += 1
         return host
 
-    def generate_tts(script: NewsScript) -> str:
+    def generate_tts(script: NewsScript, voice_id: str) -> str:
         calls["tts"] += 1
         assert script.target_duration_seconds == 60
+        assert voice_id == "宣传女生Pro:clone_20260806_114837_980375"
         return "audio/master.wav"
 
     def generate_avatar(selected_host: HostProfile, audio_path: str) -> str:

@@ -125,3 +125,17 @@ def test_config_rejects_non_boolean_false_subtitle_values(field, value):
 
     with pytest.raises(ValidationError):
         type(load_config(Path("configs/default.yaml"))).model_validate(config)
+
+
+def test_default_config_uses_selected_presenter_voice():
+    config = load_config(Path("configs/default.yaml"))
+
+    assert config.tts.voice_id == "宣传女生Pro:clone_20260806_114837_980375"
+
+
+def test_config_rejects_other_presenter_voice():
+    config = load_config(Path("configs/default.yaml")).model_dump()
+    config["tts"]["voice_id"] = "another-voice"
+
+    with pytest.raises(ValidationError, match="selected presenter voice"):
+        type(load_config(Path("configs/default.yaml"))).model_validate(config)

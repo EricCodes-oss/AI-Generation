@@ -22,7 +22,7 @@ HostProvider = Callable[[], HostProfile]
 class ManagedProviders:
     script: Callable[[TopicCandidate], tuple[NewsScript, MediaPlan]]
     host: HostProvider
-    tts: Callable[[NewsScript], str]
+    tts: Callable[[NewsScript, str], str]
     anchor: Callable[[HostProfile, str], str]
     media: Callable[[MediaPlan], str]
     composite: Callable[[DailyTask], str]
@@ -157,7 +157,7 @@ def _resume_managed_run(
         raise RuntimeError("managed generation requires a host profile")
 
     if task.status is TaskStatus.GENERATING_TTS:
-        task = service.mark_tts_ready(day, artifact_path=providers.tts(script))
+        task = service.mark_tts_ready(day, artifact_path=providers.tts(script, host.voice_id))
 
     if task.status is TaskStatus.GENERATING_ANCHOR:
         audio_path = _artifact_path(task, "master_audio")

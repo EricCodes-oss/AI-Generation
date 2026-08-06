@@ -127,3 +127,9 @@ def test_target_contracts_allow_additional_non_conflicting_outputs(kind):
     validated = SkillManifest.model_validate(payload)
 
     assert "future_output" in validated.required_outputs
+
+
+def test_tts_contract_locks_selected_presenter_voice():
+    contract = load_contracts(Path("skills/contracts"))[SkillKind.TTS]
+
+    assert contract.default_voice_id == "宣传女生Pro:clone_20260806_114837_980375"

@@ -85,7 +85,7 @@ TTS、普通转场、音量、编码和单个插播片段不设置用户确认�
 `managed` 模式不会使用模拟 Provider，也不会在未配置时伪装生成成功。运营环境必须设置 `AVATAR_PIPELINE_MANAGED_RUNTIME=<python_module>:<factory>`。该工厂接收已初始化的 `DailyTask`，返回 `avatar_pipeline.managed_runtime.ManagedRunInput`，其中包含：
 
 - 已采集、去重和核验的候选热点；
-- `ManagedProviders` 的脚本、主持人、TTS、数字人、插播媒体、合成和 QC 实现；
+- `ManagedProviders` 的脚本、主持人、TTS、数字人、插播媒体、合成和 QC 实现；其中 TTS Provider 签名为 `tts(news_script, voice_id)`；
 - 可选的最大候选尝试次数。
 
 `init-day --mode managed` 会调用该运行时并直接推进到 `ready_to_publish` 或安全的 `stopped` 最终状态。单个候选的脚本或生产 Provider 失败时，会清理该候选产生的部分制品、记录失败审计，并在次数上限内尝试下一个已核验候选。未设置运行时环境变量时，命令在创建每日任务前明确报错。当前仓库的 Skill Contracts 仍默认 `real_generation_enabled: false`；启用真实运行时应由部署方显式完成，不会自动消耗生成额度。
@@ -103,7 +103,7 @@ TTS、普通转场、音量、编码和单个插播片段不设置用户确认�
 - `opinions-crawler`：多平台热点与事实线索采集；
 - `news-script-writer`：事实、背景、解读、结论分层的主持人口播稿；
 - `news-media-planner`：主持人和竖屏插播时间轴；
-- `giggle-generation-speech`：固定主持人 TTS；
+- `giggle-generation-speech`：固定主持人 TTS，默认音色 `宣传女生Pro:clone_20260806_114837_980375`，默认情绪 `neutral`、语速 `1.0`；
 - `giggle-gpt-image-2`：固定主持人和演播室参考图；
 - `giggle-generation-tv-avatar-video`：图片 + 音频驱动主持人视频；
 - `news-footage-clipper`：原始新闻素材截取与来源记录；

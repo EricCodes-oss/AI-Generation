@@ -44,6 +44,7 @@ from avatar_pipeline.research_repository import ResearchRunRepository
 from avatar_pipeline.research_service import ResearchService
 from avatar_pipeline.service import DailyWorkflowService
 from avatar_pipeline.skill_contracts import load_contracts
+from avatar_pipeline.voice import DEFAULT_TTS_VOICE_ID
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_CONFIG = _PROJECT_ROOT / "configs" / "default.yaml"
@@ -209,6 +210,7 @@ def _health_payload() -> dict[str, Any]:
         "supported_modes": [RunMode.MANAGED.value, RunMode.MANUAL.value],
         "topic_sources": [TopicSource.USER_TOPIC.value, TopicSource.AUTO_HOT.value],
         "host_layout": "seated_studio_anchor",
+        "tts": config.tts.model_dump(mode="json"),
         "manual_approval_commands": [
             "approve-topic-script",
             "approve-host",
@@ -362,7 +364,7 @@ def _latest_reusable_host(repository: DailyTaskRepository, *, before: date) -> H
         )
         if not host_was_approved and not is_trusted_saved_host:
             continue
-        return previous_host.model_copy(update={"is_new": False})
+        return previous_host.model_copy(update={"is_new": False, "voice_id": DEFAULT_TTS_VOICE_ID})
     return None
 
 

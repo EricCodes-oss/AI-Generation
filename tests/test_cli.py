@@ -204,7 +204,7 @@ def create_runtime(task):
     )
     providers = ManagedProviders(
         script=lambda selected: (script, plan), host=lambda: host,
-        tts=lambda news_script: "audio.wav",
+        tts=lambda news_script, voice_id: "audio.wav",
         anchor=lambda selected_host, audio: "anchor.mp4",
         media=lambda media_plan: "insert.mp4",
         composite=lambda daily_task: "master.mp4",
@@ -301,7 +301,9 @@ def test_cli_init_day_reuses_latest_saved_seated_host(tmp_path):
             day=date(2026, 8, 5),
             mode=RunMode.MANUAL,
             status=TaskStatus.READY_TO_PUBLISH,
-            host_profile=host(image="saved-host.png", is_new=False),
+            host_profile=host(image="saved-host.png", is_new=False).model_copy(
+                update={"voice_id": "legacy-presenter-voice"}
+            ),
             avatar_source=AvatarSource.SAVED_HOST,
             approvals=[ApprovalRecord(gate="host", actor="owner")],
         )
@@ -320,6 +322,7 @@ def test_cli_init_day_reuses_latest_saved_seated_host(tmp_path):
     payload = json.loads(created.stdout)
     assert payload["avatar_source"] == "saved_host"
     assert payload["host_profile"]["reference_image"] == "saved-host.png"
+    assert payload["host_profile"]["voice_id"] == "宣传女生Pro:clone_20260806_114837_980375"
     assert payload["host_profile"]["is_new"] is False
     assert payload["requires_host_approval"] is False
 
@@ -476,6 +479,11 @@ def test_cli_health_reports_dual_mode_fixed_anchor_policy_and_public_gates(tmp_p
     assert payload["supported_modes"] == ["managed", "manual"]
     assert payload["topic_sources"] == ["user_topic", "auto_hot"]
     assert payload["host_layout"] == "seated_studio_anchor"
+    assert payload["tts"] == {
+        "voice_id": "宣传女生Pro:clone_20260806_114837_980375",
+        "emotion": "neutral",
+        "speaking_rate": 1.0,
+    }
     assert payload["video_structure"] == "studio_anchor_plus_vertical_news_insert"
     assert payload["subtitle"] is False
     assert payload["manual_approval_commands"] == [

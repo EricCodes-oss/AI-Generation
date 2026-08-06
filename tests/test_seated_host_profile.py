@@ -35,3 +35,13 @@ def test_host_profile_rejects_obstructed_mouth():
             reference_image="hosts/main.png",
             mouth_unobstructed=False,
         )
+
+
+def test_host_profile_defaults_to_selected_presenter_voice():
+    host = HostProfile(
+        id="host-main",
+        display_name="林知遥",
+        reference_image="hosts/main.png",
+    )
+
+    assert host.voice_id == "宣传女生Pro:clone_20260806_114837_980375"
