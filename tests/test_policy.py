@@ -72,3 +72,14 @@ def test_ranking_never_returns_unverified_candidates():
         limit=3,
     )
     assert [item.id for item in ranked] == ["high", "low"]
+
+
+def test_verified_candidate_requires_independent_underlying_source_references():
+    duplicated = evidence()
+    duplicated[0].url_or_reference = "https://example.test/report/"
+    duplicated[1].url_or_reference = " HTTPS://EXAMPLE.TEST/report "
+
+    decision = evaluate_candidate(candidate("duplicate-source", source_evidence=duplicated))
+
+    assert decision.publishable is False
+    assert "insufficient_independent_evidence" in decision.reasons

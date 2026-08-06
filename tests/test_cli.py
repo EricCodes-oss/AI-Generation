@@ -7,6 +7,7 @@ from datetime import date
 import pytest
 
 from avatar_pipeline.models import (
+    ApprovalRecord,
     AvatarSource,
     DailyTask,
     FactStatus,
@@ -24,9 +25,11 @@ from avatar_pipeline.models import (
 from avatar_pipeline.repository import DailyTaskRepository
 
 
-def run_cli(tmp_path, *args):
+def run_cli(tmp_path, *args, env_overrides=None):
     env = os.environ.copy()
-    env["PYTHONPATH"] = "src"
+    env["PYTHONPATH"] = os.pathsep.join([str(tmp_path), "src"])
+    if env_overrides:
+        env.update(env_overrides)
     return subprocess.run(
         [sys.executable, "-m", "avatar_pipeline.cli", "--workspace", str(tmp_path), *args],
         check=False,
@@ -138,7 +141,7 @@ def test_cli_initializes_news_day_with_explicit_mode_and_topic_source(tmp_path):
     assert payload["avatar_source"] == "agent_designed"
 
 
-def test_cli_managed_user_topic_records_input(tmp_path):
+def test_cli_managed_init_requires_configured_runtime_before_creating_task(tmp_path):
     created = run_cli(
         tmp_path,
         "init-day",
@@ -151,10 +154,86 @@ def test_cli_managed_user_topic_records_input(tmp_path):
         "--input",
         "年轻人如何看待工作和生活的边界",
     )
+    assert created.returncode == 2
+    assert "AVATAR_PIPELINE_MANAGED_RUNTIME" in created.stderr
+    assert DailyTaskRepository(tmp_path).list_days() == []
+
+
+def test_cli_managed_init_executes_configured_runtime_to_final_result(tmp_path):
+    runtime_module = tmp_path / "managed_runtime_fixture.py"
+    runtime_module.write_text(
+        """
+from avatar_pipeline.managed_runtime import ManagedRunInput
+from avatar_pipeline.models import (
+    FactStatus, HostProfile, MediaKind, MediaPlan, MediaSegment, NewsScript,
+    ScriptSegment, SourceEvidence, TopicCandidate,
+)
+from avatar_pipeline.orchestration import ManagedProviders
+
+def create_runtime(task):
+    host = HostProfile(
+        id="fixed-seated-anchor", display_name="林知遥",
+        reference_image="host.png", is_new=False,
+    )
+    candidate = TopicCandidate(
+        id="verified", title=task.input_text or "自动热点",
+        pillar="social_phenomena", score=95, fact_status=FactStatus.VERIFIED,
+        source_evidence=[
+            SourceEvidence(source_id="s1", platform="official", title="官方",
+                url_or_reference="https://official.test/news", evidence_type="official"),
+            SourceEvidence(source_id="s2", platform="media", title="媒体",
+                url_or_reference="https://media.test/report", evidence_type="reputable_media"),
+        ],
+        verification_summary="两个独立来源交叉核验", publishable=True,
+    )
+    script = NewsScript(
+        title="热点解读",
+        spoken_segments=[ScriptSegment(id="seg", kind="fact", text="事实", source_ids=["s1"])],
+        source_ids=["s1", "s2"], ai_disclosure_required=True,
+    )
+    plan = MediaPlan(
+        duration_seconds=15, host_id=host.id,
+        segments=[
+            MediaSegment(id="a1", kind=MediaKind.ANCHOR, start_seconds=0, end_seconds=5,
+                script_segment_id="seg", host_id=host.id),
+            MediaSegment(id="demo", kind=MediaKind.AI_DEMO, start_seconds=5, end_seconds=10,
+                script_segment_id="seg", disclosure="AI生成示意画面"),
+            MediaSegment(id="a2", kind=MediaKind.ANCHOR, start_seconds=10, end_seconds=15,
+                script_segment_id="seg", host_id=host.id),
+        ],
+    )
+    providers = ManagedProviders(
+        script=lambda selected: (script, plan), host=lambda: host,
+        tts=lambda news_script: "audio.wav",
+        anchor=lambda selected_host, audio: "anchor.mp4",
+        media=lambda media_plan: "insert.mp4",
+        composite=lambda daily_task: "master.mp4",
+        qc=lambda daily_task: (True, "qc.json"),
+    )
+    return ManagedRunInput(candidates=[candidate], providers=providers)
+""",
+        encoding="utf-8",
+    )
+
+    created = run_cli(
+        tmp_path,
+        "init-day",
+        "--date",
+        "2026-08-06",
+        "--mode",
+        "managed",
+        "--topic-source",
+        "user_topic",
+        "--input",
+        "年轻人如何看待工作和生活的边界",
+        env_overrides={"AVATAR_PIPELINE_MANAGED_RUNTIME": "managed_runtime_fixture:create_runtime"},
+    )
+
     assert created.returncode == 0
     payload = json.loads(created.stdout)
-    assert payload["mode"] == "managed"
-    assert payload["topic_source"] == "user_topic"
+    assert payload["status"] == "ready_to_publish"
+    assert payload["selected_topic_id"] == "verified"
+    assert payload["approvals"] == []
     assert payload["input_text"] == "年轻人如何看待工作和生活的边界"
 
 
@@ -222,7 +301,9 @@ def test_cli_init_day_reuses_latest_saved_seated_host(tmp_path):
             day=date(2026, 8, 5),
             mode=RunMode.MANUAL,
             status=TaskStatus.READY_TO_PUBLISH,
-            host_profile=host(image="saved-host.png", is_new=True),
+            host_profile=host(image="saved-host.png", is_new=False),
+            avatar_source=AvatarSource.SAVED_HOST,
+            approvals=[ApprovalRecord(gate="host", actor="owner")],
         )
     )
     created = run_cli(
@@ -241,6 +322,35 @@ def test_cli_init_day_reuses_latest_saved_seated_host(tmp_path):
     assert payload["host_profile"]["reference_image"] == "saved-host.png"
     assert payload["host_profile"]["is_new"] is False
     assert payload["requires_host_approval"] is False
+
+
+def test_cli_does_not_reuse_unapproved_new_host_from_ready_historical_task(tmp_path):
+    repository = DailyTaskRepository(tmp_path)
+    repository.create(
+        DailyTask(
+            day=date(2026, 8, 5),
+            mode=RunMode.MANUAL,
+            status=TaskStatus.READY_TO_PUBLISH,
+            host_profile=host(image="unapproved-host.png", is_new=True),
+            avatar_source=AvatarSource.USER_PROVIDED,
+        )
+    )
+
+    created = run_cli(
+        tmp_path,
+        "init-day",
+        "--date",
+        "2026-08-06",
+        "--mode",
+        "manual",
+        "--topic-source",
+        "auto_hot",
+    )
+
+    assert created.returncode == 0
+    payload = json.loads(created.stdout)
+    assert payload["avatar_source"] == "agent_designed"
+    assert payload["host_profile"] is None
 
 
 def test_cli_saved_host_skips_optional_host_approval_after_topic_script(tmp_path):

@@ -123,6 +123,108 @@ def test_managed_run_stops_when_no_verified_topic_exists(tmp_path):
     assert "verified" in (result.stop_reason or "")
 
 
+def test_managed_run_retries_next_verified_candidate_after_script_provider_failure(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANAGED)
+    calls = []
+    base = providers()
+
+    def script_provider(selected):
+        calls.append(selected.id)
+        if selected.id == "first":
+            raise RuntimeError("script provider unavailable for first topic")
+        return base.script(selected)
+
+    managed_providers = ManagedProviders(
+        script=script_provider,
+        host=base.host,
+        tts=base.tts,
+        anchor=base.anchor,
+        media=base.media,
+        composite=base.composite,
+        qc=base.qc,
+    )
+
+    result = run_managed(service, day, [topic("first"), topic("second")], managed_providers)
+
+    assert result.status is TaskStatus.READY_TO_PUBLISH
+    assert result.selected_topic_id == "second"
+    assert calls == ["first", "second"]
+    assert [item.id for item in result.skipped_candidates] == ["first"]
+    assert any(item.kind == "managed_attempt_failure" for item in result.artifacts)
+
+
+def test_managed_run_retries_next_verified_candidate_after_downstream_provider_failure(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANAGED)
+    base = providers()
+    tts_calls = []
+
+    def tts_provider(script):
+        tts_calls.append(script.title)
+        if len(tts_calls) == 1:
+            raise RuntimeError("tts failed for first topic")
+        return "audio-second.wav"
+
+    managed_providers = ManagedProviders(
+        script=lambda selected: (
+            base.script(selected)[0].model_copy(update={"title": selected.id}),
+            base.script(selected)[1],
+        ),
+        host=base.host,
+        tts=tts_provider,
+        anchor=base.anchor,
+        media=base.media,
+        composite=base.composite,
+        qc=base.qc,
+    )
+
+    result = run_managed(service, day, [topic("first"), topic("second")], managed_providers)
+
+    assert result.status is TaskStatus.READY_TO_PUBLISH
+    assert result.selected_topic_id == "second"
+    assert tts_calls == ["first", "second"]
+    assert not any(
+        item.kind == "master_audio" and item.path != "audio-second.wav" for item in result.artifacts
+    )
+
+
+def test_managed_run_stops_only_after_bounded_candidate_attempts_are_exhausted(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANAGED)
+    calls = []
+    base = providers()
+
+    def failing_script(selected):
+        calls.append(selected.id)
+        raise RuntimeError("no script")
+
+    managed_providers = ManagedProviders(
+        script=failing_script,
+        host=base.host,
+        tts=base.tts,
+        anchor=base.anchor,
+        media=base.media,
+        composite=base.composite,
+        qc=base.qc,
+    )
+
+    result = run_managed(
+        service,
+        day,
+        [topic("first"), topic("second"), topic("third")],
+        managed_providers,
+        max_topic_attempts=2,
+    )
+
+    assert result.status is TaskStatus.STOPPED
+    assert calls == ["first", "second"]
+    assert "2 managed topic attempts failed" in (result.stop_reason or "")
+
+
 def test_managed_run_marks_provider_host_source_and_calls_provider_once(tmp_path):
     service = DailyWorkflowService(DailyTaskRepository(tmp_path))
     task = service.start_day(date(2026, 8, 6), mode=RunMode.MANAGED)
@@ -331,40 +433,33 @@ def test_managed_run_resumes_from_checkpoint_without_repeating_completed_provide
     assert result.media_plan == original_plan
 
 
-def test_managed_run_recomposites_and_rechecks_after_failed_qc(tmp_path):
+def test_managed_run_safely_stops_when_checkpoint_qc_fails_without_replacement(tmp_path):
     service = DailyWorkflowService(DailyTaskRepository(tmp_path))
     day = date(2026, 8, 6)
     stage_managed_checkpoint(service, day, TaskStatus.COMPOSITING)
-    first_calls = []
+    calls = []
 
-    failed = run_managed(
+    result = run_managed(
         service,
         day,
-        [topic("verified")],
-        recording_providers(first_calls, qc_result=(False, "qc-failed.json")),
+        [topic("replacement-that-must-not-research-active-checkpoint")],
+        recording_providers(calls, qc_result=(False, "qc-failed.json")),
     )
 
-    assert failed.status is TaskStatus.COMPOSITING
-    assert first_calls == ["composite", "qc"]
-
-    second_calls = []
-    passed = run_managed(
-        service,
-        day,
-        [topic("verified")],
-        recording_providers(second_calls, qc_result=(True, "qc-passed.json")),
+    assert result.status is TaskStatus.STOPPED
+    assert calls == ["composite", "qc"]
+    assert result.selected_topic_id is None
+    assert [item.id for item in result.skipped_candidates] == ["verified"]
+    assert result.stop_reason == "managed generation failed: quality check failed: qc-failed.json"
+    assert not any(
+        item.kind in {"master_audio", "anchor_video", "insert_media", "master_video", "qc_report"}
+        for item in result.artifacts
     )
-
-    assert passed.status is TaskStatus.READY_TO_PUBLISH
-    assert second_calls == ["composite", "qc"]
-    assert [item.path for item in passed.artifacts if item.kind == "master_video"] == [
-        "master-resumed.mp4",
-        "master-resumed.mp4",
-    ]
-    assert [item.path for item in passed.artifacts if item.kind == "qc_report"] == [
-        "qc-failed.json",
-        "qc-passed.json",
-    ]
+    assert any(
+        item.kind == "managed_attempt_failure"
+        and item.metadata["reason"] == "quality check failed: qc-failed.json"
+        for item in result.artifacts
+    )
 
 
 def test_managed_run_safely_stops_when_resumed_provider_fails(tmp_path):
@@ -421,4 +516,44 @@ def test_managed_run_safely_stops_when_host_provider_does_not_match_media_plan(t
     assert result.host_profile is None
     assert result.stop_reason == (
         "managed generation failed: media plan host_id must match the fixed host profile"
+    )
+
+
+def test_managed_run_retries_next_verified_candidate_after_failed_qc(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANAGED)
+    base = providers()
+    qc_calls = []
+
+    def script_provider(selected):
+        script, plan = base.script(selected)
+        return script.model_copy(update={"title": selected.id}), plan
+
+    def qc_provider(task):
+        qc_calls.append(task.news_script.title)
+        if len(qc_calls) == 1:
+            return False, "qc-first-failed.json"
+        return True, "qc-second-passed.json"
+
+    managed_providers = ManagedProviders(
+        script=script_provider,
+        host=base.host,
+        tts=base.tts,
+        anchor=base.anchor,
+        media=base.media,
+        composite=base.composite,
+        qc=qc_provider,
+    )
+
+    result = run_managed(service, day, [topic("first"), topic("second")], managed_providers)
+
+    assert result.status is TaskStatus.READY_TO_PUBLISH
+    assert result.selected_topic_id == "second"
+    assert qc_calls == ["first", "second"]
+    assert [item.id for item in result.skipped_candidates] == ["first"]
+    assert any(
+        item.kind == "managed_attempt_failure"
+        and item.metadata["reason"] == "quality check failed: qc-first-failed.json"
+        for item in result.artifacts
     )

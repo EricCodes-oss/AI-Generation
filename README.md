@@ -46,7 +46,8 @@ python -m avatar_pipeline.cli --workspace workspace init-day \
   --mode manual \
   --topic-source auto_hot
 
-# 托管模式：指定主题后自动推进，中间不要求人工确认
+# 托管模式：先显式配置真实运行时，再由 init-day 一次执行到最终状态
+export AVATAR_PIPELINE_MANAGED_RUNTIME="your_runtime_module:create_runtime"
 python -m avatar_pipeline.cli --workspace workspace init-day \
   --date 2026-08-06 \
   --mode managed \
@@ -79,11 +80,21 @@ avatar-pipeline approve-final-video --date 2026-08-06 --actor owner
 
 TTS、普通转场、音量、编码和单个插播片段不设置用户确认点。`mark-tts`、`mark-anchor`、`mark-media`、`mark-compositing` 和 `record-qc` 是执行器记录生产状态的接口，不是人工审批命令。
 
+### 托管运行时接口
+
+`managed` 模式不会使用模拟 Provider，也不会在未配置时伪装生成成功。运营环境必须设置 `AVATAR_PIPELINE_MANAGED_RUNTIME=<python_module>:<factory>`。该工厂接收已初始化的 `DailyTask`，返回 `avatar_pipeline.managed_runtime.ManagedRunInput`，其中包含：
+
+- 已采集、去重和核验的候选热点；
+- `ManagedProviders` 的脚本、主持人、TTS、数字人、插播媒体、合成和 QC 实现；
+- 可选的最大候选尝试次数。
+
+`init-day --mode managed` 会调用该运行时并直接推进到 `ready_to_publish` 或安全的 `stopped` 最终状态。单个候选的脚本或生产 Provider 失败时，会清理该候选产生的部分制品、记录失败审计，并在次数上限内尝试下一个已核验候选。未设置运行时环境变量时，命令在创建每日任务前明确报错。当前仓库的 Skill Contracts 仍默认 `real_generation_enabled: false`；启用真实运行时应由部署方显式完成，不会自动消耗生成额度。
+
 `health` 会报告 `managed/manual`、`user_topic/auto_hot`、固定 `seated_studio_anchor` 布局、默认关闭逐字字幕、已配置 Skill 和外部工具状态。
 
 ### 发布包装
 
-只有状态为 `ready_to_publish`、具备完整核验来源记录，并且所有 AI 示意画面都有明确披露时，才能建立发布包装。抖音、微信视频号和小红书只生成不同的平台文案，三个平台始终引用同一个 `master_video_path`，不会重复生成三条不同视频。
+只有状态为 `ready_to_publish`、具备至少两个不同来源 ID 和两个不同底层来源引用的完整核验记录，并且所有 AI 示意画面都有明确披露时，才能建立发布包装。相同链接即使使用不同 `source_id` 也不能通过。抖音、微信视频号和小红书只生成不同的平台文案，三个平台始终引用同一个 `master_video_path`，不会重复生成三条不同视频。
 
 ## Skill Contracts
 

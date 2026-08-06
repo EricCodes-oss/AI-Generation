@@ -10,6 +10,7 @@ from avatar_pipeline.models import (
     SourceEvidence,
     TaskStatus,
 )
+from avatar_pipeline.source_identity import independent_source_reference_count
 
 _REQUIRED_PLATFORMS = ("douyin", "wechat_channels", "xiaohongshu")
 
@@ -96,6 +97,15 @@ def _source_metadata(task: DailyTask) -> tuple[list[str], list[SourceEvidence]]:
     if len(source_ids) < 2:
         raise ValueError(
             "complete source metadata requires at least two distinct verified source IDs"
+        )
+    if (
+        independent_source_reference_count(
+            [source.url_or_reference for source in selected.source_evidence]
+        )
+        < 2
+    ):
+        raise ValueError(
+            "complete source metadata requires at least two independent source references"
         )
     if task.news_script is None or not task.news_script.source_ids:
         raise ValueError("complete verified source metadata is required")

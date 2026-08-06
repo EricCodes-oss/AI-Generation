@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from avatar_pipeline.models import FactStatus, TopicCandidate
+from avatar_pipeline.source_identity import independent_source_reference_count
 
 
 @dataclass(frozen=True)
@@ -19,7 +20,13 @@ def evaluate_candidate(candidate: TopicCandidate) -> AdmissionDecision:
         reasons.append(f"fact_status:{candidate.fact_status.value}")
     if candidate.risk_flags:
         reasons.extend(f"risk:{flag}" for flag in candidate.risk_flags)
-    if candidate.fact_status is FactStatus.VERIFIED and len(candidate.source_evidence) < 2:
+    if candidate.fact_status is FactStatus.VERIFIED and (
+        len(candidate.source_evidence) < 2
+        or independent_source_reference_count(
+            [source.url_or_reference for source in candidate.source_evidence]
+        )
+        < 2
+    ):
         reasons.append("insufficient_independent_evidence")
     if candidate.fact_status is FactStatus.VERIFIED and not candidate.verification_summary:
         reasons.append("missing_verification_summary")

@@ -13,6 +13,10 @@ from typing import Any
 import yaml
 
 from avatar_pipeline.config import load_config
+from avatar_pipeline.managed_runtime import (
+    ManagedRunInput,
+    load_managed_runtime_factory,
+)
 from avatar_pipeline.models import (
     AvatarSource,
     DailyTask,
@@ -25,6 +29,7 @@ from avatar_pipeline.models import (
     TopicSource,
     utc_now,
 )
+from avatar_pipeline.orchestration import run_managed
 from avatar_pipeline.query_planner import build_daily_plan
 from avatar_pipeline.repository import DailyTaskRepository
 from avatar_pipeline.research_adapters import CollectionBatch, RawCollectionItem
@@ -352,11 +357,10 @@ def _latest_reusable_host(repository: DailyTaskRepository, *, before: date) -> H
         if previous_host is None:
             continue
         host_was_approved = any(record.gate == "host" for record in previous_task.approvals)
-        if (
-            previous_task.status is not TaskStatus.READY_TO_PUBLISH
-            and previous_host.is_new
-            and not host_was_approved
-        ):
+        is_trusted_saved_host = (
+            previous_task.avatar_source is AvatarSource.SAVED_HOST and not previous_host.is_new
+        )
+        if not host_was_approved and not is_trusted_saved_host:
             continue
         return previous_host.model_copy(update={"is_new": False})
     return None
@@ -396,7 +400,30 @@ def _dispatch_production(args: argparse.Namespace) -> dict[str, Any]:
     repository = DailyTaskRepository(args.workspace)
     service = DailyWorkflowService(repository)
     if args.command == "init-day":
+        topic_source = TopicSource(args.topic_source)
+        input_text = args.input_text.strip() if args.input_text else None
+        if topic_source is TopicSource.USER_TOPIC and not input_text:
+            raise ValueError("--input is required when --topic-source is user_topic")
+        runtime_factory = (
+            load_managed_runtime_factory() if RunMode(args.mode) is RunMode.MANAGED else None
+        )
         task = _initialize_day(repository, service, args)
+        if runtime_factory is not None:
+            try:
+                runtime_input = runtime_factory(task)
+                if not isinstance(runtime_input, ManagedRunInput):
+                    raise TypeError("managed runtime factory must return ManagedRunInput")
+                task = run_managed(
+                    service,
+                    args.date,
+                    runtime_input.candidates,
+                    runtime_input.providers,
+                    max_topic_attempts=runtime_input.max_topic_attempts,
+                )
+            except Exception as error:  # noqa: BLE001 - configured runtime boundary
+                task = service.stop_task(
+                    args.date, reason=f"managed runtime initialization failed: {error}"
+                )
     elif args.command == "status":
         task = repository.get(args.date)
         payload = _task_payload(task)

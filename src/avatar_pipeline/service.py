@@ -177,6 +177,52 @@ class DailyWorkflowService:
         task.status = TaskStatus.READY_TO_PUBLISH
         return self.repository.save(task)
 
+    def reset_managed_attempt(
+        self,
+        day: date,
+        *,
+        topic_id: str,
+        reason: str,
+        baseline_host: HostProfile | None,
+        baseline_avatar_source: AvatarSource,
+        baseline_artifacts: Sequence[ArtifactRecord],
+    ) -> DailyTask:
+        """Discard partial output for one failed managed topic and return to screening."""
+
+        task = self.repository.get(day)
+        if task.mode is not RunMode.MANAGED:
+            raise WorkflowPreconditionError("managed attempt reset requires managed mode")
+        if task.status in {TaskStatus.READY_TO_PUBLISH, TaskStatus.STOPPED}:
+            raise WorkflowPreconditionError("completed task cannot reset a managed attempt")
+        failed = next((item for item in task.candidates if item.id == topic_id), None)
+        if failed is None:
+            raise WorkflowPreconditionError("managed attempt topic is not available")
+        task.selected_topic_id = None
+        task.candidates = [item for item in task.candidates if item.id != topic_id]
+        task.skipped_candidates.append(
+            failed.model_copy(
+                update={
+                    "publishable": False,
+                    "risk_flags": [*failed.risk_flags, "managed_generation_failed"],
+                }
+            )
+        )
+        task.news_script = None
+        task.media_plan = None
+        task.host_profile = baseline_host
+        task.avatar_source = baseline_avatar_source
+        task.artifacts = list(baseline_artifacts)
+        task.artifacts.append(
+            ArtifactRecord(
+                kind="managed_attempt_failure",
+                path=f"managed-attempts/{topic_id}.json",
+                metadata={"topic_id": topic_id, "reason": reason},
+            )
+        )
+        task.status = TaskStatus.FACT_SCREENED
+        task.stop_reason = None
+        return self.repository.save(task)
+
     def stop_task(self, day: date, *, reason: str) -> DailyTask:
         task = self.repository.get(day)
         if task.status is not TaskStatus.STOPPED:

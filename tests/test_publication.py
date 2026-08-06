@@ -240,3 +240,20 @@ def test_publication_refuses_negated_ai_disclosure(disclosure):
 
     with pytest.raises(ValueError, match="AI disclosure"):
         build_publication_package(task)
+
+
+def test_publication_refuses_distinct_source_ids_that_share_the_same_underlying_reference():
+    task = ready_task()
+    task.candidates[0].source_evidence[0].url_or_reference = " HTTPS://EXAMPLE.TEST/same/ "
+    task.candidates[0].source_evidence[1].url_or_reference = "https://example.test/same"
+
+    with pytest.raises(ValueError, match="independent source references"):
+        build_publication_package(task)
+
+
+def test_publication_refuses_blank_source_reference():
+    task = ready_task()
+    task.candidates[0].source_evidence[1].url_or_reference = "   "
+
+    with pytest.raises(ValueError, match="independent source references"):
+        build_publication_package(task)
