@@ -7,6 +7,7 @@ from avatar_pipeline.media import validate_media_plan
 from avatar_pipeline.models import (
     ApprovalRecord,
     ArtifactRecord,
+    AvatarSource,
     DailyTask,
     HostProfile,
     MediaPlan,
@@ -84,15 +85,24 @@ class DailyWorkflowService:
         task.status = TaskStatus.MEDIA_PLANNING
         return self._advance_after_media_plan(task)
 
-    def set_host(self, day: date, host: HostProfile) -> DailyTask:
+    def set_host(
+        self, day: date, host: HostProfile, *, avatar_source: AvatarSource | None = None
+    ) -> DailyTask:
         task = self._require_status(day, TaskStatus.MEDIA_PLANNING, TaskStatus.HOST_REVIEW)
-        task.host_profile = host
-        if task.mode is RunMode.MANAGED or not host.is_new:
+        existing_host = task.host_profile
+        host_changed = existing_host is not None and existing_host != host
+        if avatar_source is not None:
+            task.avatar_source = avatar_source
+        if task.mode is RunMode.MANUAL and (host.is_new or host_changed):
+            host.is_new = True
+            task.host_profile = host
+            if task.status is TaskStatus.MEDIA_PLANNING:
+                ensure_transition(task.status, TaskStatus.HOST_REVIEW)
+                task.status = TaskStatus.HOST_REVIEW
+        else:
+            task.host_profile = host
             ensure_transition(task.status, TaskStatus.GENERATING_TTS)
             task.status = TaskStatus.GENERATING_TTS
-        elif task.status is TaskStatus.MEDIA_PLANNING:
-            ensure_transition(task.status, TaskStatus.HOST_REVIEW)
-            task.status = TaskStatus.HOST_REVIEW
         return self.repository.save(task)
 
     def approve_host(self, day: date, *, actor: str) -> DailyTask:

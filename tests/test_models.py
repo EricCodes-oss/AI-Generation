@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from avatar_pipeline.models import (
     ApprovalRecord,
+    AvatarSource,
     DailyTask,
     HostProfile,
     MediaKind,
@@ -56,6 +57,7 @@ def test_daily_task_models_news_run_with_default_no_subtitles():
     assert task.subtitle_enabled is False
     assert task.video_structure == "studio_anchor_plus_vertical_news_insert"
     assert task.schema_version == 2
+    assert task.avatar_source is AvatarSource.SAVED_HOST
 
 
 def test_topic_candidate_requires_verified_evidence_for_publishable_flag():

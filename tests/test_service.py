@@ -119,6 +119,50 @@ def test_saved_host_skips_host_gate(tmp_path):
     assert service.get(day).status == TaskStatus.GENERATING_TTS
 
 
+def test_manual_new_host_stays_in_review_when_updated(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANUAL)
+    service.record_research(day, [candidate()])
+    script, plan = script_and_plan()
+    service.record_script_and_media_plan(day, "t1", script, plan)
+    service.approve_topic_script(day, actor="owner")
+    service.set_host(
+        day,
+        HostProfile(id="h1", display_name="林知遥", reference_image="host-v1.png", is_new=True),
+    )
+
+    updated = service.set_host(
+        day,
+        HostProfile(id="h1", display_name="林知遥", reference_image="host-v1.png", is_new=True),
+    )
+
+    assert updated.status is TaskStatus.HOST_REVIEW
+    assert updated.requires_host_approval is True
+
+
+def test_manual_changed_host_requires_host_review(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANUAL)
+    service.record_research(day, [candidate()])
+    script, plan = script_and_plan()
+    service.record_script_and_media_plan(day, "t1", script, plan)
+    service.approve_topic_script(day, actor="owner")
+    service.set_host(
+        day,
+        HostProfile(id="h1", display_name="林知遥", reference_image="host-v1.png", is_new=True),
+    )
+
+    changed = service.set_host(
+        day,
+        HostProfile(id="h1", display_name="林知遥", reference_image="host-v2.png", is_new=False),
+    )
+
+    assert changed.status is TaskStatus.HOST_REVIEW
+    assert changed.requires_host_approval is True
+
+
 def test_managed_mode_has_no_user_approval_records(tmp_path):
     service = DailyWorkflowService(DailyTaskRepository(tmp_path))
     day = date(2026, 8, 6)
