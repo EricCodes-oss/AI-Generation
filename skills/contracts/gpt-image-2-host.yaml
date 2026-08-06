@@ -1,16 +1,25 @@
 kind: host_image
 contract_version: "1.0"
 display_name: GPT Image 2 主持人和演播室设计
+provider: giggle-gpt-image-2
+name: giggle-gpt-image-2
 required_inputs:
-  - host_brief
-  - consistency_reference
+  prompt: string
+  negative_prompt: string
+  layout: seated_studio_anchor
+  aspect_ratio: "9:16"
+  shot: waist_up_seated
+optional_inputs:
+  - reference_image
 required_outputs:
-  - reference_image_path
-  - consistency_metadata
+  - image_path
+  - identity_notes
+  - safety_check
 supported_aspect_ratios:
   - "9:16"
 max_duration_seconds: 75
 real_generation_enabled: false
+negative_prompt: police uniform, police badge, military uniform, government emblem, real media logo, seductive pose, revealing clothing, readable text, extra people
 safety_constraints:
   - 生成固定栏目主持人与演播室参考图
   - 不复制参考视频品牌标识和版式

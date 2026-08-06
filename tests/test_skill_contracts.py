@@ -29,3 +29,12 @@ def test_news_pipeline_skill_contracts_are_declared():
         "report_path",
         "issues",
     ]
+
+
+def test_target_skill_contracts_expose_provider_and_content_first_fields():
+    contracts = load_contracts(Path("skills/contracts"))
+
+    assert contracts[SkillKind.HOST_IMAGE].provider == "giggle-gpt-image-2"
+    assert contracts[SkillKind.HOST_IMAGE].required_inputs["prompt"] == "string"
+    assert contracts[SkillKind.AVATAR].provider == "giggle-generation-tv-avatar-video"
+    assert contracts[SkillKind.AVATAR].required_inputs["audio_path"] == "string"

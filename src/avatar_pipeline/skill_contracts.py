@@ -27,12 +27,15 @@ class SkillManifest(BaseModel):
     kind: SkillKind
     contract_version: Literal["1.0"]
     display_name: str = Field(min_length=1)
-    required_inputs: list[str] = Field(min_length=1)
+    provider: str | None = Field(default=None, min_length=1)
+    name: str | None = Field(default=None, min_length=1)
+    required_inputs: list[str] | dict[str, str] = Field(min_length=1)
     optional_inputs: list[str] = Field(default_factory=list)
     required_outputs: list[str] = Field(min_length=1)
     supported_aspect_ratios: list[str] = Field(min_length=1)
     max_duration_seconds: int = Field(gt=0)
     real_generation_enabled: Literal[False]
+    negative_prompt: str | None = Field(default=None, min_length=1)
     primary_mode: str | None = None
     fallback_mode: str | None = None
     recommended_audio_format: str | None = None
@@ -41,6 +44,10 @@ class SkillManifest(BaseModel):
 
     @model_validator(mode="after")
     def validate_kind_specific_fields(self) -> "SkillManifest":
+        if isinstance(self.required_inputs, dict):
+            if any(not key or not value for key, value in self.required_inputs.items()):
+                raise ValueError("required input names and constraints must be non-empty")
+            self._validate_content_first_inputs()
         if self.kind is SkillKind.AVATAR:
             if not self.primary_mode or not self.fallback_mode:
                 raise ValueError("avatar contract requires primary_mode and fallback_mode")
@@ -52,6 +59,43 @@ class SkillManifest(BaseModel):
         elif self.recommended_audio_format is not None or self.timestamps_supported is not None:
             raise ValueError("audio fields are only valid for the tts contract")
         return self
+
+    def _validate_content_first_inputs(self) -> None:
+        inputs = self.required_inputs
+        if self.kind is SkillKind.HOST_IMAGE:
+            expected = {
+                "prompt": "string",
+                "negative_prompt": "string",
+                "layout": "seated_studio_anchor",
+                "aspect_ratio": "9:16",
+                "shot": "waist_up_seated",
+            }
+            if inputs != expected:
+                raise ValueError("host image contract must require the seated content-first inputs")
+            if not self.negative_prompt:
+                raise ValueError("host image contract requires negative_prompt")
+            required_terms = {
+                "police uniform",
+                "police badge",
+                "military uniform",
+                "government emblem",
+                "real media logo",
+                "seductive pose",
+                "revealing clothing",
+                "readable text",
+                "extra people",
+            }
+            terms = {term.strip().lower() for term in self.negative_prompt.split(",")}
+            if not required_terms <= terms:
+                raise ValueError("host image negative_prompt is missing required safety terms")
+        elif self.kind is SkillKind.AVATAR:
+            if (
+                inputs.get("audio_path") != "string"
+                or inputs.get("layout") != "seated_studio_anchor"
+            ):
+                raise ValueError("avatar contract must require audio_path and seated layout")
+            if inputs.get("image_path") != "string" and inputs.get("reference_image") != "string":
+                raise ValueError("avatar contract must require image_path or reference_image")
 
 
 def load_skill_manifest(path: Path) -> SkillManifest:
