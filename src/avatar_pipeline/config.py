@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 import yaml
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 
 class StrictModel(BaseModel):
@@ -22,6 +22,17 @@ def validate_non_blank_string(value: str) -> str:
 
 
 NonBlankStr = Annotated[str, AfterValidator(validate_non_blank_string)]
+
+
+def validate_strict_false(value: object) -> bool:
+    """Accept only the literal boolean value False."""
+
+    if type(value) is not bool or value is not False:
+        raise ValueError("must be the boolean value false")
+    return value
+
+
+StrictFalse = Annotated[Literal[False], BeforeValidator(validate_strict_false)]
 
 
 class VideoConfig(StrictModel):
@@ -162,7 +173,7 @@ class HostVisualConfig(StrictModel):
     aspect_ratio: Literal["9:16"]
     shot: Literal["waist_up_seated"]
     background: NonBlankStr
-    subtitle_default: Literal[False]
+    subtitle_default: StrictFalse
 
 
 class AppConfig(StrictModel):
@@ -171,7 +182,7 @@ class AppConfig(StrictModel):
     topic_source: Literal["user_topic", "auto_hot"]
     avatar_source: Literal["user_provided", "saved_host", "agent_designed"]
     host_visual: HostVisualConfig
-    subtitle: Literal[False]
+    subtitle: StrictFalse
     video_structure: Literal["studio_anchor_plus_vertical_news_insert"]
     media_policy: Literal["reliable_original_first_ai_demo_fallback"]
     platforms: list[Literal["douyin", "wechat_channels", "xiaohongshu"]] = Field(min_length=1)

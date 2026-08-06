@@ -111,3 +111,17 @@ def test_config_rejects_whitespace_only_host_visual_fields(field):
 
     with pytest.raises(ValidationError):
         type(load_config(Path("configs/default.yaml"))).model_validate(config)
+
+
+@pytest.mark.parametrize("field", ["subtitle", "host_visual.subtitle_default"])
+@pytest.mark.parametrize("value", [True, 0, 1, "false"])
+def test_config_rejects_non_boolean_false_subtitle_values(field, value):
+    config = load_config(Path("configs/default.yaml")).model_dump()
+    target = config
+    field_parts = field.split(".")
+    for part in field_parts[:-1]:
+        target = target[part]
+    target[field_parts[-1]] = value
+
+    with pytest.raises(ValidationError):
+        type(load_config(Path("configs/default.yaml"))).model_validate(config)
