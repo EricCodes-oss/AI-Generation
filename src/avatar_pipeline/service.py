@@ -111,6 +111,7 @@ class DailyWorkflowService:
         task = self._require_status(day, TaskStatus.HOST_REVIEW)
         if not task.requires_host_approval:
             raise WorkflowPreconditionError("host approval is not required")
+        task.host_profile = task.host_profile.model_copy(update={"is_new": False})
         task.approvals.append(ApprovalRecord(gate="host", actor=actor))
         ensure_transition(task.status, TaskStatus.GENERATING_TTS)
         task.status = TaskStatus.GENERATING_TTS

@@ -295,3 +295,45 @@ def test_manual_changed_saved_host_requires_review(tmp_path, changed_host):
     assert changed.host_profile is not None
     assert changed.host_profile.is_new is True
     assert changed.requires_host_approval is True
+
+
+@pytest.mark.parametrize(
+    "avatar_source",
+    [AvatarSource.USER_PROVIDED, AvatarSource.AGENT_DESIGNED],
+)
+def test_approved_new_host_becomes_reusable_saved_host_on_next_day(tmp_path, avatar_source):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    first_day = date(2026, 8, 6)
+    stage_manual_host_selection(service, first_day)
+    submitted = service.set_host(
+        first_day,
+        HostProfile(
+            id="confirmed-host",
+            display_name="林知遥",
+            reference_image="hosts/confirmed.png",
+            is_new=False,
+        ),
+        avatar_source=avatar_source,
+    )
+
+    assert submitted.status is TaskStatus.HOST_REVIEW
+    assert submitted.requires_host_approval is True
+
+    approved = service.approve_host(first_day, actor="owner")
+
+    assert approved.status is TaskStatus.GENERATING_TTS
+    assert approved.host_profile is not None
+    assert approved.host_profile.is_new is False
+    assert approved.requires_host_approval is False
+
+    next_day = date(2026, 8, 7)
+    stage_manual_host_selection(service, next_day)
+    reused = service.set_host(
+        next_day,
+        approved.host_profile,
+        avatar_source=AvatarSource.SAVED_HOST,
+    )
+
+    assert reused.status is TaskStatus.GENERATING_TTS
+    assert reused.host_profile == approved.host_profile
+    assert reused.requires_host_approval is False
