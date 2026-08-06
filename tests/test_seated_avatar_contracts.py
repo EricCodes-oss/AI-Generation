@@ -37,7 +37,8 @@ def test_host_image_contract_is_content_first_seated_and_negative_prompted():
         "aspect_ratio": "9:16",
         "shot": "waist_up_seated",
     }
-    assert "reference_image" in contract.optional_inputs
+    assert contract.optional_inputs == ["reference_image"]
+    assert contract.supported_aspect_ratios == ["9:16"]
     assert set(contract.negative_prompt.lower().split(", ")) >= REQUIRED_NEGATIVE_TERMS
     assert {"image_path", "identity_notes", "safety_check"} <= set(contract.required_outputs)
 
@@ -54,6 +55,8 @@ def test_avatar_contract_requires_image_audio_and_seated_layout():
         "audio_path": "string",
         "layout": "seated_studio_anchor",
     }
+    assert contract.optional_inputs == ["text"]
+    assert contract.supported_aspect_ratios == ["9:16"]
     assert {"video_path", "task_id"} <= set(contract.required_outputs)
 
 
@@ -179,6 +182,40 @@ def test_seated_avatar_contracts_reject_missing_required_inputs(kind, field):
     contract = load_contracts(CONTRACTS)[kind]
     payload = contract.model_dump()
     del payload["required_inputs"][field]
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("kind", "optional_inputs"),
+    [
+        (SkillKind.HOST_IMAGE, []),
+        (SkillKind.HOST_IMAGE, ["reference_image", "mask"]),
+        (SkillKind.HOST_IMAGE, ["reference_image", "reference_image"]),
+        (SkillKind.AVATAR, []),
+        (SkillKind.AVATAR, ["text", "voice"]),
+        (SkillKind.AVATAR, ["text", "text"]),
+    ],
+)
+def test_target_contracts_reject_optional_input_boundary_drift(kind, optional_inputs):
+    contract = load_contracts(CONTRACTS)[kind]
+    payload = contract.model_dump()
+    payload["optional_inputs"] = optional_inputs
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize("kind", [SkillKind.HOST_IMAGE, SkillKind.AVATAR])
+@pytest.mark.parametrize(
+    "supported_aspect_ratios",
+    [[], ["16:9"], ["9:16", "16:9"], ["9:16", "9:16"]],
+)
+def test_target_contracts_reject_supported_aspect_ratio_drift(kind, supported_aspect_ratios):
+    contract = load_contracts(CONTRACTS)[kind]
+    payload = contract.model_dump()
+    payload["supported_aspect_ratios"] = supported_aspect_ratios
 
     with pytest.raises(ValidationError):
         SkillManifest.model_validate(payload)

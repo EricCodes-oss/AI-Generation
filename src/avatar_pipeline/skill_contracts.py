@@ -86,6 +86,12 @@ class SkillManifest(BaseModel):
         }
         if inputs != expected:
             raise ValueError("host image contract must require the seated content-first inputs")
+        if self.optional_inputs != ["reference_image"]:
+            raise ValueError(
+                "host image contract must allow only reference_image as optional input"
+            )
+        if self.supported_aspect_ratios != ["9:16"]:
+            raise ValueError("host image contract must support only the 9:16 aspect ratio")
         if not self.negative_prompt:
             raise ValueError("host image contract requires negative_prompt")
         required_terms = {
@@ -134,6 +140,10 @@ class SkillManifest(BaseModel):
             raise ValueError(
                 "avatar contract must require image_path, audio_path, and seated layout"
             )
+        if self.optional_inputs != ["text"]:
+            raise ValueError("avatar contract must allow only text as optional input")
+        if self.supported_aspect_ratios != ["9:16"]:
+            raise ValueError("avatar contract must support only the 9:16 aspect ratio")
 
 
 def load_skill_manifest(path: Path) -> SkillManifest:
