@@ -49,3 +49,56 @@ def test_config_rejects_subtitles_or_unknown_video_structure():
     }
     with pytest.raises(ValidationError):
         type(load_config(Path("configs/default.yaml"))).model_validate(config)
+
+
+def test_default_config_declares_seated_anchor_visual_spec():
+    config = load_config(Path("configs/default.yaml"))
+
+    assert config.avatar_layout == "seated_studio_anchor"
+    assert config.host_visual.model_dump() == {
+        "visual_style": "mature_professional_news_anchor",
+        "age_range": "30-36",
+        "outfit": "deep_navy_blazer_ivory_blouse",
+        "aspect_ratio": "9:16",
+        "shot": "waist_up_seated",
+        "background": "fictional_quiet_news_studio",
+        "subtitle_default": False,
+    }
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("visual_style", ""),
+        ("age_range", ""),
+        ("outfit", ""),
+        ("background", ""),
+    ],
+)
+def test_config_rejects_empty_host_visual_fields(field, value):
+    config = load_config(Path("configs/default.yaml")).model_dump()
+    config["host_visual"][field] = value
+
+    with pytest.raises(ValidationError):
+        type(load_config(Path("configs/default.yaml"))).model_validate(config)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("avatar_layout", "standing_studio_anchor"),
+        ("host_visual.aspect_ratio", "16:9"),
+        ("host_visual.shot", "head_and_shoulders"),
+        ("host_visual.subtitle_default", True),
+    ],
+)
+def test_config_rejects_non_v1_host_visual_values(field, value):
+    config = load_config(Path("configs/default.yaml")).model_dump()
+    target = config
+    field_parts = field.split(".")
+    for part in field_parts[:-1]:
+        target = target[part]
+    target[field_parts[-1]] = value
+
+    with pytest.raises(ValidationError):
+        type(load_config(Path("configs/default.yaml"))).model_validate(config)

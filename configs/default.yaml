@@ -1,6 +1,15 @@
 mode: manual
 topic_source: auto_hot
 avatar_source: saved_host
+avatar_layout: seated_studio_anchor
+host_visual:
+  visual_style: mature_professional_news_anchor
+  age_range: 30-36
+  outfit: deep_navy_blazer_ivory_blouse
+  aspect_ratio: "9:16"
+  shot: waist_up_seated
+  background: fictional_quiet_news_studio
+  subtitle_default: false
 subtitle: false
 video_structure: studio_anchor_plus_vertical_news_insert
 media_policy: reliable_original_first_ai_demo_fallback

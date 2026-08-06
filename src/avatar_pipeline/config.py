@@ -144,10 +144,22 @@ class ResearchConfig(StrictModel):
         return self
 
 
+class HostVisualConfig(StrictModel):
+    visual_style: str = Field(min_length=1)
+    age_range: str = Field(min_length=1)
+    outfit: str = Field(min_length=1)
+    aspect_ratio: Literal["9:16"]
+    shot: Literal["waist_up_seated"]
+    background: str = Field(min_length=1)
+    subtitle_default: Literal[False]
+
+
 class AppConfig(StrictModel):
     mode: Literal["managed", "manual"]
+    avatar_layout: Literal["seated_studio_anchor"]
     topic_source: Literal["user_topic", "auto_hot"]
     avatar_source: Literal["user_provided", "saved_host", "agent_designed"]
+    host_visual: HostVisualConfig
     subtitle: Literal[False]
     video_structure: Literal["studio_anchor_plus_vertical_news_insert"]
     media_policy: Literal["reliable_original_first_ai_demo_fallback"]
