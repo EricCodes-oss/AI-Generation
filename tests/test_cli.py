@@ -4,6 +4,8 @@ import subprocess
 import sys
 from datetime import date
 
+import pytest
+
 from avatar_pipeline.models import (
     AvatarSource,
     DailyTask,
@@ -290,6 +292,43 @@ def test_cli_new_user_host_enters_optional_host_review(tmp_path):
     )
     assert host_approved.returncode == 0
     assert json.loads(host_approved.stdout)["status"] == "generating_tts"
+
+
+@pytest.mark.parametrize("include_is_new", [False, True])
+def test_cli_set_host_treats_json_as_user_provided_and_requires_review(tmp_path, include_is_new):
+    day = date(2026, 8, 6)
+    staged = review_task(
+        day,
+        host_profile=host(is_new=False),
+        avatar_source=AvatarSource.SAVED_HOST,
+    ).model_copy(
+        update={
+            "status": TaskStatus.MEDIA_PLANNING,
+            "host_profile": None,
+        }
+    )
+    DailyTaskRepository(tmp_path).create(staged)
+    host_payload = host(image="uploaded-host.png", is_new=False).model_dump(mode="json")
+    if not include_is_new:
+        host_payload.pop("is_new")
+    host_file = tmp_path / "host.json"
+    host_file.write_text(json.dumps(host_payload, ensure_ascii=False), encoding="utf-8")
+
+    result = run_cli(
+        tmp_path,
+        "set-host",
+        "--date",
+        day.isoformat(),
+        "--file",
+        str(host_file),
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "host_review"
+    assert payload["avatar_source"] == "user_provided"
+    assert payload["host_profile"]["is_new"] is True
+    assert payload["requires_host_approval"] is True
 
 
 def test_cli_manual_final_video_approval_is_the_last_user_gate(tmp_path):

@@ -433,7 +433,11 @@ def _dispatch_production(args: argparse.Namespace) -> dict[str, Any]:
                 avatar_source=task.avatar_source,
             )
     elif args.command == "set-host":
-        task = service.set_host(args.date, HostProfile.model_validate(_load_json(args.file)))
+        task = service.set_host(
+            args.date,
+            HostProfile.model_validate(_load_json(args.file)),
+            avatar_source=AvatarSource.USER_PROVIDED,
+        )
     elif args.command == "approve-host":
         task = service.approve_host(args.date, actor=args.actor)
     elif args.command == "mark-tts":
