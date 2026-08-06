@@ -1,9 +1,14 @@
 """Validation for the anchor and inserted-news-media timeline."""
 
-from avatar_pipeline.models import MediaKind, MediaPlan, NewsScript
+from avatar_pipeline.models import AvatarLayout, MediaKind, MediaPlan, NewsScript
 
 
 def validate_media_plan(plan: MediaPlan, script: NewsScript) -> None:
+    if plan.anchor_layout != AvatarLayout.SEATED_STUDIO_ANCHOR:
+        raise ValueError("media plan anchor_layout must be seated_studio_anchor")
+    if not plan.host_id or not plan.host_id.strip():
+        raise ValueError("media plan requires host_id")
+
     segments = sorted(plan.segments, key=lambda item: item.start_seconds)
     if segments[0].start_seconds != 0:
         raise ValueError("media plan must start at zero")
@@ -16,6 +21,11 @@ def validate_media_plan(plan: MediaPlan, script: NewsScript) -> None:
             raise ValueError("media segment references unknown script segment")
         if segment.start_seconds < previous_end:
             raise ValueError("media segments must not overlap")
+        if segment.kind is MediaKind.ANCHOR:
+            if not segment.host_id or not segment.host_id.strip():
+                raise ValueError("anchor segment requires host_id")
+            if segment.host_id != plan.host_id:
+                raise ValueError("anchor segment must reference the declared fixed host")
         if segment.kind is MediaKind.ORIGINAL_NEWS:
             if not segment.source_id or not segment.provenance:
                 raise ValueError("original news media requires source_id and provenance")
@@ -29,5 +39,7 @@ def validate_media_plan(plan: MediaPlan, script: NewsScript) -> None:
     if segments[0].kind is not MediaKind.ANCHOR or segments[-1].kind is not MediaKind.ANCHOR:
         raise ValueError("news video must open and close with the anchor")
     for index in range(len(segments) - 1):
-        if segments[index].kind is segments[index + 1].kind:
+        current_is_anchor = segments[index].kind is MediaKind.ANCHOR
+        next_is_anchor = segments[index + 1].kind is MediaKind.ANCHOR
+        if current_is_anchor == next_is_anchor:
             raise ValueError("anchor and insert segments must alternate")

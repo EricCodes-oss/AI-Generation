@@ -3,6 +3,8 @@ import pytest
 from avatar_pipeline.media import validate_media_plan
 from avatar_pipeline.models import MediaKind, MediaPlan, MediaSegment, NewsScript, ScriptSegment
 
+HOST_ID = "host-main"
+
 
 def script():
     return NewsScript(
@@ -12,66 +14,142 @@ def script():
     )
 
 
+def anchor(segment_id: str, start: float, end: float) -> MediaSegment:
+    return MediaSegment(
+        id=segment_id,
+        kind=MediaKind.ANCHOR,
+        start_seconds=start,
+        end_seconds=end,
+        script_segment_id="s1",
+        host_id=HOST_ID,
+    )
+
+
+def plan(*segments: MediaSegment, duration_seconds: float) -> MediaPlan:
+    return MediaPlan(
+        duration_seconds=duration_seconds,
+        host_id=HOST_ID,
+        segments=list(segments),
+    )
+
+
 def test_original_media_requires_provenance():
-    plan = MediaPlan(
-        duration_seconds=10,
-        segments=[
-            MediaSegment(
-                id="a", kind="anchor", start_seconds=0, end_seconds=5, script_segment_id="s1"
-            ),
-            MediaSegment(
-                id="o",
-                kind=MediaKind.ORIGINAL_NEWS,
-                start_seconds=5,
-                end_seconds=10,
-                script_segment_id="s1",
-                source_id="src",
-            ),
-        ],
-    )
-    with pytest.raises(ValueError, match="provenance"):
-        validate_media_plan(plan, script())
-
-
-def test_ai_demo_requires_disclosure_and_fixed_structure():
-    plan = MediaPlan(
-        duration_seconds=10,
-        segments=[
-            MediaSegment(
-                id="a", kind="anchor", start_seconds=0, end_seconds=5, script_segment_id="s1"
-            ),
-            MediaSegment(
-                id="d",
-                kind=MediaKind.AI_DEMO,
-                start_seconds=5,
-                end_seconds=10,
-                script_segment_id="s1",
-            ),
-        ],
-    )
-    with pytest.raises(ValueError, match="disclosure"):
-        validate_media_plan(plan, script())
-
-
-def test_media_plan_accepts_anchor_insert_anchor_with_source_or_ai_disclosure():
-    plan = MediaPlan(
+    media_plan = plan(
+        anchor("a1", 0, 5),
+        MediaSegment(
+            id="o",
+            kind=MediaKind.ORIGINAL_NEWS,
+            start_seconds=5,
+            end_seconds=10,
+            script_segment_id="s1",
+            source_id="src",
+        ),
+        anchor("a2", 10, 15),
         duration_seconds=15,
-        segments=[
-            MediaSegment(
-                id="a1", kind="anchor", start_seconds=0, end_seconds=5, script_segment_id="s1"
-            ),
-            MediaSegment(
-                id="o",
-                kind=MediaKind.ORIGINAL_NEWS,
-                start_seconds=5,
-                end_seconds=10,
-                script_segment_id="s1",
-                source_id="src",
-                provenance="src 00:01-00:06",
-            ),
-            MediaSegment(
-                id="a2", kind="anchor", start_seconds=10, end_seconds=15, script_segment_id="s1"
-            ),
-        ],
     )
-    validate_media_plan(plan, script())
+
+    with pytest.raises(ValueError, match="provenance"):
+        validate_media_plan(media_plan, script())
+
+
+def test_original_media_source_must_be_declared_by_script():
+    media_plan = plan(
+        anchor("a1", 0, 5),
+        MediaSegment(
+            id="o",
+            kind=MediaKind.ORIGINAL_NEWS,
+            start_seconds=5,
+            end_seconds=10,
+            script_segment_id="s1",
+            source_id="undeclared",
+            provenance="source clip 00:01-00:06",
+        ),
+        anchor("a2", 10, 15),
+        duration_seconds=15,
+    )
+
+    with pytest.raises(ValueError, match="declared by script"):
+        validate_media_plan(media_plan, script())
+
+
+def test_ai_demo_requires_disclosure():
+    media_plan = plan(
+        anchor("a1", 0, 5),
+        MediaSegment(
+            id="d",
+            kind=MediaKind.AI_DEMO,
+            start_seconds=5,
+            end_seconds=10,
+            script_segment_id="s1",
+        ),
+        anchor("a2", 10, 15),
+        duration_seconds=15,
+    )
+
+    with pytest.raises(ValueError, match="disclosure"):
+        validate_media_plan(media_plan, script())
+
+
+def test_media_plan_accepts_anchor_original_news_anchor():
+    media_plan = plan(
+        anchor("a1", 0, 5),
+        MediaSegment(
+            id="o",
+            kind=MediaKind.ORIGINAL_NEWS,
+            start_seconds=5,
+            end_seconds=10,
+            script_segment_id="s1",
+            source_id="src",
+            provenance="src 00:01-00:06",
+        ),
+        anchor("a2", 10, 15),
+        duration_seconds=15,
+    )
+
+    validate_media_plan(media_plan, script())
+
+
+def test_media_plan_accepts_ai_fallback_with_explicit_disclosure():
+    media_plan = plan(
+        anchor("a1", 0, 5),
+        MediaSegment(
+            id="d",
+            kind=MediaKind.AI_DEMO,
+            start_seconds=5,
+            end_seconds=10,
+            script_segment_id="s1",
+            disclosure="AI生成示意画面",
+        ),
+        anchor("a2", 10, 15),
+        duration_seconds=15,
+    )
+
+    validate_media_plan(media_plan, script())
+
+
+def test_media_plan_rejects_non_alternating_timeline():
+    media_plan = plan(
+        anchor("a1", 0, 5),
+        MediaSegment(
+            id="o",
+            kind=MediaKind.ORIGINAL_NEWS,
+            start_seconds=5,
+            end_seconds=10,
+            script_segment_id="s1",
+            source_id="src",
+            provenance="src 00:01-00:06",
+        ),
+        MediaSegment(
+            id="d",
+            kind=MediaKind.AI_DEMO,
+            start_seconds=10,
+            end_seconds=15,
+            script_segment_id="s1",
+            disclosure="AI生成示意画面",
+        ),
+        anchor("a2", 15, 20),
+        duration_seconds=20,
+    )
+
+    with pytest.raises(ValueError, match="alternate"):
+        validate_media_plan(media_plan, script())
