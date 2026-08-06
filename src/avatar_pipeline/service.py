@@ -91,7 +91,11 @@ class DailyWorkflowService:
         task = self._require_status(day, TaskStatus.MEDIA_PLANNING, TaskStatus.HOST_REVIEW)
         existing_host = task.host_profile
         host_changed = existing_host is not None and existing_host != host
-        effective_source = avatar_source or task.avatar_source
+        effective_source = avatar_source
+        if effective_source is None:
+            effective_source = (
+                task.avatar_source if task.mode is RunMode.MANAGED else AvatarSource.USER_PROVIDED
+            )
         task.avatar_source = effective_source
         requires_manual_review = task.mode is RunMode.MANUAL and (
             effective_source is not AvatarSource.SAVED_HOST or host.is_new or host_changed
