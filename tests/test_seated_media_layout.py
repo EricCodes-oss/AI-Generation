@@ -106,3 +106,21 @@ def test_validate_media_plan_rejects_anchor_with_different_host_id():
 
     with pytest.raises(ValueError, match="declared fixed host"):
         validate_media_plan(plan, script())
+
+
+def test_media_plan_requires_explicit_host_id():
+    values = seated_plan().model_dump(exclude={"host_id"})
+
+    with pytest.raises(ValidationError, match="host_id"):
+        MediaPlan.model_validate(values)
+
+
+def test_raw_media_plan_does_not_fill_missing_anchor_host_id():
+    values = seated_plan().model_dump()
+    values["segments"][0].pop("host_id")
+
+    plan = MediaPlan.model_validate(values)
+
+    assert plan.segments[0].host_id is None
+    with pytest.raises(ValueError, match="anchor segment requires host_id"):
+        validate_media_plan(plan, script())

@@ -184,17 +184,14 @@ class MediaPlan(DomainModel):
     duration_seconds: float = Field(gt=0)
     segments: list[MediaSegment] = Field(min_length=3)
     anchor_layout: AvatarLayout = AvatarLayout.SEATED_STUDIO_ANCHOR
-    host_id: str = Field(default="fixed-seated-anchor", min_length=1)
+    host_id: str = Field(min_length=1)
     subtitle_enabled: bool = False
     aspect_ratio: Literal["9:16"] = "9:16"
 
     @model_validator(mode="after")
-    def bind_anchor_segments_to_fixed_host(self) -> "MediaPlan":
+    def validate_host_id(self) -> "MediaPlan":
         if not self.host_id.strip():
             raise ValueError("host_id must not be blank")
-        for segment in self.segments:
-            if segment.kind is MediaKind.ANCHOR and segment.host_id is None:
-                segment.host_id = self.host_id
         return self
 
 
