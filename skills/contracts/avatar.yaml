@@ -1,9 +1,12 @@
 kind: avatar
 contract_version: "1.0"
 display_name: 数字人视频生成
+provider: giggle-generation-tv-avatar-video
+name: giggle-generation-tv-avatar-video
 required_inputs:
-  - image_path
-  - audio_path
+  image_path: string
+  audio_path: string
+  layout: seated_studio_anchor
 optional_inputs:
   - text
 required_outputs:
