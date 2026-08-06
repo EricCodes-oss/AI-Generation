@@ -210,3 +210,59 @@ def test_ai_demo_rejects_disclosure_without_explicit_ai_generation(disclosure):
 
     with pytest.raises(ValueError, match="AI generation disclosure"):
         validate_media_plan(media_plan, script())
+
+
+@pytest.mark.parametrize(
+    ("source_id", "provenance"),
+    [
+        ("   ", "source clip 00:01-00:06"),
+        ("src", "   "),
+        ("   ", "   "),
+    ],
+)
+def test_original_media_rejects_blank_source_or_provenance(source_id, provenance):
+    media_plan = plan(
+        anchor("a1", 0, 5),
+        MediaSegment(
+            id="o",
+            kind=MediaKind.ORIGINAL_NEWS,
+            start_seconds=5,
+            end_seconds=10,
+            script_segment_id="s1",
+            source_id=source_id,
+            provenance=provenance,
+        ),
+        anchor("a2", 10, 15),
+        duration_seconds=15,
+    )
+
+    with pytest.raises(ValueError, match="source_id and provenance"):
+        validate_media_plan(media_plan, script())
+
+
+@pytest.mark.parametrize(
+    "disclosure",
+    [
+        "not AI-generated footage",
+        "non-AI-generated archival footage",
+        "不是AI生成画面",
+        "非人工智能生成画面",
+    ],
+)
+def test_ai_demo_rejects_negated_generation_disclosure(disclosure):
+    media_plan = plan(
+        anchor("a1", 0, 5),
+        MediaSegment(
+            id="d",
+            kind=MediaKind.AI_DEMO,
+            start_seconds=5,
+            end_seconds=10,
+            script_segment_id="s1",
+            disclosure=disclosure,
+        ),
+        anchor("a2", 10, 15),
+        duration_seconds=15,
+    )
+
+    with pytest.raises(ValueError, match="AI generation disclosure"):
+        validate_media_plan(media_plan, script())

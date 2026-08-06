@@ -387,3 +387,38 @@ def test_managed_run_safely_stops_when_resumed_provider_fails(tmp_path):
 
     assert result.status is TaskStatus.STOPPED
     assert result.stop_reason == "managed generation failed: qc unavailable"
+
+
+def test_managed_run_safely_stops_when_host_provider_does_not_match_media_plan(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANAGED)
+    planned_host = HostProfile(
+        id="planned-host",
+        display_name="林知遥",
+        reference_image="planned-host.png",
+        is_new=False,
+    )
+    mismatched_host = HostProfile(
+        id="different-host",
+        display_name="另一位主持人",
+        reference_image="different-host.png",
+        is_new=True,
+    )
+
+    result = run_managed(
+        service,
+        day,
+        [topic("verified")],
+        providers(
+            host_profile=planned_host,
+            host_provider=lambda: mismatched_host,
+            host_source=AvatarSource.AGENT_DESIGNED,
+        ),
+    )
+
+    assert result.status is TaskStatus.STOPPED
+    assert result.host_profile is None
+    assert result.stop_reason == (
+        "managed generation failed: media plan host_id must match the fixed host profile"
+    )
