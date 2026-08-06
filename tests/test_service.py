@@ -48,7 +48,7 @@ def candidate(topic_id="t1", score=94):
     )
 
 
-def script_and_plan():
+def script_and_plan(host_id):
     script = NewsScript(
         title="热点解读",
         spoken_segments=[ScriptSegment(id="seg1", kind="fact", text="事实内容", source_ids=["s1"])],
@@ -56,6 +56,7 @@ def script_and_plan():
     )
     plan = MediaPlan(
         duration_seconds=10,
+        host_id=host_id,
         segments=[
             MediaSegment(
                 id="a1",
@@ -63,6 +64,7 @@ def script_and_plan():
                 start_seconds=0,
                 end_seconds=3,
                 script_segment_id="seg1",
+                host_id=host_id,
             ),
             MediaSegment(
                 id="d1",
@@ -78,6 +80,7 @@ def script_and_plan():
                 start_seconds=7,
                 end_seconds=10,
                 script_segment_id="seg1",
+                host_id=host_id,
             ),
         ],
     )
@@ -89,7 +92,7 @@ def test_manual_mode_has_topic_script_host_and_final_gates(tmp_path):
     day = date(2026, 8, 6)
     service.start_day(day, mode=RunMode.MANUAL)
     service.record_research(day, [candidate()])
-    script, plan = script_and_plan()
+    script, plan = script_and_plan("h1")
     service.record_script_and_media_plan(day, "t1", script, plan)
     service.approve_topic_script(day, actor="owner")
     service.set_host(
@@ -111,7 +114,7 @@ def test_saved_host_skips_host_gate(tmp_path):
     day = date(2026, 8, 6)
     service.start_day(day, mode=RunMode.MANUAL)
     service.record_research(day, [candidate()])
-    script, plan = script_and_plan()
+    script, plan = script_and_plan("h1")
     service.record_script_and_media_plan(day, "t1", script, plan)
     service.approve_topic_script(day, actor="owner")
     service.set_host(
@@ -125,7 +128,7 @@ def test_manual_new_host_stays_in_review_when_updated(tmp_path):
     day = date(2026, 8, 6)
     service.start_day(day, mode=RunMode.MANUAL)
     service.record_research(day, [candidate()])
-    script, plan = script_and_plan()
+    script, plan = script_and_plan("h1")
     service.record_script_and_media_plan(day, "t1", script, plan)
     service.approve_topic_script(day, actor="owner")
     service.set_host(
@@ -147,7 +150,7 @@ def test_manual_changed_host_requires_host_review(tmp_path):
     day = date(2026, 8, 6)
     service.start_day(day, mode=RunMode.MANUAL)
     service.record_research(day, [candidate()])
-    script, plan = script_and_plan()
+    script, plan = script_and_plan("h1")
     service.record_script_and_media_plan(day, "t1", script, plan)
     service.approve_topic_script(day, actor="owner")
     service.set_host(
@@ -169,7 +172,7 @@ def test_managed_mode_has_no_user_approval_records(tmp_path):
     day = date(2026, 8, 6)
     service.start_day(day, mode=RunMode.MANAGED)
     service.record_research(day, [candidate()])
-    script, plan = script_and_plan()
+    script, plan = script_and_plan("h1")
     service.record_script_and_media_plan(day, "t1", script, plan)
     service.set_host(
         day, HostProfile(id="h1", display_name="林知遥", reference_image="host.png", is_new=True)
@@ -185,16 +188,15 @@ def test_unverified_candidate_cannot_be_selected(tmp_path):
     pending = candidate(topic_id="pending")
     pending = pending.model_copy(update={"fact_status": FactStatus.PENDING, "publishable": False})
     service.record_research(day, [pending])
+    script, plan = script_and_plan("h1")
     with pytest.raises(WorkflowPreconditionError, match="no verified hotspot"):
-        service.record_script_and_media_plan(
-            day, "pending", script_and_plan()[0], script_and_plan()[1]
-        )
+        service.record_script_and_media_plan(day, "pending", script, plan)
 
 
-def stage_manual_host_selection(service, day):
+def stage_manual_host_selection(service, day, host_id):
     service.start_day(day, mode=RunMode.MANUAL)
     service.record_research(day, [candidate()])
-    script, plan = script_and_plan()
+    script, plan = script_and_plan(host_id)
     service.record_script_and_media_plan(day, "t1", script, plan)
     service.approve_topic_script(day, actor="owner")
 
@@ -206,7 +208,7 @@ def stage_manual_host_selection(service, day):
 def test_manual_new_source_requires_host_review_even_when_marked_not_new(tmp_path, avatar_source):
     service = DailyWorkflowService(DailyTaskRepository(tmp_path))
     day = date(2026, 8, 6)
-    stage_manual_host_selection(service, day)
+    stage_manual_host_selection(service, day, "h1")
 
     task = service.set_host(
         day,
@@ -229,7 +231,7 @@ def test_manual_new_source_requires_host_review_even_when_marked_not_new(tmp_pat
 def test_manual_saved_host_marked_not_new_is_the_only_direct_reuse_path(tmp_path):
     service = DailyWorkflowService(DailyTaskRepository(tmp_path))
     day = date(2026, 8, 6)
-    stage_manual_host_selection(service, day)
+    stage_manual_host_selection(service, day, "saved")
 
     task = service.set_host(
         day,
@@ -274,7 +276,7 @@ def test_manual_saved_host_marked_not_new_is_the_only_direct_reuse_path(tmp_path
 def test_manual_changed_saved_host_requires_review(tmp_path, changed_host):
     service = DailyWorkflowService(DailyTaskRepository(tmp_path))
     day = date(2026, 8, 6)
-    stage_manual_host_selection(service, day)
+    stage_manual_host_selection(service, day, changed_host.id)
     task = service.get(day)
     task.host_profile = HostProfile(
         id="saved",
@@ -304,7 +306,7 @@ def test_manual_changed_saved_host_requires_review(tmp_path, changed_host):
 def test_approved_new_host_becomes_reusable_saved_host_on_next_day(tmp_path, avatar_source):
     service = DailyWorkflowService(DailyTaskRepository(tmp_path))
     first_day = date(2026, 8, 6)
-    stage_manual_host_selection(service, first_day)
+    stage_manual_host_selection(service, first_day, "confirmed-host")
     submitted = service.set_host(
         first_day,
         HostProfile(
@@ -327,7 +329,7 @@ def test_approved_new_host_becomes_reusable_saved_host_on_next_day(tmp_path, ava
     assert approved.requires_host_approval is False
 
     next_day = date(2026, 8, 7)
-    stage_manual_host_selection(service, next_day)
+    stage_manual_host_selection(service, next_day, approved.host_profile.id)
     reused = service.set_host(
         next_day,
         approved.host_profile,

@@ -48,7 +48,13 @@ def topic(topic_id, status="verified"):
     )
 
 
-def providers(*, host=None, host_source=None, anchor=None):
+def providers(*, host_profile=None, host_provider=None, host_source=None, anchor=None):
+    selected_host = host_profile or HostProfile(
+        id="host",
+        display_name="主持人",
+        reference_image="host.png",
+        is_new=True,
+    )
     script = NewsScript(
         title="标题",
         spoken_segments=[ScriptSegment(id="s1", kind="fact", text="事实", source_ids=["s1"])],
@@ -56,6 +62,7 @@ def providers(*, host=None, host_source=None, anchor=None):
     )
     plan = MediaPlan(
         duration_seconds=15,
+        host_id=selected_host.id,
         segments=[
             MediaSegment(
                 id="a",
@@ -63,6 +70,7 @@ def providers(*, host=None, host_source=None, anchor=None):
                 start_seconds=0,
                 end_seconds=5,
                 script_segment_id="s1",
+                host_id=selected_host.id,
             ),
             MediaSegment(
                 id="d",
@@ -78,18 +86,14 @@ def providers(*, host=None, host_source=None, anchor=None):
                 start_seconds=10,
                 end_seconds=15,
                 script_segment_id="s1",
+                host_id=selected_host.id,
             ),
         ],
     )
     provider_kwargs = {} if host_source is None else {"host_source": host_source}
     return ManagedProviders(
         script=lambda selected: (script, plan),
-        host=host
-        or (
-            lambda: HostProfile(
-                id="host", display_name="主持人", reference_image="host.png", is_new=True
-            )
-        ),
+        host=host_provider or (lambda: selected_host),
         tts=lambda script: "audio.wav",
         anchor=anchor or (lambda host, audio: "anchor.mp4"),
         media=lambda plan: "demo.mp4",
@@ -136,7 +140,8 @@ def test_managed_run_marks_provider_host_source_and_calls_provider_once(tmp_path
         task.day,
         [topic("verified")],
         providers(
-            host=lambda: host_calls.append("host") or host,
+            host_profile=host,
+            host_provider=lambda: host_calls.append("host") or host,
             host_source=AvatarSource.AGENT_DESIGNED,
             anchor=lambda selected_host, audio: anchor_hosts.append(selected_host) or "anchor.mp4",
         ),
@@ -162,7 +167,7 @@ def test_managed_run_reuses_preset_saved_host_without_provider_call(tmp_path):
     )
     service.start_day(day, mode=RunMode.MANAGED)
     service.record_research(day, [topic("verified")])
-    staged_providers = providers()
+    staged_providers = providers(host_profile=saved_host)
     script, plan = staged_providers.script(topic("verified"))
     service.record_script_and_media_plan(day, "verified", script, plan)
     preset = service.get(day)
@@ -172,20 +177,19 @@ def test_managed_run_reuses_preset_saved_host_without_provider_call(tmp_path):
     host_calls = []
     anchor_hosts = []
 
+    unexpected_host = HostProfile(
+        id="unexpected",
+        display_name="不应创建",
+        reference_image="unexpected.png",
+        is_new=True,
+    )
     result = run_managed(
         service,
         day,
         [topic("verified")],
         providers(
-            host=lambda: (
-                host_calls.append("host")
-                or HostProfile(
-                    id="unexpected",
-                    display_name="不应创建",
-                    reference_image="unexpected.png",
-                    is_new=True,
-                )
-            ),
+            host_profile=unexpected_host,
+            host_provider=lambda: host_calls.append("host") or unexpected_host,
             host_source=AvatarSource.AGENT_DESIGNED,
             anchor=lambda selected_host, audio: anchor_hosts.append(selected_host) or "anchor.mp4",
         ),
@@ -219,7 +223,13 @@ def stage_managed_checkpoint(service, day, checkpoint):
         return service.record_research(day, [topic("pending", "pending")])
 
     service.record_research(day, [topic("verified")])
-    staged_providers = providers()
+    checkpoint_host = HostProfile(
+        id="host",
+        display_name="林知遥",
+        reference_image="hosts/saved.png",
+        is_new=False,
+    )
+    staged_providers = providers(host_profile=checkpoint_host)
     script, plan = staged_providers.script(topic("verified"))
     service.record_script_and_media_plan(day, "verified", script, plan)
     if checkpoint is TaskStatus.MEDIA_PLANNING:
@@ -227,12 +237,7 @@ def stage_managed_checkpoint(service, day, checkpoint):
 
     service.set_host(
         day,
-        HostProfile(
-            id="saved-host",
-            display_name="林知遥",
-            reference_image="hosts/saved.png",
-            is_new=False,
-        ),
+        checkpoint_host,
         avatar_source=AvatarSource.SAVED_HOST,
     )
     if checkpoint is TaskStatus.GENERATING_TTS:

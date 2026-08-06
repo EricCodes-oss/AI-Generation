@@ -90,8 +90,15 @@ def test_news_script_and_media_plan_keep_claims_and_disclosures():
         ],
         source_ids=["source-1", "source-2"],
     )
+    host = HostProfile(
+        id="host-main",
+        display_name="林知遥",
+        reference_image="hosts/main.png",
+        is_new=False,
+    )
     plan = MediaPlan(
         duration_seconds=55,
+        host_id=host.id,
         segments=[
             MediaSegment(
                 id="m1",
@@ -99,6 +106,7 @@ def test_news_script_and_media_plan_keep_claims_and_disclosures():
                 start_seconds=0,
                 end_seconds=12,
                 script_segment_id="s1",
+                host_id=host.id,
             ),
             MediaSegment(
                 id="m2",
@@ -115,6 +123,7 @@ def test_news_script_and_media_plan_keep_claims_and_disclosures():
                 start_seconds=25,
                 end_seconds=43,
                 script_segment_id="s2",
+                host_id=host.id,
             ),
             MediaSegment(
                 id="m4",
@@ -126,7 +135,7 @@ def test_news_script_and_media_plan_keep_claims_and_disclosures():
             ),
         ],
     )
-    task = DailyTask(day=date(2026, 8, 6), news_script=script, media_plan=plan)
+    task = DailyTask(day=date(2026, 8, 6), host_profile=host, news_script=script, media_plan=plan)
     assert task.media_plan.segments[-1].disclosure == "AI生成示意画面"
 
 
