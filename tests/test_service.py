@@ -3,6 +3,7 @@ from datetime import date
 import pytest
 
 from avatar_pipeline.models import (
+    AvatarSource,
     FactStatus,
     HostProfile,
     MediaKind,
@@ -188,3 +189,109 @@ def test_unverified_candidate_cannot_be_selected(tmp_path):
         service.record_script_and_media_plan(
             day, "pending", script_and_plan()[0], script_and_plan()[1]
         )
+
+
+def stage_manual_host_selection(service, day):
+    service.start_day(day, mode=RunMode.MANUAL)
+    service.record_research(day, [candidate()])
+    script, plan = script_and_plan()
+    service.record_script_and_media_plan(day, "t1", script, plan)
+    service.approve_topic_script(day, actor="owner")
+
+
+@pytest.mark.parametrize(
+    "avatar_source",
+    [AvatarSource.USER_PROVIDED, AvatarSource.AGENT_DESIGNED],
+)
+def test_manual_new_source_requires_host_review_even_when_marked_not_new(tmp_path, avatar_source):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    stage_manual_host_selection(service, day)
+
+    task = service.set_host(
+        day,
+        HostProfile(
+            id="h1",
+            display_name="林知遥",
+            reference_image="host.png",
+            is_new=False,
+        ),
+        avatar_source=avatar_source,
+    )
+
+    assert task.status is TaskStatus.HOST_REVIEW
+    assert task.avatar_source is avatar_source
+    assert task.host_profile is not None
+    assert task.host_profile.is_new is True
+    assert task.requires_host_approval is True
+
+
+def test_manual_saved_host_marked_not_new_is_the_only_direct_reuse_path(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    stage_manual_host_selection(service, day)
+
+    task = service.set_host(
+        day,
+        HostProfile(
+            id="saved",
+            display_name="林知遥",
+            reference_image="saved.png",
+            is_new=False,
+        ),
+        avatar_source=AvatarSource.SAVED_HOST,
+    )
+
+    assert task.status is TaskStatus.GENERATING_TTS
+    assert task.requires_host_approval is False
+
+
+@pytest.mark.parametrize(
+    "changed_host",
+    [
+        HostProfile(
+            id="saved",
+            display_name="林知遥",
+            reference_image="saved-v2.png",
+            is_new=False,
+        ),
+        HostProfile(
+            id="saved",
+            display_name="林知遥",
+            reference_image="saved.png",
+            version=2,
+            is_new=False,
+        ),
+        HostProfile(
+            id="different-identity",
+            display_name="另一位主持人",
+            reference_image="saved.png",
+            is_new=False,
+        ),
+    ],
+    ids=["reference", "version", "identity"],
+)
+def test_manual_changed_saved_host_requires_review(tmp_path, changed_host):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    stage_manual_host_selection(service, day)
+    task = service.get(day)
+    task.host_profile = HostProfile(
+        id="saved",
+        display_name="林知遥",
+        reference_image="saved.png",
+        is_new=False,
+    )
+    task.avatar_source = AvatarSource.SAVED_HOST
+    service.repository.save(task)
+
+    changed = service.set_host(
+        day,
+        changed_host,
+        avatar_source=AvatarSource.SAVED_HOST,
+    )
+
+    assert changed.status is TaskStatus.HOST_REVIEW
+    assert changed.host_profile is not None
+    assert changed.host_profile.is_new is True
+    assert changed.requires_host_approval is True

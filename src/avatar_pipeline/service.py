@@ -91,11 +91,13 @@ class DailyWorkflowService:
         task = self._require_status(day, TaskStatus.MEDIA_PLANNING, TaskStatus.HOST_REVIEW)
         existing_host = task.host_profile
         host_changed = existing_host is not None and existing_host != host
-        if avatar_source is not None:
-            task.avatar_source = avatar_source
-        if task.mode is RunMode.MANUAL and (host.is_new or host_changed):
-            host.is_new = True
-            task.host_profile = host
+        effective_source = avatar_source or task.avatar_source
+        task.avatar_source = effective_source
+        requires_manual_review = task.mode is RunMode.MANUAL and (
+            effective_source is not AvatarSource.SAVED_HOST or host.is_new or host_changed
+        )
+        if requires_manual_review:
+            task.host_profile = host.model_copy(update={"is_new": True})
             if task.status is TaskStatus.MEDIA_PLANNING:
                 ensure_transition(task.status, TaskStatus.HOST_REVIEW)
                 task.status = TaskStatus.HOST_REVIEW
