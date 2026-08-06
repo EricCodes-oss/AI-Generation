@@ -31,6 +31,10 @@ class AvatarSource(StrEnum):
     AGENT_DESIGNED = "agent_designed"
 
 
+class AvatarLayout(StrEnum):
+    SEATED_STUDIO_ANCHOR = "seated_studio_anchor"
+
+
 class FactStatus(StrEnum):
     VERIFIED = "verified"
     PENDING = "pending"
@@ -127,6 +131,18 @@ class HostProfile(DomainModel):
     visual_style: str = "成熟陪伴型新闻主持人"
     is_new: bool = False
     version: int = Field(default=1, ge=1)
+    layout: AvatarLayout = AvatarLayout.SEATED_STUDIO_ANCHOR
+    age_range: str = "30-36"
+    outfit: str = "deep_navy_blazer_ivory_blouse"
+    mouth_unobstructed: bool = True
+
+    @model_validator(mode="after")
+    def validate_seated_anchor_profile(self) -> "HostProfile":
+        if self.layout is not AvatarLayout.SEATED_STUDIO_ANCHOR:
+            raise ValueError("host profile layout must be seated_studio_anchor")
+        if not self.mouth_unobstructed:
+            raise ValueError("mouth_unobstructed must be true for lip sync")
+        return self
 
 
 class ScriptSegment(DomainModel):
