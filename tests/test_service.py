@@ -363,3 +363,47 @@ def test_approved_new_host_becomes_reusable_saved_host_on_next_day(tmp_path, ava
     assert reused.status is TaskStatus.GENERATING_TTS
     assert reused.host_profile == approved.host_profile
     assert reused.requires_host_approval is False
+
+
+def test_record_script_rejects_media_plan_for_existing_different_host(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANAGED)
+    service.record_research(day, [candidate()])
+    task = service.get(day)
+    task.host_profile = HostProfile(
+        id="actual-host",
+        display_name="林知遥",
+        reference_image="actual-host.png",
+        is_new=False,
+    )
+    service.repository.save(task)
+    script, plan = script_and_plan("planned-host")
+
+    with pytest.raises(WorkflowPreconditionError, match="media plan host_id must match"):
+        service.record_script_and_media_plan(day, "t1", script, plan)
+
+
+def test_set_host_rejects_host_that_does_not_match_media_plan(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 6)
+    service.start_day(day, mode=RunMode.MANAGED)
+    service.record_research(day, [candidate()])
+    script, plan = script_and_plan("planned-host")
+    service.record_script_and_media_plan(day, "t1", script, plan)
+
+    with pytest.raises(WorkflowPreconditionError, match="media plan host_id must match"):
+        service.set_host(
+            day,
+            HostProfile(
+                id="different-host",
+                display_name="另一位主持人",
+                reference_image="different-host.png",
+                is_new=False,
+            ),
+            avatar_source=AvatarSource.AGENT_DESIGNED,
+        )
+
+    unchanged = service.get(day)
+    assert unchanged.status is TaskStatus.MEDIA_PLANNING
+    assert unchanged.host_profile is None

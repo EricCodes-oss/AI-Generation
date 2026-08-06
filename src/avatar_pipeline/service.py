@@ -64,6 +64,8 @@ class DailyWorkflowService:
         if candidate is None or not candidate.publishable:
             raise WorkflowPreconditionError("topic is not a verified hotspot")
         validate_media_plan(media_plan, script)
+        if task.host_profile is not None:
+            self._require_media_host_identity(media_plan, task.host_profile)
         task.selected_topic_id = topic_id
         task.news_script = script
         task.media_plan = media_plan
@@ -89,6 +91,7 @@ class DailyWorkflowService:
         self, day: date, host: HostProfile, *, avatar_source: AvatarSource | None = None
     ) -> DailyTask:
         task = self._require_status(day, TaskStatus.MEDIA_PLANNING, TaskStatus.HOST_REVIEW)
+        self._require_media_host_identity(task.media_plan, host)
         existing_host = task.host_profile
         host_changed = existing_host is not None and existing_host != host
         effective_source = avatar_source
@@ -183,12 +186,19 @@ class DailyWorkflowService:
         return self.repository.save(task)
 
     def _advance_after_media_plan(self, task: DailyTask) -> DailyTask:
+        if task.host_profile is not None:
+            self._require_media_host_identity(task.media_plan, task.host_profile)
         if (
             task.host_profile is not None and not task.host_profile.is_new
         ) or task.mode is RunMode.MANAGED:
             ensure_transition(task.status, TaskStatus.GENERATING_TTS)
             task.status = TaskStatus.GENERATING_TTS
         return self.repository.save(task)
+
+    @staticmethod
+    def _require_media_host_identity(media_plan: MediaPlan | None, host: HostProfile) -> None:
+        if media_plan is None or media_plan.host_id != host.id:
+            raise WorkflowPreconditionError("media plan host_id must match the fixed host profile")
 
     @staticmethod
     def _require_script_plan(task: DailyTask) -> None:
