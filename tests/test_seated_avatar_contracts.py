@@ -16,6 +16,12 @@ REQUIRED_NEGATIVE_TERMS = {
     "revealing clothing",
     "readable text",
     "extra people",
+    "interrogation room",
+    "police station",
+    "prison bars",
+    "wanted poster",
+    "missing person poster",
+    "real public figure resemblance",
 }
 
 
@@ -42,6 +48,7 @@ def test_avatar_contract_requires_image_audio_and_seated_layout():
     assert contract.name == "giggle-generation-tv-avatar-video"
     assert contract.provider == "giggle-generation-tv-avatar-video"
     assert contract.primary_mode == "image_plus_audio"
+    assert contract.fallback_mode == "image_plus_text"
     assert contract.required_inputs == {
         "image_path": "string",
         "audio_path": "string",
@@ -55,6 +62,39 @@ def test_avatar_contract_rejects_reference_image_as_image_path_replacement():
     payload = contract.model_dump()
     del payload["required_inputs"]["image_path"]
     payload["required_inputs"]["reference_image"] = "string"
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+@pytest.mark.parametrize("missing_term", sorted(REQUIRED_NEGATIVE_TERMS))
+def test_host_image_contract_rejects_missing_required_negative_term(missing_term):
+    contract = load_contracts(CONTRACTS)[SkillKind.HOST_IMAGE]
+    payload = contract.model_dump()
+    terms = [
+        term.strip()
+        for term in payload["negative_prompt"].split(",")
+        if term.strip().lower() != missing_term
+    ]
+    payload["negative_prompt"] = ", ".join(terms)
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+def test_avatar_contract_rejects_extra_required_input():
+    contract = load_contracts(CONTRACTS)[SkillKind.AVATAR]
+    payload = contract.model_dump()
+    payload["required_inputs"]["reference_image"] = "string"
+
+    with pytest.raises(ValidationError):
+        SkillManifest.model_validate(payload)
+
+
+def test_avatar_contract_rejects_wrong_fallback_mode():
+    contract = load_contracts(CONTRACTS)[SkillKind.AVATAR]
+    payload = contract.model_dump()
+    payload["fallback_mode"] = "text_only"
 
     with pytest.raises(ValidationError):
         SkillManifest.model_validate(payload)

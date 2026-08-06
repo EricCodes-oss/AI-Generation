@@ -19,7 +19,7 @@ supported_aspect_ratios:
   - "9:16"
 max_duration_seconds: 75
 real_generation_enabled: false
-negative_prompt: police uniform, police badge, military uniform, government emblem, real media logo, seductive pose, revealing clothing, readable text, extra people
+negative_prompt: police uniform, police badge, military uniform, government emblem, real media logo, seductive pose, revealing clothing, readable text, extra people, interrogation room, police station, prison bars, wanted poster, missing person poster, real public figure resemblance
 safety_constraints:
   - 生成固定栏目主持人与演播室参考图
   - 不复制参考视频品牌标识和版式

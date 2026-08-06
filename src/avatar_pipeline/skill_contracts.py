@@ -98,6 +98,12 @@ class SkillManifest(BaseModel):
             "revealing clothing",
             "readable text",
             "extra people",
+            "interrogation room",
+            "police station",
+            "prison bars",
+            "wanted poster",
+            "missing person poster",
+            "real public figure resemblance",
         }
         terms = {term.strip().lower() for term in self.negative_prompt.split(",")}
         if not required_terms <= terms:
@@ -107,9 +113,10 @@ class SkillManifest(BaseModel):
         expected_skill = "giggle-generation-tv-avatar-video"
         if self.provider != expected_skill or self.name != expected_skill:
             raise ValueError("avatar contract requires the giggle-generation-tv-avatar-video skill")
-        if self.primary_mode != "image_plus_audio" or not self.fallback_mode:
+        if self.primary_mode != "image_plus_audio" or self.fallback_mode != "image_plus_text":
             raise ValueError(
-                "avatar contract requires image_plus_audio primary mode and fallback_mode"
+                "avatar contract requires image_plus_audio primary mode and "
+                "image_plus_text fallback mode"
             )
         required_outputs = {"video_path", "task_id"}
         if not required_outputs <= set(self.required_outputs):
@@ -118,11 +125,12 @@ class SkillManifest(BaseModel):
             raise ValueError("avatar contract requires constrained input definitions")
 
         inputs = self.required_inputs
-        if (
-            inputs.get("image_path") != "string"
-            or inputs.get("audio_path") != "string"
-            or inputs.get("layout") != "seated_studio_anchor"
-        ):
+        expected = {
+            "image_path": "string",
+            "audio_path": "string",
+            "layout": "seated_studio_anchor",
+        }
+        if inputs != expected:
             raise ValueError(
                 "avatar contract must require image_path, audio_path, and seated layout"
             )
