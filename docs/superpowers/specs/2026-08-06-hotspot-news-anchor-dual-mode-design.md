@@ -1,8 +1,8 @@
 # 热点新闻数字人主持人双模式视频系统设计
 
-- 文档版本：V2.0
+- 文档版本：V2.1
 - 日期：2026-08-06
-- 状态：用户已确认核心方案，待进入实现计划
+- 状态：核心方案与主持人形象规格已确认，待制定实施计划
 
 ## 1. 产品定位
 
@@ -18,25 +18,25 @@
 
 V1 统一采用：
 
-- 固定演播室主持人；
-- 9:16 竖屏；
+- 固定演播室坐播主持人；
+- 9:16 竖屏，1080×1920 输出；
 - 主持人与竖屏新闻画面交替；
 - 主持人开场、解释、总结；
 - 原始新闻视频优先，AI 示意画面作为补充；
 - 固定栏目包装，热点标题和信息条随选题变化；
 - 默认不添加逐字口播字幕；
-- 不加入户外主持、访谈主持、多主持人或多演播室切换。
+- 不加入站播、户外主持、访谈主持、多主持人或多演播室切换。
 
 建议单条时长为 45–75 秒，按事实复杂度和实际 TTS 时长动态确定，不强制套用固定秒数。
 
 ### 2.1 参考结构
 
 ```text
-主持人：热点钩子与事件概述
+主持人坐播：热点钩子与事件概述
 → 新闻画面：原始片段或 AI 示意画面
-→ 主持人：争议点、背景和影响解释
+→ 主持人坐播：争议点、背景和影响解释
 → 新闻画面：关键细节或辅助说明
-→ 主持人：理性总结
+→ 主持人坐播：理性总结
 ```
 
 主持人不是全程占满画面，而是作为稳定的叙事入口和栏目识别。新闻画面不是装饰，应服务于事实证明或理解辅助。
@@ -94,9 +94,9 @@ malicious      疑似恶意内容，直接排除
 → 风险筛选
 → 自动选择合格选题
 → 新闻解读脚本
-→ 复用或设计固定主持人
+→ 复用或设计固定坐播主持人
 → TTS
-→ 主持人数字人视频
+→ 坐播主持人数字人视频
 → 原始新闻片段截取或 AI 示意画面生成
 → 栏目化合成
 → 自动质检
@@ -123,112 +123,123 @@ malicious      疑似恶意内容，直接排除
    - 首次创建主持人；
    - 用户提供新参考图；
    - 修改人物、演播室或栏目视觉风格。
-   - 已确认的固定主持人后续自动复用，不重复确认。
+   - 已确认的固定坐播主持人后续自动复用，不重复确认。
 3. **确认三：最终视频**
    - 用户审核内容准确性、主持人口播、插播画面、节奏和栏目包装。
 
-不单独确认：TTS 参数、每个 B-roll 候选、普通转场、编码参数、音量、文件命名和过程日志。只有遇到事实、版权、安全或质量阻断时才暂停并说明原因。
+不单独确认：TTS 参数、每个 B-roll 候选、普通转场、编码参数、音量、文件命名和过程日志。
 
-手动模式在“确认一”通过前，不生成高成本的 TTS、数字人或视频任务；在“确认三”通过前，不进入发布。
+## 5. 固定主持人形象规格
 
-## 5. 主持人资产
+### 5.1 角色定位
 
-主持人可由用户提供，或由 Agent 设计。
+> 成熟专业的女性热点新闻主持人，兼具调查记者的冷静判断力和陪伴型表达的亲和感。
 
-### 用户提供
+数字人不是内容主体，只负责稳定播报、解释和串联内容。V1 只制作并复用一套固定的演播室坐播形象，以降低生产复杂度，把资源集中到热点质量、事实核验、脚本表达和插播画面上。
+
+### 5.2 固定人物设定
+
+外貌：
+
+- 成年东亚女性，30–36 岁视觉年龄；
+- 黑色中长直发，自然落在肩部；
+- 五官清晰、知性自然，不使用明显明星脸；
+- 自然清晰的眉形，有神但克制的眼睛；
+- 精致但不过度浓艳的职业妆容；
+- 自然红棕或豆沙色口红；
+- 平和、专注、可信的表情。
+
+服装：
+
+- 深蓝色西装外套；
+- 米白色内搭；
+- 简洁的虚构栏目胸针；
+- 不使用真实媒体 Logo、警徽、肩章或政府标志；
+- 不使用明显性感化、暴露或夸张装饰。
+
+姿态与构图：
+
+- 坐在现代新闻演播室桌后；
+- 腰部以上中景；
+- 正面或轻微三分之一角度；
+- 双肩自然放松；
+- 双手位于桌面下方或自然放在桌面；
+- 面部和嘴部无遮挡；
+- 目光朝向镜头；
+- 适合数字人口型同步；
+- 画面比例 9:16，人物居中。
+
+场景：
+
+- 现代虚构新闻演播室；
+- 深海军蓝、炭灰色和少量冷白色；
+- 抽象世界地图、柔和 LED 屏和简洁新闻桌；
+- 不出现可读新闻标题、真实媒体台标或现实机构标志；
+- 背景保持安静，不能抢过人物和插播画面。
+
+### 5.3 参考图片使用边界
+
+用户提供的参考图片：
 
 ```text
-用户参考图
-→ 适配性检查
-→ 建立一致性参考包
-→ 绑定固定音色与栏目视觉
-→ 后续每日复用
+/Users/liuweidong/Downloads/1785598397341-z5ilw311-1785598399474-1.jpg
 ```
 
-### Agent 设计
+只作为以下视觉参考：黑色长发、东亚女性面部气质、自信镇定的镜头感、写实摄影风格、灰蓝色调和专业灯光。
+
+不复制以下元素：警察制服、警徽和肩章、警察局/审讯室、铁栅栏、WANTED/MISSING PERSON 海报、挑逗表情、性感化摆拍、短裙和高跟鞋造型。
+
+### 5.4 GPT Image 2 正式主图提示词
 
 ```text
-栏目定位
-→ 生成主持人候选
-→ 手动模式仅首次确认
-→ 建立主持人一致性参考包
-→ 后续每日复用
+Create a realistic professional seated female news presenter for a fictional digital news channel.
+
+She is an adult East Asian woman with a visual age of approximately 30 to 36 years old. She has long straight black hair falling naturally over her shoulders, refined but natural facial features, clear expressive eyes, naturally defined eyebrows, subtle professional makeup, and muted rose-red lipstick.
+
+Her expression is calm, intelligent, trustworthy, and composed, with a gentle restrained smile. She looks directly toward the camera like an experienced television journalist explaining important information to the audience. She should appear professional and approachable, not seductive, glamorous, or like a fashion model.
+
+She is seated behind a modern news desk in a fictional broadcast studio. She wears a tailored deep navy-blue blazer over an ivory blouse, with a small simple fictional newsroom pin on the lapel. The outfit is modest, elegant, and suitable for a daily news program.
+
+Composition: vertical 9:16 portrait, medium shot from the waist up, centered presenter, relaxed shoulders, stable seated posture, unobstructed face and mouth area, hands resting naturally below the frame or lightly on the desk, suitable for talking-head digital avatar lip synchronization.
+
+Background: a clean modern fictional news studio with dark navy and charcoal gray tones, subtle abstract world map graphics, soft LED panels, and a minimal news desk. The background should remain visually quiet and should not compete with the presenter.
+
+No police uniform, no police badge, no military uniform, no government emblem, no real media logo, no real public figure resemblance, no revealing clothing, no exaggerated jewelry, no seductive pose, no readable text, no distorted hands, no extra people.
+
+Soft professional broadcast lighting, realistic skin texture, natural proportions, sharp facial details, high-quality realistic photographic style, credible television news atmosphere.
 ```
 
-V1 默认固定：人物、演播室、主机位、基础服装体系和音色。允许在固定范围内小幅调整服装色彩或信息条，但不改变主持人识别度。
+### 5.5 资产策略
 
-主持人定位为“帮助用户把热点讲清楚的人”，不冒充权威专家，不编造个人经历或身份。
+- 只生成一张固定坐播主图作为 V1 主持人资产；
+- 首次在手动模式中需要用户确认，托管模式内部自动生成并检查；
+- 用户提供主持人图片时，优先使用用户资产，并执行清晰度、构图、版权和内容安全检查；
+- 后续每日生产直接复用已确认主图，不重复设计人物；
+- 如需更换人物或演播室，视为一次新的主持人资产变更，需要重新确认。
 
 ## 6. 内容生产流程与 Skill 分工
 
 1. **热点采集**：`opinions-crawler`、`wechat-article-search`
-   - 采集平台热点、搜索趋势、公开新闻资料、视频线索和互动数据；
-   - 遵守平台条款、访问权限、频率和版权要求。
 2. **清洗、去重和聚类**：`material-organizer`
-   - 合并同一事件；保留来源、时间、原文摘要和热度证据。
-3. **事实与风险筛选**：新增 `hotspot-fact-safety-reviewer`
-   - 核查核心事实、来源可靠性、时间有效性、恶意内容和风险等级；
-   - 未达到 `verified` 不得进入候选池。
+3. **事实与风险筛选**：`hotspot-fact-safety-reviewer`
 4. **选题推荐**：`viral-topic-forge`、`wechat-viral-topic`
-   - 输出热点事实、核心冲突、受众关系、解读角度、画面可行性和风险；
-   - 热度、受众匹配、信息完整度和可解释性综合排序。
-5. **新闻解读脚本**：`kidd-script-writing` 作为结构参考，配合新增 `news-anchor-script-writer`
-   - 输出标题、信息条、主持人口播稿、事实/观点边界、插播点、来源和风险提示；
-   - 不直接沿用鸡汤脚本的情绪结构。
-6. **分镜与媒体计划**：`scene-planner` + 新增 `news-media-planner`
-   - 将每一段事实对应到主持人画面、原始新闻片段或 AI 示意画面；
-   - 规划时间轴、来源标识和 AI 示意标识。
+5. **新闻解读脚本**：`kidd-script-writing` 作为结构参考，配合 `news-anchor-script-writer`
+6. **分镜与媒体计划**：`scene-planner` + `news-media-planner`
 7. **TTS**：`giggle-generation-speech`
-   - 使用固定主持人音色，清晰、稳定、略有亲和力；不使用过度抒情的陪伴型语气。
 8. **主持人视频**：`giggle-generation-tv-avatar-video`
-   - 使用固定主持人参考图和批准的 TTS；V1 固定演播室、机位和背景。
-9. **原始视频素材**：新增 `news-footage-clipper`
-   - 对可靠公开来源进行合规记录、截取、裁切和静音；不得移除必要的来源事实，也不得通过剪辑改变原意。
+9. **原始视频素材**：`news-footage-clipper`
 10. **AI 示意画面**：`giggle-seedance2-gen`
-    - 只作为说明、演示或氛围辅助；不伪装成真实新闻现场、真实人物或事实证据。
-11. **视频合成**：新增 `news-anchor-video-compositor`
-    - 主持人与插播画面按脚本时间轴组合；默认不加逐字字幕；保留简洁标题、信息条和必要来源/AI 标识。
-12. **质量检查**：新增 `news-video-quality-control`
-    - 检查事实素材匹配、版权记录、黑帧、冻结帧、音画同步、口型、画面畸变、标题安全区和 AI 标识。
-13. **发布包装**：现有平台包装能力扩展
-    - 为抖音、视频号和小红书生成标题、简介、标签、封面文案和来源说明；视频文件保持同一母版。
+11. **视频合成**：`news-anchor-video-compositor`
+12. **质量检查**：`news-video-quality-control`
+13. **发布包装**：抖音、微信视频号和小红书共用同一母版，分别生成平台文案。
 
-## 7. 媒体选择规则
-
-### 7.1 可靠原始视频优先
-
-若存在来源明确、内容与脚本匹配、可合规使用的公开视频，优先采用。应记录来源、发布时间、截取区间和使用依据。
-
-### 7.2 AI 示意画面补充
-
-没有合适原始视频、原始视频质量不可用、涉及隐私或需要解释抽象概念时，可使用 Seedance 生成。AI 画面不得制造不存在的新闻事实；在社会事件、人物事件、事故、医疗、法律、金融等内容中，必要时在画面或发布说明中标注“AI生成示意画面”。
-
-### 7.3 混合使用
-
-标准顺序可为：
-
-```text
-主持人 → 原始新闻片段 → 主持人解释 → AI 示意画面 → 主持人总结
-```
-
-## 8. 栏目包装与字幕
-
-默认关闭逐字口播字幕，保留：
-
-- 原创栏目名称；
-- 顶部热点标题；
-- 简短争议焦点或信息条；
-- 必要的来源标识；
-- 必要的“AI生成示意画面”标识。
-
-包装不得复制参考视频中的 Logo、栏目名称、字体组合、颜色体系或版式。V1 应建立独立的视觉识别系统。
-
-## 9. 配置与状态
+## 7. 配置与状态
 
 ```yaml
 mode: managed | manual
 topic_source: user_topic | auto_hot
 avatar_source: user_provided | saved_host | agent_designed
+avatar_layout: seated_studio_anchor
 subtitle: false
 video_structure: studio_anchor_plus_vertical_news_insert
 media_policy: reliable_original_first_ai_demo_fallback
@@ -267,12 +278,13 @@ input_received
 
 任何未达到 `verified` 的热点不得进入 `topic_script_review` 之后的状态。托管模式在内部完成等价检查，但不向用户发起确认。
 
-## 10. 验收标准
+## 8. 验收标准
 
 - 两种模式行为清晰且不可混淆；
 - 托管模式不在中间要求人工确认，手动模式只有约定的关键确认点；
 - 未经证实或恶意内容无法进入正式制作；
-- V1 输出固定演播室主持人与竖屏新闻画面插播结构；
+- V1 输出固定坐播演播室主持人与竖屏新闻画面插播结构；
+- 主持人仅保留一套固定坐播形象，不实现站播、户外、访谈和专题多形象；
 - 原始新闻视频优先，AI 画面明确为示意而非事实证据；
 - 默认不添加逐字字幕；
 - 用户提供主持人时可复用，未提供时 Agent 可设计并在手动模式首次确认；
