@@ -14,11 +14,13 @@ import yaml
 
 from avatar_pipeline.config import load_config
 from avatar_pipeline.models import (
+    AvatarSource,
     DailyTask,
     HostProfile,
     MediaPlan,
     NewsScript,
     RunMode,
+    TaskStatus,
     TopicCandidate,
     TopicSource,
     utc_now,
@@ -82,6 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=config.topic_source,
     )
     init_day.add_argument("--input", dest="input_text")
+    init_day.add_argument("--host-image", type=Path)
 
     status = subparsers.add_parser("status")
     _add_date_argument(status)
@@ -169,7 +172,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _task_payload(task: DailyTask) -> dict[str, Any]:
-    return task.model_dump(mode="json")
+    payload = task.model_dump(mode="json")
+    payload["requires_host_approval"] = task.requires_host_approval
+    return payload
 
 
 def _research_payload(run: ResearchRun) -> dict[str, Any]:
@@ -196,6 +201,14 @@ def _health_payload() -> dict[str, Any]:
         },
         "mode": config.mode,
         "topic_source": config.topic_source,
+        "supported_modes": [RunMode.MANAGED.value, RunMode.MANUAL.value],
+        "topic_sources": [TopicSource.USER_TOPIC.value, TopicSource.AUTO_HOT.value],
+        "host_layout": "seated_studio_anchor",
+        "manual_approval_commands": [
+            "approve-topic-script",
+            "approve-host",
+            "approve-final-video",
+        ],
         "subtitle": config.subtitle,
         "video_structure": config.video_structure,
         "media_policy": config.media_policy,
@@ -330,11 +343,60 @@ def _dispatch_research(args: argparse.Namespace) -> dict[str, Any]:
     return _research_payload(run)
 
 
+def _latest_reusable_host(repository: DailyTaskRepository, *, before: date) -> HostProfile | None:
+    for previous_day in reversed(repository.list_days()):
+        if previous_day >= before:
+            continue
+        previous_task = repository.get(previous_day)
+        previous_host = previous_task.host_profile
+        if previous_host is None:
+            continue
+        host_was_approved = any(record.gate == "host" for record in previous_task.approvals)
+        if (
+            previous_task.status is not TaskStatus.READY_TO_PUBLISH
+            and previous_host.is_new
+            and not host_was_approved
+        ):
+            continue
+        return previous_host.model_copy(update={"is_new": False})
+    return None
+
+
+def _initialize_day(
+    repository: DailyTaskRepository, service: DailyWorkflowService, args: argparse.Namespace
+) -> DailyTask:
+    topic_source = TopicSource(args.topic_source)
+    input_text = args.input_text.strip() if args.input_text else None
+    if topic_source is TopicSource.USER_TOPIC and not input_text:
+        raise ValueError("--input is required when --topic-source is user_topic")
+    if args.host_image is not None and not args.host_image.is_file():
+        raise ValueError(f"host image not found: {args.host_image}")
+
+    task = service.start_day(args.date, mode=RunMode(args.mode), input_text=input_text)
+    task.topic_source = topic_source
+    if args.host_image is not None:
+        task.avatar_source = AvatarSource.USER_PROVIDED
+        task.host_profile = HostProfile(
+            id="fixed-seated-anchor",
+            display_name="固定坐播主持人",
+            reference_image=str(args.host_image),
+            is_new=True,
+        )
+    else:
+        saved_host = _latest_reusable_host(repository, before=args.date)
+        if saved_host is not None:
+            task.avatar_source = AvatarSource.SAVED_HOST
+            task.host_profile = saved_host
+        else:
+            task.avatar_source = AvatarSource.AGENT_DESIGNED
+    return repository.save(task)
+
+
 def _dispatch_production(args: argparse.Namespace) -> dict[str, Any]:
     repository = DailyTaskRepository(args.workspace)
     service = DailyWorkflowService(repository)
     if args.command == "init-day":
-        task = service.start_day(args.date, mode=RunMode(args.mode), input_text=args.input_text)
+        task = _initialize_day(repository, service, args)
     elif args.command == "status":
         task = repository.get(args.date)
         payload = _task_payload(task)
@@ -364,6 +426,12 @@ def _dispatch_production(args: argparse.Namespace) -> dict[str, Any]:
         )
     elif args.command == "approve-topic-script":
         task = service.approve_topic_script(args.date, actor=args.actor)
+        if task.status is TaskStatus.MEDIA_PLANNING and task.host_profile is not None:
+            task = service.set_host(
+                args.date,
+                task.host_profile,
+                avatar_source=task.avatar_source,
+            )
     elif args.command == "set-host":
         task = service.set_host(args.date, HostProfile.model_validate(_load_json(args.file)))
     elif args.command == "approve-host":

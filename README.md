@@ -37,36 +37,53 @@ python -m pip install -e '.[dev]'
 
 ## CLI
 
+CLI 为非交互式接口。`init-day` 支持两种内容入口，并默认查找和复用最近已确认的固定坐播主持人；如果没有可复用资产，则标记为由 Agent 设计。也可以通过 `--host-image` 提供新的主持人图片。
+
 ```bash
-# 手动模式：每天一次
-avatar-pipeline init-day \
+# 手动模式：自动找热点；只在三个关键节点确认
+python -m avatar_pipeline.cli --workspace workspace init-day \
   --date 2026-08-06 \
   --mode manual \
   --topic-source auto_hot
 
-# 托管模式：输入主题后自动推进
-avatar-pipeline init-day \
+# 托管模式：指定主题后自动推进，中间不要求人工确认
+python -m avatar_pipeline.cli --workspace workspace init-day \
   --date 2026-08-06 \
   --mode managed \
   --topic-source user_topic \
   --input "年轻人如何看待工作和生活的边界"
 
-avatar-pipeline health
-avatar-pipeline status --date 2026-08-06
-avatar-pipeline import-research --date 2026-08-06 --file research.json
-avatar-pipeline record-plan --date 2026-08-06 --file plan.json
+# 可选：提供新的固定坐播主持人图片
+python -m avatar_pipeline.cli --workspace workspace init-day \
+  --date 2026-08-07 \
+  --mode manual \
+  --topic-source auto_hot \
+  --host-image assets/host.png
+
+python -m avatar_pipeline.cli --workspace workspace health
+python -m avatar_pipeline.cli --workspace workspace status --date 2026-08-06
+```
+
+### 手动模式的三个确认命令
+
+```bash
+# 1. 确认选题、新闻解读脚本和竖屏插播规划
 avatar-pipeline approve-topic-script --date 2026-08-06 --actor owner
-avatar-pipeline set-host --date 2026-08-06 --file host.json
+
+# 2. 仅在首次创建或变更主持人时执行；复用已保存主持人会自动跳过
 avatar-pipeline approve-host --date 2026-08-06 --actor owner
-avatar-pipeline mark-tts --date 2026-08-06 --path audio/main.wav
-avatar-pipeline mark-anchor --date 2026-08-06 --path video/anchor.mp4
-avatar-pipeline mark-media --date 2026-08-06 --path media/insert.mp4
-avatar-pipeline mark-compositing --date 2026-08-06 --path video/master.mp4
-avatar-pipeline record-qc --date 2026-08-06 --passed true --report qc/report.json
+
+# 3. 确认最终母版视频
 avatar-pipeline approve-final-video --date 2026-08-06 --actor owner
 ```
 
-CLI 是非交互式的；手动模式通过显式审批命令推进，不会在小步骤中反复询问。
+TTS、普通转场、音量、编码和单个插播片段不设置用户确认点。`mark-tts`、`mark-anchor`、`mark-media`、`mark-compositing` 和 `record-qc` 是执行器记录生产状态的接口，不是人工审批命令。
+
+`health` 会报告 `managed/manual`、`user_topic/auto_hot`、固定 `seated_studio_anchor` 布局、默认关闭逐字字幕、已配置 Skill 和外部工具状态。
+
+### 发布包装
+
+只有状态为 `ready_to_publish`、具备完整核验来源记录，并且所有 AI 示意画面都有明确披露时，才能建立发布包装。抖音、微信视频号和小红书只生成不同的平台文案，三个平台始终引用同一个 `master_video_path`，不会重复生成三条不同视频。
 
 ## Skill Contracts
 
