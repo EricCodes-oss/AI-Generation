@@ -190,6 +190,21 @@ class HostVisualConfig(StrictModel):
     subtitle_default: StrictFalse
 
 
+class HostIdentityConfig(StrictModel):
+    id: Literal["fixed-seated-anchor"]
+    display_name: Literal["林知遥"]
+    reference_image: Path
+    voice_id: NonBlankStr
+    layout: Literal["seated_studio_anchor"]
+    mouth_unobstructed: Literal[True]
+
+    @model_validator(mode="after")
+    def validate_selected_voice(self) -> HostIdentityConfig:
+        if self.voice_id != DEFAULT_TTS_VOICE_ID:
+            raise ValueError("host identity must use the selected presenter voice")
+        return self
+
+
 class AppConfig(StrictModel):
     mode: Literal["managed", "manual"]
     avatar_layout: Literal["seated_studio_anchor"]
@@ -197,6 +212,7 @@ class AppConfig(StrictModel):
     avatar_source: Literal["user_provided", "saved_host", "agent_designed"]
     tts: TTSConfig
     host_visual: HostVisualConfig
+    host_identity: HostIdentityConfig
     subtitle: StrictFalse
     video_structure: Literal["studio_anchor_plus_vertical_news_insert"]
     media_policy: Literal["reliable_original_first_ai_demo_fallback"]

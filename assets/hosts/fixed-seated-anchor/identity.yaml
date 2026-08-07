@@ -1,0 +1,23 @@
+id: fixed-seated-anchor
+display_name: 林知遥
+role: fictional_mature_companion_news_presenter
+reference_image: assets/hosts/fixed-seated-anchor/master-reference.png
+prompt: assets/hosts/fixed-seated-anchor/prompt.md
+voice_id: "宣传女生Pro:clone_20260806_114837_980375"
+layout: seated_studio_anchor
+visual_style: mature_professional_news_anchor
+age_range: 30-36
+outfit: deep_navy_blazer_ivory_blouse
+aspect_ratio: "9:16"
+shot: waist_up_seated
+background: fictional_quiet_news_studio
+mouth_unobstructed: true
+subtitle_default: false
+identity_policy:
+  reuse_daily: true
+  regenerate_only_on_explicit_user_request: true
+  fictional_person: true
+generation:
+  provider: giggle-gpt-image-2
+  mode: text-to-image
+  task_id: 7604f127-f231-4535-ac60-42e03148bc0f

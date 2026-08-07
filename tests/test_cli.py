@@ -138,7 +138,14 @@ def test_cli_initializes_news_day_with_explicit_mode_and_topic_source(tmp_path):
     assert payload["status"] == "input_received"
     assert payload["mode"] == "manual"
     assert payload["topic_source"] == "auto_hot"
-    assert payload["avatar_source"] == "agent_designed"
+    assert payload["avatar_source"] == "saved_host"
+    assert payload["host_profile"]["id"] == "fixed-seated-anchor"
+    assert payload["host_profile"]["display_name"] == "林知遥"
+    assert payload["host_profile"]["reference_image"] == (
+        "assets/hosts/fixed-seated-anchor/master-reference.png"
+    )
+    assert payload["host_profile"]["voice_id"] == "宣传女生Pro:clone_20260806_114837_980375"
+    assert payload["host_profile"]["is_new"] is False
 
 
 def test_cli_managed_init_requires_configured_runtime_before_creating_task(tmp_path):
@@ -352,8 +359,12 @@ def test_cli_does_not_reuse_unapproved_new_host_from_ready_historical_task(tmp_p
 
     assert created.returncode == 0
     payload = json.loads(created.stdout)
-    assert payload["avatar_source"] == "agent_designed"
-    assert payload["host_profile"] is None
+    assert payload["avatar_source"] == "saved_host"
+    assert payload["host_profile"]["id"] == "fixed-seated-anchor"
+    assert payload["host_profile"]["reference_image"] == (
+        "assets/hosts/fixed-seated-anchor/master-reference.png"
+    )
+    assert payload["host_profile"]["is_new"] is False
 
 
 def test_cli_saved_host_skips_optional_host_approval_after_topic_script(tmp_path):
@@ -479,6 +490,14 @@ def test_cli_health_reports_dual_mode_fixed_anchor_policy_and_public_gates(tmp_p
     assert payload["supported_modes"] == ["managed", "manual"]
     assert payload["topic_sources"] == ["user_topic", "auto_hot"]
     assert payload["host_layout"] == "seated_studio_anchor"
+    assert payload["host_identity"] == {
+        "id": "fixed-seated-anchor",
+        "display_name": "林知遥",
+        "reference_image": "assets/hosts/fixed-seated-anchor/master-reference.png",
+        "voice_id": "宣传女生Pro:clone_20260806_114837_980375",
+        "layout": "seated_studio_anchor",
+        "mouth_unobstructed": True,
+    }
     assert payload["tts"] == {
         "voice_id": "宣传女生Pro:clone_20260806_114837_980375",
         "emotion": "neutral",

@@ -209,7 +209,8 @@ def _health_payload() -> dict[str, Any]:
         "topic_source": config.topic_source,
         "supported_modes": [RunMode.MANAGED.value, RunMode.MANUAL.value],
         "topic_sources": [TopicSource.USER_TOPIC.value, TopicSource.AUTO_HOT.value],
-        "host_layout": "seated_studio_anchor",
+        "host_layout": config.host_identity.layout,
+        "host_identity": config.host_identity.model_dump(mode="json"),
         "tts": config.tts.model_dump(mode="json"),
         "manual_approval_commands": [
             "approve-topic-script",
@@ -368,6 +369,19 @@ def _latest_reusable_host(repository: DailyTaskRepository, *, before: date) -> H
     return None
 
 
+def _configured_fixed_host() -> HostProfile:
+    config = load_config(_DEFAULT_CONFIG)
+    return HostProfile(
+        id=config.host_identity.id,
+        display_name=config.host_identity.display_name,
+        reference_image=str(config.host_identity.reference_image),
+        voice_id=config.host_identity.voice_id,
+        layout=config.host_identity.layout,
+        mouth_unobstructed=config.host_identity.mouth_unobstructed,
+        is_new=False,
+    )
+
+
 def _initialize_day(
     repository: DailyTaskRepository, service: DailyWorkflowService, args: argparse.Namespace
 ) -> DailyTask:
@@ -390,11 +404,8 @@ def _initialize_day(
         )
     else:
         saved_host = _latest_reusable_host(repository, before=args.date)
-        if saved_host is not None:
-            task.avatar_source = AvatarSource.SAVED_HOST
-            task.host_profile = saved_host
-        else:
-            task.avatar_source = AvatarSource.AGENT_DESIGNED
+        task.avatar_source = AvatarSource.SAVED_HOST
+        task.host_profile = saved_host or _configured_fixed_host()
     return repository.save(task)
 
 

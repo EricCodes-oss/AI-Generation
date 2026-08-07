@@ -37,7 +37,7 @@ python -m pip install -e '.[dev]'
 
 ## CLI
 
-CLI 为非交互式接口。`init-day` 支持两种内容入口，并默认查找和复用最近已确认的固定坐播主持人；如果没有可复用资产，则标记为由 Agent 设计。也可以通过 `--host-image` 提供新的主持人图片。
+CLI 为非交互式接口。`init-day` 支持两种内容入口，并默认复用固定坐播主持人“林知遥”（母图：`assets/hosts/fixed-seated-anchor/master-reference.png`）。如果存在最近已确认的主持人资产则优先复用；也可以通过 `--host-image` 提供新形象。只有用户明确要求改版时，才重新生成默认主持人。
 
 ```bash
 # 手动模式：自动找热点；只在三个关键节点确认

@@ -14,6 +14,13 @@ host_visual:
   shot: waist_up_seated
   background: fictional_quiet_news_studio
   subtitle_default: false
+host_identity:
+  id: fixed-seated-anchor
+  display_name: 林知遥
+  reference_image: assets/hosts/fixed-seated-anchor/master-reference.png
+  voice_id: "宣传女生Pro:clone_20260806_114837_980375"
+  layout: seated_studio_anchor
+  mouth_unobstructed: true
 subtitle: false
 video_structure: studio_anchor_plus_vertical_news_insert
 media_policy: reliable_original_first_ai_demo_fallback

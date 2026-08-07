@@ -139,3 +139,22 @@ def test_config_rejects_other_presenter_voice():
 
     with pytest.raises(ValidationError, match="selected presenter voice"):
         type(load_config(Path("configs/default.yaml"))).model_validate(config)
+
+
+def test_default_config_locks_fixed_presenter_identity_and_master_reference():
+    config = load_config(Path("configs/default.yaml"))
+
+    assert config.host_identity.id == "fixed-seated-anchor"
+    assert config.host_identity.display_name == "林知遥"
+    assert config.host_identity.reference_image == Path(
+        "assets/hosts/fixed-seated-anchor/master-reference.png"
+    )
+    assert config.host_identity.voice_id == "宣传女生Pro:clone_20260806_114837_980375"
+    assert config.host_identity.layout == "seated_studio_anchor"
+    assert config.host_identity.mouth_unobstructed is True
+
+
+def test_default_presenter_master_reference_exists():
+    config = load_config(Path("configs/default.yaml"))
+
+    assert config.host_identity.reference_image.is_file()
