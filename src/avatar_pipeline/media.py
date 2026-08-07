@@ -1,7 +1,9 @@
 """Validation for the anchor and inserted-news-media timeline."""
 
 import re
+from collections.abc import Mapping
 
+from avatar_pipeline.media_clearance import MediaEvidence, require_production_media_clearance
 from avatar_pipeline.models import AvatarLayout, MediaKind, MediaPlan, NewsScript
 
 _NEGATED_AI_GENERATION_PATTERN = re.compile(
@@ -26,7 +28,12 @@ def _has_explicit_ai_generation_disclosure(disclosure: str | None) -> bool:
     return _EXPLICIT_AI_GENERATION_PATTERN.search(disclosure) is not None
 
 
-def validate_media_plan(plan: MediaPlan, script: NewsScript) -> None:
+def validate_media_plan(
+    plan: MediaPlan,
+    script: NewsScript,
+    *,
+    media_evidence: Mapping[str, MediaEvidence] | None = None,
+) -> None:
     if plan.anchor_layout != AvatarLayout.SEATED_STUDIO_ANCHOR:
         raise ValueError("media plan anchor_layout must be seated_studio_anchor")
     if not plan.host_id or not plan.host_id.strip():
@@ -59,6 +66,10 @@ def validate_media_plan(plan: MediaPlan, script: NewsScript) -> None:
                 raise ValueError("original news media requires source_id and provenance")
             if segment.source_id not in script.source_ids:
                 raise ValueError("original media source must be declared by script")
+            if segment.asset_path:
+                if media_evidence is None or segment.asset_path not in media_evidence:
+                    raise ValueError("acquired original media requires clearance metadata")
+                require_production_media_clearance(media_evidence[segment.asset_path])
         if segment.kind is MediaKind.AI_DEMO and not _has_explicit_ai_generation_disclosure(
             segment.disclosure
         ):
