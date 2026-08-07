@@ -88,3 +88,21 @@ The verifier in this project performs only static/local prerequisite checks. It 
 With explicit operator authorization to prepare the collection environment, the project installed `@jackwener/opencli@1.8.6` under `.local/tools/opencli` using `npm install --ignore-scripts`. No global npm package, shell completion, OpenCLI daemon, browser session, login, or platform command was started. The package reports Apache-2.0, its npm integrity is pinned in `skills/third_party.lock.yaml`, and an npm production dependency audit against `registry.npmjs.org` reported zero known vulnerabilities on 2026-08-04.
 
 The matching official GitHub release `v1.8.6` supplied `opencli-extension-v1.0.22.zip`. The archive was downloaded to `.local/tools/opencli-extension`, verified against the release digest `9d2e3d053948beab5d97124aa79b1532d2122e33e461eca56cac113afd33207a`, and extracted locally. The manifest requests `debugger`, `tabs`, `cookies`, `activeTab`, `alarms`, `storage`, `tabGroups`, `downloads`, and `<all_urls>` access. Because this is broad browser/account access, loading or enabling the extension remains an explicit manual operator action. Platform login state also remains unverified, and `real_calls_enabled` remains `false`.
+
+## 2026-08-07 Chrome read-only platform capability probe
+
+With the operator's existing authorization, a minimal read-only Chrome probe was performed without exporting or reading browser credentials and without liking, commenting, collecting, following, messaging, publishing, or modifying any account.
+
+Observed platform states:
+
+- **Douyin:** `ready` for the public `https://www.douyin.com/hot` page. The rendered page exposed a current hot list, topic links, visible heat values, hot videos, visible engagement values, author display names, and relative/date labels. This proves a viable read-only public-page collection surface; it does not prove general keyword search, comments, or arbitrary private creator data.
+- **Xiaohongshu:** `ready` for the authenticated public Explore feed at `https://www.xiaohongshu.com/explore`. The rendered page exposed note links, note titles, author display names, and visible engagement values. This proves a viable read-only feed surface; recommendation bias and missing publication times must remain explicit limitations.
+- **WeChat Channels / 视频号:** `login_required` for `https://channels.weixin.qq.com/platform`, which redirected to the Video Accounts Assistant login page and displayed a login control. No stable public hot-list or keyword-search surface was verified. Until the user signs in and a safe read-only search surface is proven, production collection must use `manual_assist_required` for Video Accounts evidence rather than substituting Official Account articles.
+
+No CAPTCHA, challenge, rate-limit page, interaction, platform-media download, Cookie/Token/password access, or credential export occurred. The probe created no repository data. Because the pinned `opinions-crawler` runtime/OpenCLI adapter itself was not verified end-to-end and Video Accounts remains unavailable, `real_calls_enabled` stays `false`.
+
+## Current repository-state correction — 2026-08-07
+
+A filesystem recheck of the active worktree and repository root found no `.local/third-party-skills/opinions-crawler`, `.local/bin/opencli`, OpenCLI runtime package, or unpacked Browser Bridge files. The 2026-08-04 installation notes above are retained as historical records, but they do not describe the current checkout. `skills/third_party.lock.yaml` therefore marks this Skill `installed: false`, its package capability probe `missing`, and `real_calls_enabled: false`.
+
+The separate Chrome page probe remains useful as an Agent-controlled browser capability, not as proof that this pinned third-party Skill or its OpenCLI adapter is installed or enabled.

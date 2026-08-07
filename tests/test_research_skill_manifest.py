@@ -25,12 +25,13 @@ def test_research_skill_lock_pins_required_collectors():
     assert set(skills) == {"opinions-crawler", "wechat-article-search"}
     for skill in skills.values():
         assert len(skill["commit"]) == 40
-        assert skill["installed"] is True
+        assert skill["installed"] is False
         assert skill["real_calls_enabled"] is False
         assert (PROJECT_ROOT / skill["audit_path"]).is_file()
         assert skill["install_path"].startswith(".local/third-party-skills/")
         assert len(skill["source_tree_sha256"]) == 64
-        assert skill["capability_probe"]["status"] in {"ready", "missing", "skipped"}
+        assert skill["capability_probe"]["status"] == "missing"
+        assert skill["capability_probe"]["observed_at"] == "2026-08-07"
 
     opinions = skills["opinions-crawler"]
     wechat = skills["wechat-article-search"]

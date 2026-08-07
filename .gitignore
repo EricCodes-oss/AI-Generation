@@ -12,3 +12,4 @@ workspace/
 htmlcov/
 
 .local/
+runs/

@@ -130,3 +130,20 @@ git diff --check
 ### 端到端验收
 
 `tests/test_end_to_end_news_workflow.py` 使用本地 fake providers 验证完整双模式生产链路，不调用真实生成额度。验收覆盖：仅允许已核验热点进入制作、固定坐播主持人与竖屏插播交替、原始新闻素材优先与 Seedance 披露式回退、默认无逐字字幕、托管模式无人工审批、手动模式严格执行热点、脚本、成片三个确认点、断点恢复不重复生成，以及三平台共用同一通过质检的母版。
+
+## 真实三平台热点采集
+
+Phase 2A 从抖音、微信视频号、小红书读取公开热点证据。Chrome 登录态只由 Agent 使用，采集过程只读；禁止保存 Cookie、Token、密码，也禁止点赞、评论、收藏、关注、私信或发布。默认检索最近 72 小时，不足 3 个合格候选时扩展到最近 7 天；不可见指标保持 `null/unknown`。微信公众号可作核验补充，但公众号不能冒充视频号。
+
+```bash
+avatar-pipeline --workspace workspace research-import-browser \
+  --date 2026-08-07 --file runs/2026-08-07/browser-collection.json
+avatar-pipeline --workspace workspace research-rank-hotspots \
+  --date 2026-08-07 --authority-file runs/2026-08-07/authority-evidence.json
+avatar-pipeline --workspace workspace research-hotspot-report --date 2026-08-07
+avatar-pipeline --workspace workspace research-submit-top3 --date 2026-08-07
+```
+
+带水印、Logo、账号标识、二维码或授权不明素材不得进入成片，禁止去水印。没有合规授权画面时，回退为 Seedance 2.0 非复刻式 AI 示意画面。完整规则见 `docs/operations/real-three-platform-collection-runbook.md`。
+
+2026-08-07 的最小只读探测结果：抖音公共热点页为 `ready`；小红书已登录 Explore 页为 `ready`；微信视频号仍为 `login_required`，在登录并验证安全读取入口前按 `manual_assist_required` 处理。该探测不代表第三方采集运行时已经启用，`real_calls_enabled` 仍为 `false`。

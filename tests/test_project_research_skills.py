@@ -10,11 +10,9 @@ SKILL_NAMES = (
     "channels-hotspot-research",
     "hotspot-source-recorder",
     "audience-comment-insight",
+    "hotspot-ranking-review",
 )
 
-# Baseline pressure failures observed when a general-purpose agent has no project Skill:
-# it collapses research into a generic “心灵鸡汤” query, hides unavailable platforms,
-# drops provenance, copies comments or infers demographics, and advances straight to Top 3.
 PRESSURE_GUARDRAILS = {
     "hotspot-query-planner": (
         "exactly 9 core query groups",
@@ -37,8 +35,17 @@ PRESSURE_GUARDRAILS = {
         "never infer exact demographics",
         "implicit need",
     ),
+    "hotspot-ranking-review": (
+        "72 hours",
+        "7 days",
+        "at least two target platforms",
+        "official or authoritative verification",
+        "do not estimate",
+        "watermark",
+    ),
     "daily-hotspot-research": (
-        "do not produce Top 3",
+        "Top 3",
+        "HOTSPOT_REVIEW",
         "do not write scripts",
         "wait for explicit user approval",
     ),
@@ -77,22 +84,22 @@ def test_pressure_scenarios_are_explicitly_prevented():
             assert phrase.casefold() in body.casefold(), f"{name} lacks guardrail: {phrase}"
 
 
-def test_research_orchestrator_is_allowlisted_and_stops_before_ranking_or_scripts():
+def test_research_orchestrator_is_allowlisted_and_stops_at_hotspot_review():
     _, body = _read_skill("daily-hotspot-research")
     allowed = {
         "hotspot-query-planner",
         "channels-hotspot-research",
         "hotspot-source-recorder",
         "audience-comment-insight",
+        "hotspot-ranking-review",
         "opinions-crawler",
         "wechat-article-search",
     }
     for skill_name in allowed:
         assert f"`{skill_name}`" in body
 
-    assert "Only invoke the six Skills listed above" in body
-    assert "30–40 valid sources" in body
-    assert "5–8 A-grade sources" in body
-    assert "20–40 effective comments" in body
+    assert "Only invoke the seven Skills listed above" in body
     assert "父母养老与照护压力" in body
     assert "approve, revise, redo, return, or hold" in body
+    assert "do not write scripts" in body.casefold()
+    assert "wait for explicit user approval" in body
