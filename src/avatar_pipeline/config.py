@@ -79,8 +79,8 @@ class ContentConfig(StrictModel):
 
 
 class ApprovalPolicy(StrictModel):
-    topic_script: Literal["auto", "user_confirm"]
-    avatar: Literal["auto", "confirm_if_new_or_changed"]
+    hotspot: Literal["auto", "user_confirm"]
+    script: Literal["auto", "user_confirm"]
     final_video: Literal["final_only", "user_confirm"]
 
 

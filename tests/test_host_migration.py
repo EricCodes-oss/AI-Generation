@@ -89,7 +89,7 @@ def test_migrate_task_payload_migrates_nested_host_even_for_schema_version_two()
 
     migrated = migrate_task_payload(payload)
 
-    assert migrated["schema_version"] == 2
+    assert migrated["schema_version"] == 3
     assert migrated["host_profile"]["layout"] == "seated_studio_anchor"
     assert migrated["host_profile"]["is_new"] is True
     assert migrated["host_profile"]["reference_image"] == LEGACY_IDENTITY["reference_image"]

@@ -18,7 +18,8 @@ def test_default_config_locks_news_anchor_v1():
     assert config.video_structure == "studio_anchor_plus_vertical_news_insert"
     assert config.media_policy == "reliable_original_first_ai_demo_fallback"
     assert config.platforms == ["douyin", "wechat_channels", "xiaohongshu"]
-    assert config.approval_policy.manual.topic_script == "user_confirm"
+    assert config.approval_policy.manual.hotspot == "user_confirm"
+    assert config.approval_policy.manual.script == "user_confirm"
 
 
 def test_config_rejects_subtitles_or_unknown_video_structure():
@@ -38,10 +39,10 @@ def test_config_rejects_subtitles_or_unknown_video_structure():
         },
         "content": {"pillars": [{"slug": "workplace_life", "display_name": "职场生活"}]},
         "approval_policy": {
-            "managed": {"topic_script": "auto", "avatar": "auto", "final_video": "final_only"},
+            "managed": {"hotspot": "auto", "script": "auto", "final_video": "final_only"},
             "manual": {
-                "topic_script": "user_confirm",
-                "avatar": "confirm_if_new_or_changed",
+                "hotspot": "user_confirm",
+                "script": "user_confirm",
                 "final_video": "user_confirm",
             },
         },

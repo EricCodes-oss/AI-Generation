@@ -103,17 +103,18 @@ def build_parser() -> argparse.ArgumentParser:
     _add_date_argument(record_plan)
     record_plan.add_argument("--file", required=True, type=Path)
 
-    approve_plan = subparsers.add_parser("approve-topic-script")
-    _add_date_argument(approve_plan)
-    approve_plan.add_argument("--actor", required=True)
+    approve_hotspot = subparsers.add_parser("approve-hotspot")
+    _add_date_argument(approve_hotspot)
+    approve_hotspot.add_argument("--topic-id", required=True)
+    approve_hotspot.add_argument("--actor", required=True)
+
+    approve_script = subparsers.add_parser("approve-script")
+    _add_date_argument(approve_script)
+    approve_script.add_argument("--actor", required=True)
 
     set_host = subparsers.add_parser("set-host")
     _add_date_argument(set_host)
     set_host.add_argument("--file", required=True, type=Path)
-
-    approve_host = subparsers.add_parser("approve-host")
-    _add_date_argument(approve_host)
-    approve_host.add_argument("--actor", required=True)
 
     for command in ("mark-tts", "mark-anchor", "mark-media", "mark-compositing"):
         command_parser = subparsers.add_parser(command)
@@ -213,8 +214,8 @@ def _health_payload() -> dict[str, Any]:
         "host_identity": config.host_identity.model_dump(mode="json"),
         "tts": config.tts.model_dump(mode="json"),
         "manual_approval_commands": [
-            "approve-topic-script",
-            "approve-host",
+            "approve-hotspot",
+            "approve-script",
             "approve-final-video",
         ],
         "subtitle": config.subtitle,
@@ -359,11 +360,10 @@ def _latest_reusable_host(repository: DailyTaskRepository, *, before: date) -> H
         previous_host = previous_task.host_profile
         if previous_host is None:
             continue
-        host_was_approved = any(record.gate == "host" for record in previous_task.approvals)
-        is_trusted_saved_host = (
-            previous_task.avatar_source is AvatarSource.SAVED_HOST and not previous_host.is_new
-        )
-        if not host_was_approved and not is_trusted_saved_host:
+        is_reusable = (
+            previous_task.status is TaskStatus.READY_TO_PUBLISH and not previous_host.is_new
+        ) or (previous_task.avatar_source is AvatarSource.SAVED_HOST and not previous_host.is_new)
+        if not is_reusable:
             continue
         return previous_host.model_copy(update={"is_new": False, "voice_id": DEFAULT_TTS_VOICE_ID})
     return None
@@ -464,22 +464,20 @@ def _dispatch_production(args: argparse.Namespace) -> dict[str, Any]:
             NewsScript.model_validate(payload["script"]),
             MediaPlan.model_validate(payload["media_plan"]),
         )
-    elif args.command == "approve-topic-script":
-        task = service.approve_topic_script(args.date, actor=args.actor)
-        if task.status is TaskStatus.MEDIA_PLANNING and task.host_profile is not None:
-            task = service.set_host(
-                args.date,
-                task.host_profile,
-                avatar_source=task.avatar_source,
-            )
+    elif args.command == "approve-hotspot":
+        task = service.approve_hotspot(
+            args.date,
+            topic_id=args.topic_id,
+            actor=args.actor,
+        )
+    elif args.command == "approve-script":
+        task = service.approve_script(args.date, actor=args.actor)
     elif args.command == "set-host":
         task = service.set_host(
             args.date,
             HostProfile.model_validate(_load_json(args.file)),
             avatar_source=AvatarSource.USER_PROVIDED,
         )
-    elif args.command == "approve-host":
-        task = service.approve_host(args.date, actor=args.actor)
     elif args.command == "mark-tts":
         task = service.mark_tts_ready(args.date, artifact_path=args.path)
     elif args.command == "mark-anchor":

@@ -7,12 +7,15 @@ from pydantic import ValidationError
 
 from avatar_pipeline.models import AvatarLayout, HostProfile
 
-_STATUS_MAP = {
+_LEGACY_STATUS_MAP = {
     "created": "input_received",
-    "researched": "fact_screened",
-    "topic_approved": "topic_script_review",
-    "script_draft": "topic_script_review",
+    "researched": "hotspot_review",
+    "fact_screened": "hotspot_review",
+    "topic_approved": "script_review",
+    "script_draft": "script_review",
+    "topic_script_review": "script_review",
     "script_approved": "media_planning",
+    "host_review": "media_planning",
     "audio_ready": "generating_anchor",
     "assets_generating": "acquiring_or_generating_media",
     "compositing": "compositing",
@@ -34,12 +37,7 @@ class MigrationError(ValueError):
 
 
 def migrate_host_profile(payload: Mapping[str, Any]) -> HostProfile:
-    """Validate a persisted host and fill only fixed seated-anchor defaults.
-
-    A profile without a historical layout cannot be considered an already
-    approved fixed seated host, so migration marks it as new for host review.
-    Explicit non-seated or unknown layouts are rejected instead of normalized.
-    """
+    """Validate a persisted host and fill only fixed seated-anchor defaults."""
 
     if not isinstance(payload, Mapping):
         raise MigrationError("cannot migrate host profile: expected an object")
@@ -62,13 +60,36 @@ def migrate_host_profile(payload: Mapping[str, Any]) -> HostProfile:
         raise MigrationError(f"cannot migrate host profile safely: {error}") from error
 
 
+def _migrate_approvals(result: dict[str, Any]) -> None:
+    migrated: list[dict[str, Any]] = []
+    for raw in result.get("approvals", []):
+        if not isinstance(raw, Mapping):
+            continue
+        gate = raw.get("gate")
+        if gate == "topic_script":
+            hotspot = dict(raw)
+            hotspot["gate"] = "hotspot"
+            script = dict(raw)
+            script["gate"] = "script"
+            migrated.extend((hotspot, script))
+        elif gate in {"hotspot", "script", "final_video"}:
+            migrated.append(dict(raw))
+    result["approvals"] = migrated
+
+
 def migrate_task_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Migrate task structure and always migrate an embedded host profile."""
 
     result = dict(payload)
-    if result.get("schema_version", 1) < 2:
-        result["schema_version"] = 2
-        result["status"] = _STATUS_MAP.get(result.get("status", "created"), "input_received")
+    schema_version = result.get("schema_version", 1)
+    if schema_version < 3:
+        mode = result.get("mode", "manual")
+        old_status = result.get("status", "created")
+        mapped_status = _LEGACY_STATUS_MAP.get(old_status, old_status)
+        if old_status == "fact_screened" and mode == "managed":
+            mapped_status = "scripting"
+        result["schema_version"] = 3
+        result["status"] = mapped_status
         result.setdefault("mode", "manual")
         result.setdefault("topic_source", "auto_hot")
         result.setdefault("avatar_source", "saved_host")
@@ -85,6 +106,7 @@ def migrate_task_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
         result.setdefault("platforms", ["douyin", "wechat_channels", "xiaohongshu"])
         result.setdefault("approvals", [])
         result.setdefault("artifacts", [])
+        _migrate_approvals(result)
 
     result.setdefault("host_profile", None)
     host_profile = result["host_profile"]

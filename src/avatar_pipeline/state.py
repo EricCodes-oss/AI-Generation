@@ -9,15 +9,18 @@ class InvalidTransitionError(ValueError):
 
 _TRANSITIONS: dict[TaskStatus, frozenset[TaskStatus]] = {
     TaskStatus.INPUT_RECEIVED: frozenset({TaskStatus.RESEARCHING}),
-    TaskStatus.RESEARCHING: frozenset({TaskStatus.FACT_SCREENED, TaskStatus.STOPPED}),
+    TaskStatus.RESEARCHING: frozenset(
+        {TaskStatus.HOTSPOT_REVIEW, TaskStatus.SCRIPTING, TaskStatus.STOPPED}
+    ),
     TaskStatus.FACT_SCREENED: frozenset(
-        {TaskStatus.TOPIC_SCRIPT_REVIEW, TaskStatus.MEDIA_PLANNING, TaskStatus.STOPPED}
+        {TaskStatus.HOTSPOT_REVIEW, TaskStatus.SCRIPTING, TaskStatus.STOPPED}
     ),
-    TaskStatus.TOPIC_SCRIPT_REVIEW: frozenset({TaskStatus.MEDIA_PLANNING, TaskStatus.STOPPED}),
-    TaskStatus.MEDIA_PLANNING: frozenset(
-        {TaskStatus.HOST_REVIEW, TaskStatus.GENERATING_TTS, TaskStatus.STOPPED}
+    TaskStatus.HOTSPOT_REVIEW: frozenset({TaskStatus.SCRIPTING, TaskStatus.STOPPED}),
+    TaskStatus.SCRIPTING: frozenset(
+        {TaskStatus.SCRIPT_REVIEW, TaskStatus.MEDIA_PLANNING, TaskStatus.STOPPED}
     ),
-    TaskStatus.HOST_REVIEW: frozenset({TaskStatus.GENERATING_TTS, TaskStatus.STOPPED}),
+    TaskStatus.SCRIPT_REVIEW: frozenset({TaskStatus.MEDIA_PLANNING, TaskStatus.STOPPED}),
+    TaskStatus.MEDIA_PLANNING: frozenset({TaskStatus.GENERATING_TTS, TaskStatus.STOPPED}),
     TaskStatus.GENERATING_TTS: frozenset({TaskStatus.GENERATING_ANCHOR, TaskStatus.STOPPED}),
     TaskStatus.GENERATING_ANCHOR: frozenset(
         {TaskStatus.ACQUIRING_OR_GENERATING_MEDIA, TaskStatus.STOPPED}
@@ -42,8 +45,8 @@ _TRANSITIONS: dict[TaskStatus, frozenset[TaskStatus]] = {
 }
 
 _APPROVAL_GATES: dict[TaskStatus, str] = {
-    TaskStatus.TOPIC_SCRIPT_REVIEW: "topic_script",
-    TaskStatus.HOST_REVIEW: "host",
+    TaskStatus.HOTSPOT_REVIEW: "hotspot",
+    TaskStatus.SCRIPT_REVIEW: "script",
     TaskStatus.FINAL_REVIEW: "final_video",
 }
 

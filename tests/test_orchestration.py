@@ -251,9 +251,8 @@ def test_managed_run_marks_provider_host_source_and_calls_provider_once(tmp_path
 
     assert host_calls == ["host"]
     assert result.avatar_source is AvatarSource.AGENT_DESIGNED
-    assert result.host_profile == host
-    assert anchor_hosts == [host]
-    assert anchor_hosts[0] is host
+    assert result.host_profile == host.model_copy(update={"is_new": False})
+    assert anchor_hosts == [result.host_profile]
     assert anchor_hosts[0].reference_image == "designed-host.png"
     assert result.approvals == []
 

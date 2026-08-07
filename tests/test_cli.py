@@ -4,8 +4,6 @@ import subprocess
 import sys
 from datetime import date
 
-import pytest
-
 from avatar_pipeline.models import (
     ApprovalRecord,
     AvatarSource,
@@ -113,7 +111,7 @@ def review_task(day: date, *, host_profile: HostProfile, avatar_source: AvatarSo
         day=day,
         mode=RunMode.MANUAL,
         avatar_source=avatar_source,
-        status=TaskStatus.TOPIC_SCRIPT_REVIEW,
+        status=TaskStatus.SCRIPT_REVIEW,
         candidates=[candidate],
         selected_topic_id="t1",
         host_profile=host_profile,
@@ -312,7 +310,7 @@ def test_cli_init_day_reuses_latest_saved_seated_host(tmp_path):
                 update={"voice_id": "legacy-presenter-voice"}
             ),
             avatar_source=AvatarSource.SAVED_HOST,
-            approvals=[ApprovalRecord(gate="host", actor="owner")],
+            approvals=[ApprovalRecord(gate="final_video", actor="owner")],
         )
     )
     created = run_cli(
@@ -367,76 +365,78 @@ def test_cli_does_not_reuse_unapproved_new_host_from_ready_historical_task(tmp_p
     assert payload["host_profile"]["is_new"] is False
 
 
-def test_cli_saved_host_skips_optional_host_approval_after_topic_script(tmp_path):
+def test_cli_approve_script_starts_generation_with_fixed_host(tmp_path):
     day = date(2026, 8, 6)
-    DailyTaskRepository(tmp_path).create(
-        review_task(day, host_profile=host(is_new=False), avatar_source=AvatarSource.SAVED_HOST)
+    task = review_task(
+        day,
+        host_profile=host(is_new=False),
+        avatar_source=AvatarSource.SAVED_HOST,
     )
+    task.approvals.append(ApprovalRecord(gate="hotspot", actor="owner"))
+    DailyTaskRepository(tmp_path).create(task)
+
     approved = run_cli(
         tmp_path,
-        "approve-topic-script",
+        "approve-script",
         "--date",
         day.isoformat(),
         "--actor",
         "owner",
     )
+
     assert approved.returncode == 0
     payload = json.loads(approved.stdout)
     assert payload["status"] == "generating_tts"
-    assert [item["gate"] for item in payload["approvals"]] == ["topic_script"]
+    assert [item["gate"] for item in payload["approvals"]] == ["hotspot", "script"]
 
 
-def test_cli_new_user_host_enters_optional_host_review(tmp_path):
+def test_cli_approve_hotspot_records_selection_before_script(tmp_path):
     day = date(2026, 8, 6)
-    DailyTaskRepository(tmp_path).create(
-        review_task(
-            day,
-            host_profile=host(image="new-host.png", is_new=True),
-            avatar_source=AvatarSource.USER_PROVIDED,
-        )
-    )
-    topic_approved = run_cli(
-        tmp_path,
-        "approve-topic-script",
-        "--date",
-        day.isoformat(),
-        "--actor",
-        "owner",
-    )
-    assert topic_approved.returncode == 0
-    assert json.loads(topic_approved.stdout)["status"] == "host_review"
-
-    host_approved = run_cli(
-        tmp_path,
-        "approve-host",
-        "--date",
-        day.isoformat(),
-        "--actor",
-        "owner",
-    )
-    assert host_approved.returncode == 0
-    assert json.loads(host_approved.stdout)["status"] == "generating_tts"
-
-
-@pytest.mark.parametrize("include_is_new", [False, True])
-def test_cli_set_host_treats_json_as_user_provided_and_requires_review(tmp_path, include_is_new):
-    day = date(2026, 8, 6)
-    staged = review_task(
+    task = review_task(
         day,
         host_profile=host(is_new=False),
         avatar_source=AvatarSource.SAVED_HOST,
     ).model_copy(
         update={
-            "status": TaskStatus.MEDIA_PLANNING,
-            "host_profile": None,
+            "status": TaskStatus.HOTSPOT_REVIEW,
+            "selected_topic_id": None,
+            "news_script": None,
+            "media_plan": None,
         }
     )
+    DailyTaskRepository(tmp_path).create(task)
+
+    approved = run_cli(
+        tmp_path,
+        "approve-hotspot",
+        "--date",
+        day.isoformat(),
+        "--topic-id",
+        "t1",
+        "--actor",
+        "owner",
+    )
+
+    assert approved.returncode == 0
+    payload = json.loads(approved.stdout)
+    assert payload["status"] == "scripting"
+    assert payload["selected_topic_id"] == "t1"
+    assert [item["gate"] for item in payload["approvals"]] == ["hotspot"]
+
+
+def test_cli_set_host_uses_uploaded_host_without_extra_review(tmp_path):
+    day = date(2026, 8, 6)
+    staged = review_task(
+        day,
+        host_profile=host(is_new=False),
+        avatar_source=AvatarSource.SAVED_HOST,
+    ).model_copy(update={"status": TaskStatus.MEDIA_PLANNING, "host_profile": None})
     DailyTaskRepository(tmp_path).create(staged)
-    host_payload = host(image="uploaded-host.png", is_new=False).model_dump(mode="json")
-    if not include_is_new:
-        host_payload.pop("is_new")
     host_file = tmp_path / "host.json"
-    host_file.write_text(json.dumps(host_payload, ensure_ascii=False), encoding="utf-8")
+    host_file.write_text(
+        json.dumps(host(image="uploaded-host.png", is_new=True).model_dump(mode="json")),
+        encoding="utf-8",
+    )
 
     result = run_cli(
         tmp_path,
@@ -449,10 +449,9 @@ def test_cli_set_host_treats_json_as_user_provided_and_requires_review(tmp_path,
 
     assert result.returncode == 0
     payload = json.loads(result.stdout)
-    assert payload["status"] == "host_review"
+    assert payload["status"] == "generating_tts"
     assert payload["avatar_source"] == "user_provided"
-    assert payload["host_profile"]["is_new"] is True
-    assert payload["requires_host_approval"] is True
+    assert payload["host_profile"]["is_new"] is False
 
 
 def test_cli_manual_final_video_approval_is_the_last_user_gate(tmp_path):
@@ -506,8 +505,8 @@ def test_cli_health_reports_dual_mode_fixed_anchor_policy_and_public_gates(tmp_p
     assert payload["video_structure"] == "studio_anchor_plus_vertical_news_insert"
     assert payload["subtitle"] is False
     assert payload["manual_approval_commands"] == [
-        "approve-topic-script",
-        "approve-host",
+        "approve-hotspot",
+        "approve-script",
         "approve-final-video",
     ]
     assert "opinions_crawler" in payload["skills"]

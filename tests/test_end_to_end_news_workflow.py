@@ -308,7 +308,7 @@ def test_managed_end_to_end_ai_fallback_is_disclosed_and_publishable(tmp_path):
     )
 
 
-def test_manual_saved_host_reuse_has_only_topic_and_final_approvals(tmp_path):
+def test_manual_saved_host_reuse_has_exactly_three_confirmations(tmp_path):
     repository = DailyTaskRepository(tmp_path)
     service = DailyWorkflowService(repository)
     task = service.start_day(DAY, mode=RunMode.MANUAL)
@@ -318,32 +318,29 @@ def test_manual_saved_host_reuse_has_only_topic_and_final_approvals(tmp_path):
     repository.save(task)
     script, plan = script_and_plan()
 
-    service.record_research(DAY, [candidate("verified")])
+    researched = service.record_research(DAY, [candidate("verified")])
+    assert researched.status is TaskStatus.HOTSPOT_REVIEW
+    selected = service.approve_hotspot(DAY, topic_id="verified", actor="owner")
+    assert selected.status is TaskStatus.SCRIPTING
     planned = service.record_script_and_media_plan(DAY, "verified", script, plan)
-    assert planned.status is TaskStatus.TOPIC_SCRIPT_REVIEW
-
-    topic_approved = service.approve_topic_script(DAY, actor="owner")
-    assert topic_approved.status is TaskStatus.GENERATING_TTS
-    assert topic_approved.requires_host_approval is False
+    assert planned.status is TaskStatus.SCRIPT_REVIEW
+    script_approved = service.approve_script(DAY, actor="owner")
+    assert script_approved.status is TaskStatus.GENERATING_TTS
 
     service.mark_tts_ready(DAY, artifact_path="audio/master.wav")
     service.mark_anchor_ready(DAY, artifact_path="video/anchor.mp4")
     service.mark_media_ready(DAY, artifact_path="media/original-news-clip.mp4")
     service.mark_compositing(DAY, artifact_path="video/final-master.mp4")
-    final_review = service.record_qc(DAY, passed=True, report_path="qc/final-passed.json")
-    assert final_review.status is TaskStatus.FINAL_REVIEW
-
+    service.record_qc(DAY, passed=True, report_path="qc/final-passed.json")
     completed = service.approve_final_video(DAY, actor="owner")
-    persisted = repository.get(DAY)
-    package = build_publication_package(persisted)
+    package = build_publication_package(repository.get(DAY))
 
-    assert completed == persisted
-    assert [approval.gate for approval in persisted.approvals] == [
-        "topic_script",
+    assert completed.status is TaskStatus.READY_TO_PUBLISH
+    assert [approval.gate for approval in completed.approvals] == [
+        "hotspot",
+        "script",
         "final_video",
     ]
-    assert "host" not in {approval.gate for approval in persisted.approvals}
-    assert len({approval.gate for approval in persisted.approvals}) <= 3
     assert package.master_video_path == "video/final-master.mp4"
 
 
@@ -415,15 +412,17 @@ def test_health_config_and_skill_contracts_match_dual_mode_seated_news_design(tm
     assert health["video_structure"] == "studio_anchor_plus_vertical_news_insert"
     assert health["subtitle"] is False
     assert health["manual_approval_commands"] == [
-        "approve-topic-script",
-        "approve-host",
+        "approve-hotspot",
+        "approve-script",
         "approve-final-video",
     ]
     assert config.avatar_layout == "seated_studio_anchor"
     assert config.host_visual.shot == "waist_up_seated"
     assert config.host_visual.subtitle_default is False
-    assert config.approval_policy.managed.topic_script == "auto"
-    assert config.approval_policy.manual.avatar == "confirm_if_new_or_changed"
+    assert config.approval_policy.managed.hotspot == "auto"
+    assert config.approval_policy.managed.script == "auto"
+    assert config.approval_policy.manual.hotspot == "user_confirm"
+    assert config.approval_policy.manual.script == "user_confirm"
     assert contracts[SkillKind.AVATAR].provider == "giggle-generation-tv-avatar-video"
     assert contracts[SkillKind.AVATAR].primary_mode == "image_plus_audio"
     assert contracts[SkillKind.AVATAR].required_inputs["layout"] == "seated_studio_anchor"

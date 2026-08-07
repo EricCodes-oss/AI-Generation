@@ -56,7 +56,7 @@ def test_daily_task_models_news_run_with_default_no_subtitles():
     )
     assert task.subtitle_enabled is False
     assert task.video_structure == "studio_anchor_plus_vertical_news_insert"
-    assert task.schema_version == 2
+    assert task.schema_version == 3
     assert task.avatar_source is AvatarSource.SAVED_HOST
 
 
@@ -149,9 +149,9 @@ def test_host_profile_can_be_reused_without_new_host_approval():
     assert task.requires_host_approval is True
 
 
-def test_approval_records_use_only_three_new_gate_names():
-    assert ApprovalRecord(gate="topic_script", actor="owner")
-    assert ApprovalRecord(gate="host", actor="owner")
+def test_approval_records_use_only_three_user_facing_gate_names():
+    assert ApprovalRecord(gate="hotspot", actor="owner")
+    assert ApprovalRecord(gate="script", actor="owner")
     assert ApprovalRecord(gate="final_video", actor="owner")
     with pytest.raises(ValidationError):
-        ApprovalRecord(gate="script", actor="owner")
+        ApprovalRecord(gate="host", actor="owner")

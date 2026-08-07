@@ -21,11 +21,11 @@
 
 只在三个关键节点确认：
 
-1. 选题 + 新闻解读脚本 + 画面规划；
-2. 首次创建或变更主持人形象；
-3. 最终视频。
+1. 展示热点抓取渠道、原始内容、互动数据和热度分析，由用户从 3 个合格热点中选择 1 个；
+2. 展示所选热点的完整新闻解读脚本，由用户确认后才开始 TTS、数字人、插播画面和合成；
+3. 展示最终视频，由用户确认发布或提出修改。
 
-已保存且未变更的主持人不重复确认，TTS 参数、普通转场、音量和编码参数不单独确认。
+主持人图片可由用户提供，也可使用已保存的固定主持人，但不单独增加确认节点。TTS 参数、普通分镜、转场、音量和编码参数均不单独确认。
 
 ## 安装
 
@@ -68,17 +68,20 @@ python -m avatar_pipeline.cli --workspace workspace status --date 2026-08-06
 ### 手动模式的三个确认命令
 
 ```bash
-# 1. 确认选题、新闻解读脚本和竖屏插播规划
-avatar-pipeline approve-topic-script --date 2026-08-06 --actor owner
+# 1. 从已展示的 Top 3 热点中选择一个
+avatar-pipeline approve-hotspot \
+  --date 2026-08-06 \
+  --topic-id candidate-1 \
+  --actor owner
 
-# 2. 仅在首次创建或变更主持人时执行；复用已保存主持人会自动跳过
-avatar-pipeline approve-host --date 2026-08-06 --actor owner
+# 2. 确认完整口播脚本；确认后才允许进入媒体生成
+avatar-pipeline approve-script --date 2026-08-06 --actor owner
 
 # 3. 确认最终母版视频
 avatar-pipeline approve-final-video --date 2026-08-06 --actor owner
 ```
 
-TTS、普通转场、音量、编码和单个插播片段不设置用户确认点。`mark-tts`、`mark-anchor`、`mark-media`、`mark-compositing` 和 `record-qc` 是执行器记录生产状态的接口，不是人工审批命令。
+TTS、主持人、普通分镜、转场、音量、编码和单个插播片段不设置用户确认点。`set-host`、`mark-tts`、`mark-anchor`、`mark-media`、`mark-compositing` 和 `record-qc` 是执行器记录生产状态的接口，不是人工审批命令。
 
 ### 托管运行时接口
 
@@ -122,8 +125,8 @@ PYTHONPATH=src .venv/bin/python -m pytest -q
 git diff --check
 ```
 
-旧版任务 JSON 读取时会安全迁移到 schema version 2，但不会为旧内容伪造“已核验新闻”状态。
+旧版任务 JSON 读取时会安全迁移到 schema version 3，但不会为旧内容伪造“已核验新闻”状态。
 
 ### 端到端验收
 
-`tests/test_end_to_end_news_workflow.py` 使用本地 fake providers 验证完整双模式生产链路，不调用真实生成额度。验收覆盖：仅允许已核验热点进入制作、固定坐播主持人与竖屏插播交替、原始新闻素材优先与 Seedance 披露式回退、默认无逐字字幕、托管模式无人工审批、手动模式复用主持人时跳过主持人审批、断点恢复不重复生成，以及三平台共用同一通过质检的母版。
+`tests/test_end_to_end_news_workflow.py` 使用本地 fake providers 验证完整双模式生产链路，不调用真实生成额度。验收覆盖：仅允许已核验热点进入制作、固定坐播主持人与竖屏插播交替、原始新闻素材优先与 Seedance 披露式回退、默认无逐字字幕、托管模式无人工审批、手动模式严格执行热点、脚本、成片三个确认点、断点恢复不重复生成，以及三平台共用同一通过质检的母版。

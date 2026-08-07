@@ -55,12 +55,12 @@ content:
       display_name: 年轻人情绪与生活方式
 approval_policy:
   managed:
-    topic_script: auto
-    avatar: auto
+    hotspot: auto
+    script: auto
     final_video: final_only
   manual:
-    topic_script: user_confirm
-    avatar: confirm_if_new_or_changed
+    hotspot: user_confirm
+    script: user_confirm
     final_video: user_confirm
 storage:
   workspace: workspace

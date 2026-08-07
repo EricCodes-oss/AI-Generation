@@ -75,8 +75,9 @@ class TaskStatus(StrEnum):
     INPUT_RECEIVED = "input_received"
     RESEARCHING = "researching"
     FACT_SCREENED = "fact_screened"
-    TOPIC_SCRIPT_REVIEW = "topic_script_review"
-    HOST_REVIEW = "host_review"
+    HOTSPOT_REVIEW = "hotspot_review"
+    SCRIPTING = "scripting"
+    SCRIPT_REVIEW = "script_review"
     MEDIA_PLANNING = "media_planning"
     GENERATING_TTS = "generating_tts"
     GENERATING_ANCHOR = "generating_anchor"
@@ -198,7 +199,7 @@ class MediaPlan(DomainModel):
 
 
 class ApprovalRecord(DomainModel):
-    gate: Literal["topic_script", "host", "final_video"]
+    gate: Literal["hotspot", "script", "final_video"]
     actor: str = Field(min_length=1)
     approved_at: datetime = Field(default_factory=utc_now)
     automatic: bool = False
@@ -212,7 +213,7 @@ class ArtifactRecord(DomainModel):
 
 
 class DailyTask(DomainModel):
-    schema_version: int = 2
+    schema_version: int = 3
     day: date
     mode: RunMode = RunMode.MANUAL
     topic_source: TopicSource = TopicSource.AUTO_HOT

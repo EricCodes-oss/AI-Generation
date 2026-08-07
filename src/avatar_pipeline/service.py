@@ -44,14 +44,33 @@ class DailyWorkflowService:
         ensure_transition(task.status, TaskStatus.RESEARCHING)
         task.status = TaskStatus.RESEARCHING
         accepted, skipped = screen_candidates(candidates)
-        task.candidates = sorted(accepted, key=lambda candidate: candidate.score, reverse=True)
-        task.skipped_candidates = skipped
+        ranked = sorted(accepted, key=lambda candidate: candidate.score, reverse=True)
+        if task.mode is RunMode.MANUAL:
+            task.candidates = ranked[:3]
+            task.skipped_candidates = [*skipped, *ranked[3:]]
+        else:
+            task.candidates = ranked
+            task.skipped_candidates = skipped
         if not task.candidates:
             task.status = TaskStatus.STOPPED
             task.stop_reason = "no verified hotspot"
         else:
-            ensure_transition(task.status, TaskStatus.FACT_SCREENED)
-            task.status = TaskStatus.FACT_SCREENED
+            target = (
+                TaskStatus.HOTSPOT_REVIEW if task.mode is RunMode.MANUAL else TaskStatus.SCRIPTING
+            )
+            ensure_transition(task.status, target)
+            task.status = target
+        return self.repository.save(task)
+
+    def approve_hotspot(self, day: date, *, topic_id: str, actor: str) -> DailyTask:
+        task = self._require_status(day, TaskStatus.HOTSPOT_REVIEW)
+        candidate = next((item for item in task.candidates if item.id == topic_id), None)
+        if candidate is None or not candidate.publishable:
+            raise WorkflowPreconditionError("topic is not a verified hotspot candidate")
+        task.selected_topic_id = topic_id
+        task.approvals.append(ApprovalRecord(gate="hotspot", actor=actor))
+        ensure_transition(task.status, TaskStatus.SCRIPTING)
+        task.status = TaskStatus.SCRIPTING
         return self.repository.save(task)
 
     def record_script_and_media_plan(
@@ -60,19 +79,21 @@ class DailyWorkflowService:
         existing = self.repository.get(day)
         if existing.status is TaskStatus.STOPPED and not existing.candidates:
             raise WorkflowPreconditionError("no verified hotspot")
-        task = self._require_status(day, TaskStatus.FACT_SCREENED, TaskStatus.TOPIC_SCRIPT_REVIEW)
+        task = self._require_status(day, TaskStatus.SCRIPTING, TaskStatus.SCRIPT_REVIEW)
         candidate = next((item for item in task.candidates if item.id == topic_id), None)
         if candidate is None or not candidate.publishable:
             raise WorkflowPreconditionError("topic is not a verified hotspot")
+        if task.mode is RunMode.MANUAL and task.selected_topic_id != topic_id:
+            raise WorkflowPreconditionError("script topic must match the approved hotspot")
         validate_media_plan(media_plan, script)
         if task.host_profile is not None:
             self._require_media_host_identity(media_plan, task.host_profile)
         task.selected_topic_id = topic_id
         task.news_script = script
         task.media_plan = media_plan
-        if task.status is TaskStatus.FACT_SCREENED:
+        if task.status is TaskStatus.SCRIPTING:
             target = (
-                TaskStatus.TOPIC_SCRIPT_REVIEW
+                TaskStatus.SCRIPT_REVIEW
                 if task.mode is RunMode.MANUAL
                 else TaskStatus.MEDIA_PLANNING
             )
@@ -80,10 +101,10 @@ class DailyWorkflowService:
             task.status = target
         return self.repository.save(task)
 
-    def approve_topic_script(self, day: date, *, actor: str) -> DailyTask:
-        task = self._require_status(day, TaskStatus.TOPIC_SCRIPT_REVIEW)
+    def approve_script(self, day: date, *, actor: str) -> DailyTask:
+        task = self._require_status(day, TaskStatus.SCRIPT_REVIEW)
         self._require_script_plan(task)
-        task.approvals.append(ApprovalRecord(gate="topic_script", actor=actor))
+        task.approvals.append(ApprovalRecord(gate="script", actor=actor))
         ensure_transition(task.status, TaskStatus.MEDIA_PLANNING)
         task.status = TaskStatus.MEDIA_PLANNING
         return self._advance_after_media_plan(task)
@@ -91,38 +112,13 @@ class DailyWorkflowService:
     def set_host(
         self, day: date, host: HostProfile, *, avatar_source: AvatarSource | None = None
     ) -> DailyTask:
-        task = self._require_status(day, TaskStatus.MEDIA_PLANNING, TaskStatus.HOST_REVIEW)
+        task = self._require_status(day, TaskStatus.MEDIA_PLANNING)
         self._require_media_host_identity(task.media_plan, host)
-        existing_host = task.host_profile
-        host_changed = existing_host is not None and existing_host != host
-        effective_source = avatar_source
-        if effective_source is None:
-            effective_source = (
-                task.avatar_source if task.mode is RunMode.MANAGED else AvatarSource.USER_PROVIDED
-            )
+        effective_source = avatar_source or task.avatar_source
         task.avatar_source = effective_source
         if host.voice_id != DEFAULT_TTS_VOICE_ID:
             host = host.model_copy(update={"voice_id": DEFAULT_TTS_VOICE_ID})
-        requires_manual_review = task.mode is RunMode.MANUAL and (
-            effective_source is not AvatarSource.SAVED_HOST or host.is_new or host_changed
-        )
-        if requires_manual_review:
-            task.host_profile = host.model_copy(update={"is_new": True})
-            if task.status is TaskStatus.MEDIA_PLANNING:
-                ensure_transition(task.status, TaskStatus.HOST_REVIEW)
-                task.status = TaskStatus.HOST_REVIEW
-        else:
-            task.host_profile = host
-            ensure_transition(task.status, TaskStatus.GENERATING_TTS)
-            task.status = TaskStatus.GENERATING_TTS
-        return self.repository.save(task)
-
-    def approve_host(self, day: date, *, actor: str) -> DailyTask:
-        task = self._require_status(day, TaskStatus.HOST_REVIEW)
-        if not task.requires_host_approval:
-            raise WorkflowPreconditionError("host approval is not required")
-        task.host_profile = task.host_profile.model_copy(update={"is_new": False})
-        task.approvals.append(ApprovalRecord(gate="host", actor=actor))
+        task.host_profile = host.model_copy(update={"is_new": False})
         ensure_transition(task.status, TaskStatus.GENERATING_TTS)
         task.status = TaskStatus.GENERATING_TTS
         return self.repository.save(task)
@@ -198,7 +194,7 @@ class DailyWorkflowService:
         baseline_avatar_source: AvatarSource,
         baseline_artifacts: Sequence[ArtifactRecord],
     ) -> DailyTask:
-        """Discard partial output for one failed managed topic and return to screening."""
+        """Discard partial output for one failed managed topic and return to scripting."""
 
         task = self.repository.get(day)
         if task.mode is not RunMode.MANAGED:
@@ -230,7 +226,7 @@ class DailyWorkflowService:
                 metadata={"topic_id": topic_id, "reason": reason},
             )
         )
-        task.status = TaskStatus.FACT_SCREENED
+        task.status = TaskStatus.SCRIPTING
         task.stop_reason = None
         return self.repository.save(task)
 
@@ -245,9 +241,7 @@ class DailyWorkflowService:
     def _advance_after_media_plan(self, task: DailyTask) -> DailyTask:
         if task.host_profile is not None:
             self._require_media_host_identity(task.media_plan, task.host_profile)
-        if (
-            task.host_profile is not None and not task.host_profile.is_new
-        ) or task.mode is RunMode.MANAGED:
+            task.host_profile = task.host_profile.model_copy(update={"is_new": False})
             ensure_transition(task.status, TaskStatus.GENERATING_TTS)
             task.status = TaskStatus.GENERATING_TTS
         return self.repository.save(task)
