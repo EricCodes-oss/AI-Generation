@@ -518,3 +518,136 @@ def test_cli_rejects_removed_old_commands(tmp_path):
         tmp_path, "approve-topic", "--date", "2026-08-06", "--topic-id", "t1", "--actor", "owner"
     )
     assert result.returncode != 0
+
+
+def test_cli_connects_browser_hotspot_top3_to_manual_review(tmp_path):
+    from datetime import UTC, datetime
+
+    now = datetime(2026, 8, 7, 10, 0, tzinfo=UTC)
+    browser_file = tmp_path / "browser.json"
+    browser_file.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "collector_name": "chrome-browser-readonly",
+                "started_at": now.isoformat(),
+                "completed_at": now.isoformat(),
+                "capabilities": [
+                    {
+                        "platform": platform,
+                        "status": "ready",
+                        "method": "chrome_authenticated",
+                        "observed_at": now.isoformat(),
+                    }
+                    for platform in ("douyin", "xiaohongshu")
+                ],
+                "items": [
+                    {
+                        "source_id": source_id,
+                        "event_key": "event-1",
+                        "platform": platform,
+                        "content_id": source_id,
+                        "canonical_url": f"https://example.test/{source_id}",
+                        "title_or_caption": "真实热点",
+                        "published_at": now.isoformat(),
+                        "collected_at": now.isoformat(),
+                        "query": "热点",
+                        "visible_metrics": {"likes": likes, "comments": 100},
+                        "metric_visibility": {
+                            "likes": "visible_exact",
+                            "comments": "visible_exact",
+                            "views": "not_visible",
+                        },
+                        "collector_method": "chrome_authenticated",
+                        "raw_evidence_reference": f"browser/{source_id}.json",
+                    }
+                    for source_id, platform, likes in (
+                        ("dy-1", "douyin", 10000),
+                        ("xhs-1", "xiaohongshu", 8000),
+                    )
+                ],
+                "failures": [],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    authority_file = tmp_path / "authority.json"
+    authority_file.write_text(
+        json.dumps(
+            {
+                "event-1": {
+                    "title": "已核实热点",
+                    "pillar": "career_pressure",
+                    "fact_status": "verified",
+                    "verification_summary": "官方已确认核心事实。",
+                    "authority_evidence": [
+                        {
+                            "source_id": "official-1",
+                            "publisher": "官方机构",
+                            "title": "官方说明",
+                            "url_or_reference": "https://authority.example/event-1",
+                            "published_at": now.isoformat(),
+                            "authority_type": "official",
+                            "verifies_fact": True,
+                            "conflicts": False,
+                            "summary": "官方确认核心事实。",
+                        }
+                    ],
+                    "speaking_angle": "解释事实与普通人的关系。",
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    assert run_cli(tmp_path, "research-init", "--date", "2026-08-07").returncode == 0
+    imported = run_cli(
+        tmp_path,
+        "research-import-browser",
+        "--date",
+        "2026-08-07",
+        "--file",
+        str(browser_file),
+    )
+    assert imported.returncode == 0, imported.stderr
+
+    ranked = run_cli(
+        tmp_path,
+        "research-rank-hotspots",
+        "--date",
+        "2026-08-07",
+        "--authority-file",
+        str(authority_file),
+        "--now",
+        now.isoformat(),
+    )
+    assert ranked.returncode == 0, ranked.stderr
+    ranked_payload = json.loads(ranked.stdout)
+    assert ranked_payload["selected_window"] == "last_72_hours"
+    assert ranked_payload["cards"][0]["cluster_id"] == "event-1"
+
+    report = run_cli(tmp_path, "research-hotspot-report", "--date", "2026-08-07")
+    assert report.returncode == 0, report.stderr
+    assert "hotspot-top3.md" in json.loads(report.stdout)["report_path"]
+
+    assert (
+        run_cli(
+            tmp_path,
+            "init-day",
+            "--date",
+            "2026-08-07",
+            "--mode",
+            "manual",
+            "--topic-source",
+            "auto_hot",
+        ).returncode
+        == 0
+    )
+    submitted = run_cli(tmp_path, "research-submit-top3", "--date", "2026-08-07")
+    assert submitted.returncode == 0, submitted.stderr
+    task = json.loads(submitted.stdout)
+    assert task["status"] == "hotspot_review"
+    assert [item["id"] for item in task["candidates"]] == ["event-1"]
+    assert task["approvals"] == []

@@ -151,7 +151,9 @@ def test_rank_expands_to_seven_days_only_when_72_hour_pool_has_fewer_than_three(
         source("dy-4", "older", ResearchPlatform.DOUYIN, hours_ago=100, likes=1_000),
         source("xhs-4", "older", ResearchPlatform.XIAOHONGSHU, hours_ago=100, likes=1_000),
     ]
-    result = rank_hotspots(sources, metadata=metadata({"recent-1", "recent-2", "recent-3", "older"}), now=NOW)
+    result = rank_hotspots(
+        sources, metadata=metadata({"recent-1", "recent-2", "recent-3", "older"}), now=NOW
+    )
 
     assert result.selected_window is TimeWindow.LAST_72_HOURS
     assert len(result.cards) == 3

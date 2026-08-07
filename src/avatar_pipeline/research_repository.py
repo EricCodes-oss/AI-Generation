@@ -87,6 +87,17 @@ class ResearchRunRepository:
             self._write_json(path, payload)
         return path
 
+    def read_artifact(self, day: date, relative_path: Path) -> Any:
+        """Read a JSON artifact from the safe research directory."""
+
+        if not self._run_path(day).is_file():
+            raise ResearchRunNotFound(f"research run not found: {day.isoformat()}")
+        path = self._safe_artifact_path(day, relative_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"research artifact not found: {relative_path}")
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+
     def list_recent_plans(self, before_day: date, days: int = 30) -> list[DailyResearchPlan]:
         """Return plans before ``before_day`` within the lookback, newest first."""
 

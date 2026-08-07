@@ -3,20 +3,36 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
+from avatar_pipeline.browser_collection import BrowserCollectionEnvelope
+from avatar_pipeline.hotspot_ranking import HotspotRankingResult, rank_hotspots
+from avatar_pipeline.models import (
+    ContentPillarSlug,
+    FactStatus,
+    NewsPillarSlug,
+    SourceEvidence,
+    TopicCandidate,
+    utc_now,
+)
 from avatar_pipeline.research_adapters import CollectionBatch
 from avatar_pipeline.research_models import (
     CommentInsightCard,
     DailyResearchPlan,
+    HotspotReviewCard,
+    PlatformEvidenceRecord,
     ResearchApprovalRecord,
     ResearchReportSummary,
     ResearchReviewAction,
     ResearchRun,
     ResearchRunStatus,
 )
-from avatar_pipeline.research_report import build_report_summary, render_report_markdown
+from avatar_pipeline.research_report import (
+    build_report_summary,
+    render_hotspot_review_markdown,
+    render_report_markdown,
+)
 from avatar_pipeline.research_repository import ResearchRunRepository
 from avatar_pipeline.source_normalizer import NormalizationContext, normalize_batch
 
@@ -60,6 +76,87 @@ class ResearchService:
         """Start one research run without touching the production task state."""
 
         return self.repository.create(day)
+
+    def import_browser_evidence(
+        self, day: date, envelope: BrowserCollectionEnvelope
+    ) -> ResearchRun:
+        """Persist sanitized real-platform evidence without requiring the legacy plan."""
+
+        run = self.repository.get(day)
+        self._require_status(
+            run,
+            ResearchRunStatus.DRAFT,
+            ResearchRunStatus.COLLECTING,
+            ResearchRunStatus.REVISION_REQUESTED,
+        )
+        payload = envelope.model_dump(mode="json")
+        self.repository.write_artifact(day, Path("real/browser-evidence.json"), payload)
+        return self._save_validated(
+            run,
+            status=ResearchRunStatus.COLLECTING,
+            report_artifact_path=None,
+        )
+
+    def rank_browser_hotspots(
+        self,
+        day: date,
+        metadata: dict[str, dict[str, object]],
+        *,
+        now: datetime | None = None,
+    ) -> HotspotRankingResult:
+        """Rank verified browser evidence and persist the truthful review payload."""
+
+        run = self.repository.get(day)
+        self._require_status(
+            run,
+            ResearchRunStatus.COLLECTING,
+            ResearchRunStatus.READY_FOR_REVIEW,
+            ResearchRunStatus.REVISION_REQUESTED,
+        )
+        evidence_payload = self.repository.read_artifact(day, Path("real/browser-evidence.json"))
+        envelope = BrowserCollectionEnvelope.model_validate(evidence_payload)
+        sources = [PlatformEvidenceRecord.model_validate(item) for item in envelope.items]
+        ranking = rank_hotspots(sources, metadata=metadata, now=now or datetime.now(UTC))
+        self.repository.write_artifact(
+            day,
+            Path("real/hotspot-ranking.json"),
+            {
+                "selected_window": ranking.selected_window.value,
+                "cards": [card.model_dump(mode="json") for card in ranking.cards],
+                "excluded_clusters": [
+                    cluster.model_dump(mode="json") for cluster in ranking.excluded_clusters
+                ],
+            },
+        )
+        self._save_validated(
+            run,
+            status=ResearchRunStatus.READY_FOR_REVIEW,
+            report_artifact_path=None,
+        )
+        return ranking
+
+    def render_hotspot_report(self, day: date) -> Path:
+        """Write Markdown for the manual hotspot confirmation gate."""
+
+        cards = self._load_hotspot_cards(day)
+        path = self.repository.write_artifact(
+            day,
+            Path("reports/hotspot-top3.md"),
+            render_hotspot_review_markdown(cards),
+        )
+        run = self.repository.get(day)
+        self._save_validated(run, report_artifact_path=str(path))
+        return path
+
+    def submit_hotspot_cards(self, day: date, production_service: object) -> object:
+        """Bridge eligible review cards into the existing production hotspot gate."""
+
+        candidates = [_card_to_topic_candidate(card) for card in self._load_hotspot_cards(day)]
+        return production_service.record_research(day, candidates)
+
+    def _load_hotspot_cards(self, day: date) -> list[HotspotReviewCard]:
+        payload = self.repository.read_artifact(day, Path("real/hotspot-ranking.json"))
+        return [HotspotReviewCard.model_validate(item) for item in payload.get("cards", [])]
 
     def record_plan(self, day: date, plan: DailyResearchPlan) -> ResearchRun:
         """Persist a reviewed query plan and open the collection step."""
@@ -264,3 +361,58 @@ class ResearchService:
         payload = run.model_dump()
         payload.update(updates)
         return ResearchRun.model_validate(payload)
+
+
+_PILLAR_TO_NEWS = {
+    ContentPillarSlug.CAREER_PRESSURE: NewsPillarSlug.WORKPLACE_LIFE,
+    ContentPillarSlug.PARENT_CHILD_COMMUNICATION: NewsPillarSlug.EDUCATION,
+    ContentPillarSlug.SELF_GROWTH: NewsPillarSlug.SOCIAL_PHENOMENA,
+}
+
+
+def _card_to_topic_candidate(card: HotspotReviewCard) -> TopicCandidate:
+    sources = [
+        SourceEvidence(
+            source_id=item.source_id,
+            platform=item.platform.value,
+            title=item.title_or_caption,
+            url_or_reference=item.canonical_url or item.content_id or item.source_id,
+            evidence_type="primary",
+            published_at=item.published_at,
+            reliability_note="真实平台热度证据，仅用于研究，不自动作为成片素材。",
+        )
+        for item in card.platform_evidence
+    ]
+    sources.extend(
+        SourceEvidence(
+            source_id=item.source_id,
+            platform=item.publisher,
+            title=item.title,
+            url_or_reference=item.url_or_reference,
+            evidence_type="official" if item.authority_type == "official" else "reputable_media",
+            published_at=item.published_at,
+            reliability_note=item.summary,
+        )
+        for item in card.authority_evidence
+        if item.verifies_fact and not item.conflicts
+    )
+    platforms = sorted({item.platform.value for item in card.platform_evidence})
+    return TopicCandidate(
+        id=card.cluster_id,
+        title=card.title,
+        pillar=_PILLAR_TO_NEWS[card.pillar],
+        score=card.total_score,
+        fact_status=FactStatus.VERIFIED,
+        target_audience=card.audience_insight,
+        situation=card.fact_summary,
+        recommendation_reason=card.speaking_angle,
+        opening_hook=card.fact_summary,
+        trend_evidence=[f"平台覆盖：{', '.join(platforms)}", card.production_media_plan],
+        risk_flags=card.risk_flags,
+        source_evidence=sources,
+        dedupe_key=card.cluster_id,
+        cluster_id=card.cluster_id,
+        verified_at=utc_now(),
+        verification_summary=card.verification_summary,
+        publishable=True,
+    )

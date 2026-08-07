@@ -6,12 +6,13 @@ import argparse
 import json
 import shutil
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from avatar_pipeline.browser_collection import BrowserCollectionEnvelope
 from avatar_pipeline.config import load_config
 from avatar_pipeline.managed_runtime import (
     ManagedRunInput,
@@ -174,6 +175,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     research_status = subparsers.add_parser("research-status")
     _add_date_argument(research_status)
+
+    browser_import = subparsers.add_parser("research-import-browser")
+    _add_date_argument(browser_import)
+    browser_import.add_argument("--file", required=True, type=Path)
+
+    rank_hotspots = subparsers.add_parser("research-rank-hotspots")
+    _add_date_argument(rank_hotspots)
+    rank_hotspots.add_argument("--authority-file", required=True, type=Path)
+    rank_hotspots.add_argument("--now", type=datetime.fromisoformat)
+
+    hotspot_report = subparsers.add_parser("research-hotspot-report")
+    _add_date_argument(hotspot_report)
+
+    submit_top3 = subparsers.add_parser("research-submit-top3")
+    _add_date_argument(submit_top3)
+
     subparsers.add_parser("research-health")
     return parser
 
@@ -347,6 +364,31 @@ def _dispatch_research(args: argparse.Namespace) -> dict[str, Any]:
         run = service.approve(args.date, actor=args.actor, accepted_gaps=args.accept_gap)
     elif args.command == "research-status":
         run = service.status(args.date)
+    elif args.command == "research-import-browser":
+        envelope = BrowserCollectionEnvelope.model_validate(_load_json(args.file))
+        run = service.import_browser_evidence(args.date, envelope)
+    elif args.command == "research-rank-hotspots":
+        metadata = _load_json(args.authority_file)
+        if not isinstance(metadata, dict):
+            raise ValueError("authority file must contain an event-keyed JSON object")
+        ranking = service.rank_browser_hotspots(args.date, metadata, now=args.now)
+        return {
+            "selected_window": ranking.selected_window.value,
+            "cards": [card.model_dump(mode="json") for card in ranking.cards],
+            "excluded_clusters": [
+                cluster.model_dump(mode="json") for cluster in ranking.excluded_clusters
+            ],
+        }
+    elif args.command == "research-hotspot-report":
+        report_path = service.render_hotspot_report(args.date)
+        return {
+            "report_path": str(report_path),
+            "run": _research_payload(service.status(args.date)),
+        }
+    elif args.command == "research-submit-top3":
+        production = DailyWorkflowService(DailyTaskRepository(args.workspace))
+        task = service.submit_hotspot_cards(args.date, production)
+        return _task_payload(task)
     else:  # pragma: no cover
         raise ValueError(f"unsupported research command: {args.command}")
     return _research_payload(run)

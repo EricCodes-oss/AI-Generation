@@ -6,6 +6,8 @@ from collections import Counter, defaultdict
 
 from avatar_pipeline.models import ContentPillarSlug
 from avatar_pipeline.research_models import (
+    HotspotReviewCard,
+    MetricVisibility,
     ResearchPlatform,
     ResearchReportSummary,
     ResearchRun,
@@ -268,3 +270,84 @@ def _render_gaps(run: ResearchRun, summary: ResearchReportSummary) -> list[str]:
 
 def _join_or_none(values: list[str]) -> str:
     return "；".join(values) if values else "未形成可靠信号"
+
+
+_HOTSPOT_METRIC_LABELS = {
+    "views": "播放量",
+    "likes": "点赞",
+    "comments": "评论",
+    "shares": "分享",
+    "saves": "收藏",
+}
+
+
+def render_hotspot_review_markdown(cards: list[HotspotReviewCard]) -> str:
+    """Render the first and only manual research confirmation payload."""
+
+    lines = [
+        "# Top 3 热点候选",
+        "",
+        f"- 本轮共有 {len(cards)} 个通过事实与风险门槛的候选。",
+        "- 平台热点视频只作为热度证据，不直接使用平台热点视频进入成片。",
+        "",
+    ]
+    if not cards:
+        lines.extend(["暂无合格热点，不使用未核验内容补位。", ""])
+    for index, card in enumerate(cards, start=1):
+        lines.extend(
+            [
+                f"## 候选 {index}：{card.title}",
+                "",
+                f"- 候选 ID：`{card.cluster_id}`",
+                f"- 事实摘要：{card.fact_summary}",
+                f"- 总分：{card.total_score:.2f}",
+                f"- 时间窗口：{_WINDOW_LABELS[card.time_window]}",
+                f"- 建议讲解角度：{card.speaking_angle}",
+                f"- 受众洞察：{card.audience_insight or '暂未形成可靠评论洞察'}",
+                "- 风险提示："
+                + ("、".join(card.risk_flags) if card.risk_flags else "未发现入池风险"),
+                "- 平台证据：",
+            ]
+        )
+        for source in card.platform_evidence:
+            lines.append(
+                f"  - {_PLATFORM_LABELS[source.platform]}｜{source.title_or_caption}｜"
+                f"{source.canonical_url or source.content_id}"
+            )
+            for field_name, label in _HOTSPOT_METRIC_LABELS.items():
+                value = getattr(source.visible_metrics, field_name)
+                visibility = source.metric_visibility.get(field_name)
+                if (
+                    visibility
+                    in {
+                        MetricVisibility.VISIBLE_EXACT,
+                        MetricVisibility.VISIBLE_APPROXIMATE,
+                    }
+                    and value is not None
+                ):
+                    display = f"{value:g}"
+                else:
+                    display = "unknown"
+                lines.append(f"    - {label}：{display}")
+        lines.append("- 权威核验：")
+        for authority in card.authority_evidence:
+            lines.append(
+                f"  - {authority.publisher}｜{authority.title}｜"
+                f"{authority.url_or_reference}｜{authority.summary}"
+            )
+        lines.extend(
+            [
+                f"- 核验结论：{card.verification_summary}",
+                f"- 成片素材方案：{card.production_media_plan}",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## 用户确认",
+            "",
+            "请选择一个候选 ID；选择一个热点后才进入脚本生成。",
+            "脚本确认之后才进入 TTS、数字主持人、Seedance 2.0、合成与质检。",
+        ]
+    )
+    return "\n".join(lines).rstrip() + "\n"
