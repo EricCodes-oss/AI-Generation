@@ -179,6 +179,205 @@ class EngagementMetrics(ResearchModel):
     platform_heat: float | None = Field(default=None, ge=0)
 
 
+class CollectorMethod(StrEnum):
+    """How a source was observed without persisting platform credentials."""
+
+    CHROME_AUTHENTICATED = "chrome_authenticated"
+    OPENCLI_BROWSER_BRIDGE = "opencli_browser_bridge"
+    BROWSER_ASSISTED = "browser_assisted"
+    MANUAL_IMPORT = "manual_import"
+
+
+class MetricVisibility(StrEnum):
+    """Visibility and precision of a platform interaction metric."""
+
+    VISIBLE_EXACT = "visible_exact"
+    VISIBLE_APPROXIMATE = "visible_approximate"
+    NOT_VISIBLE = "not_visible"
+    UNAVAILABLE = "unavailable"
+
+
+class FactVerificationStatus(StrEnum):
+    """Fact state after separating platform discussion from verified facts."""
+
+    VERIFIED = "verified"
+    PENDING = "pending"
+    CONFLICTING = "conflicting"
+    REJECTED = "rejected"
+
+
+class MediaClearanceStatus(StrEnum):
+    """Whether an asset may be used as production media."""
+
+    AUTHORIZED_OFFICIAL = "authorized_official"
+    AUTHORIZED_ORIGINAL = "authorized_original"
+    AI_ILLUSTRATIVE = "ai_illustrative"
+    REJECTED_WATERMARK = "rejected_watermark"
+    REJECTED_UNCLEARED = "rejected_uncleared"
+    UNKNOWN = "unknown"
+
+
+_TARGET_VIDEO_PLATFORMS = {
+    ResearchPlatform.DOUYIN,
+    ResearchPlatform.WECHAT_CHANNELS,
+    ResearchPlatform.XIAOHONGSHU,
+}
+
+
+class PlatformEvidenceRecord(ResearchModel):
+    """A minimal, credential-free record captured from a target platform."""
+
+    source_id: str = Field(min_length=1)
+    event_key: str = Field(min_length=1)
+    platform: ResearchPlatform
+    content_id: str | None = Field(default=None, min_length=1)
+    canonical_url: str | None = Field(default=None, min_length=1)
+    account_name: str | None = Field(default=None, min_length=1)
+    account_id: str | None = Field(default=None, min_length=1)
+    title_or_caption: str = Field(min_length=1)
+    published_at: AwareTimestamp | None = None
+    collected_at: AwareTimestamp
+    query: str = Field(min_length=1)
+    visible_metrics: EngagementMetrics = Field(default_factory=EngagementMetrics)
+    metric_visibility: dict[str, MetricVisibility] = Field(default_factory=dict)
+    collector_method: CollectorMethod
+    raw_evidence_reference: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_evidence(self) -> PlatformEvidenceRecord:
+        if self.platform not in _TARGET_VIDEO_PLATFORMS:
+            raise ValueError("platform must be a target video platform")
+        if not self.content_id and not self.canonical_url:
+            raise ValueError("source requires a content id or canonical URL")
+        for field_name, visibility in self.metric_visibility.items():
+            if field_name not in EngagementMetrics.model_fields:
+                raise ValueError(f"unknown engagement metric: {field_name}")
+            value = getattr(self.visible_metrics, field_name)
+            if (
+                visibility
+                in {
+                    MetricVisibility.VISIBLE_EXACT,
+                    MetricVisibility.VISIBLE_APPROXIMATE,
+                }
+                and value is None
+            ):
+                raise ValueError(f"visible metric {field_name} must have a value")
+            if visibility in {MetricVisibility.NOT_VISIBLE, MetricVisibility.UNAVAILABLE} and value:
+                raise ValueError(f"unavailable metric {field_name} must remain null")
+        return self
+
+
+class AuthorityEvidence(ResearchModel):
+    """An independent public source used for fact verification."""
+
+    source_id: str = Field(min_length=1)
+    publisher: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    url_or_reference: str = Field(min_length=1)
+    published_at: AwareTimestamp | None = None
+    authority_type: str = Field(min_length=1)
+    verifies_fact: bool
+    conflicts: bool = False
+    summary: str = Field(min_length=1)
+
+
+class HotspotScoreBreakdown(ResearchModel):
+    """Normalized score components; weights are fixed by the product spec."""
+
+    platform_relative_heat: float = Field(ge=0, le=100)
+    cross_platform_resonance: float = Field(ge=0, le=100)
+    recency: float = Field(ge=0, le=100)
+    comment_quality: float = Field(ge=0, le=100)
+    audience_fit: float = Field(ge=0, le=100)
+    source_completeness: float = Field(ge=0, le=100)
+
+    @property
+    def total_score(self) -> float:
+        return round(
+            self.platform_relative_heat * 0.35
+            + self.cross_platform_resonance * 0.25
+            + self.recency * 0.15
+            + self.comment_quality * 0.10
+            + self.audience_fit * 0.10
+            + self.source_completeness * 0.05,
+            4,
+        )
+
+
+class HotspotCluster(ResearchModel):
+    """A conservative event cluster assembled from platform evidence."""
+
+    id: str = Field(min_length=1)
+    event_key: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    pillar: ContentPillarSlug
+    platform_evidence: list[PlatformEvidenceRecord] = Field(min_length=1)
+    authority_evidence: list[AuthorityEvidence] = Field(default_factory=list)
+    fact_status: FactVerificationStatus = FactVerificationStatus.PENDING
+    verification_summary: str | None = None
+    first_seen_at: AwareTimestamp
+    last_seen_at: AwareTimestamp
+    risk_flags: list[str] = Field(default_factory=list)
+    excluded_reason: str | None = None
+
+    @model_validator(mode="after")
+    def validate_cluster(self) -> HotspotCluster:
+        source_ids = [source.source_id for source in self.platform_evidence]
+        if len(source_ids) != len(set(source_ids)):
+            raise ValueError("source ids must be unique")
+        if any(source.event_key != self.event_key for source in self.platform_evidence):
+            raise ValueError("platform evidence event key must match cluster event key")
+        if self.last_seen_at < self.first_seen_at:
+            raise ValueError("last_seen_at cannot precede first_seen_at")
+        if self.fact_status is FactVerificationStatus.VERIFIED:
+            if not self.verification_summary or not self.verification_summary.strip():
+                raise ValueError("verified cluster requires verification summary")
+            if any(evidence.conflicts for evidence in self.authority_evidence):
+                raise ValueError("verified cluster cannot contain conflicting authority evidence")
+            if not any(evidence.verifies_fact for evidence in self.authority_evidence):
+                raise ValueError("verified cluster requires authority evidence")
+        return self
+
+
+class HotspotReviewCard(ResearchModel):
+    """The only research payload shown at the manual hotspot gate."""
+
+    id: str = Field(min_length=1)
+    cluster_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    fact_summary: str = Field(min_length=1)
+    pillar: ContentPillarSlug
+    time_window: TimeWindow
+    score: HotspotScoreBreakdown
+    platform_evidence: list[PlatformEvidenceRecord] = Field(min_length=1)
+    authority_evidence: list[AuthorityEvidence] = Field(default_factory=list)
+    verification_summary: str = Field(min_length=1)
+    audience_insight: str | None = None
+    speaking_angle: str = Field(min_length=1)
+    risk_flags: list[str] = Field(default_factory=list)
+    production_media_clearance: MediaClearanceStatus
+    production_media_plan: str = Field(min_length=1)
+
+    @property
+    def total_score(self) -> float:
+        return self.score.total_score
+
+    @model_validator(mode="after")
+    def validate_review_card(self) -> HotspotReviewCard:
+        platforms = {source.platform for source in self.platform_evidence}
+        has_cross_platform = len(platforms) >= 2
+        has_authority = any(evidence.verifies_fact for evidence in self.authority_evidence)
+        if not has_cross_platform and not has_authority:
+            raise ValueError("review card requires cross-platform or authority evidence")
+        if self.production_media_clearance in {
+            MediaClearanceStatus.REJECTED_WATERMARK,
+            MediaClearanceStatus.REJECTED_UNCLEARED,
+            MediaClearanceStatus.UNKNOWN,
+        }:
+            raise ValueError("review card production media must have a safe fallback")
+        return self
+
+
 class ResearchSource(ResearchModel):
     id: str = Field(min_length=1)
     platform: ResearchPlatform
