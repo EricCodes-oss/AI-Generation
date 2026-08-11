@@ -1,0 +1,16 @@
+[
+  {
+    "platform": "微博",
+    "items": [
+      {"rank": "1", "title": "白海豚突然大拐弯", "heat": "311万", "url": "weibo:1"},
+      {"rank": "2", "title": "城市公园夜间开放", "heat": "120万", "url": "weibo:2"}
+    ]
+  },
+  {
+    "platform": "百度",
+    "items": [
+      {"rank": "2", "title": "台风白海豚走出罕见路线", "heat": "781万", "url": "baidu:1"},
+      {"rank": "3", "title": "暑期铁路客流增长", "heat": "650万", "url": "baidu:2"}
+    ]
+  }
+]
