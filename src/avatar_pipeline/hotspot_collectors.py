@@ -32,7 +32,7 @@ def import_tophub_snapshot(
 ) -> HotspotSnapshot:
     boards = json.loads(path.read_text(encoding="utf-8"))
     records: list[HotspotRecord] = []
-    for board in boards:
+    for board_index, board in enumerate(boards, start=1):
         source_platform = str(board["platform"])
         platform = normalize_platform(source_platform, platform_aliases)
         if platform not in set(platform_aliases.values()):
@@ -46,7 +46,7 @@ def import_tophub_snapshot(
                 continue
             records.append(
                 HotspotRecord(
-                    record_id=f"{snapshot_id}:{platform}:{rank_text}:{index}",
+                    record_id=f"{snapshot_id}:{platform}:{board_index}:{rank_text}:{index}",
                     platform=platform,
                     board_name=source_platform,
                     captured_at=captured_at,

@@ -29,3 +29,21 @@ def test_tophub_import_records_restricted_platform_instead_of_zero_heat():
     assert {item.platform for item in snapshot.records} == {"weibo", "baidu"}
     assert snapshot.failures[0].platform == "bilibili"
     assert snapshot.failures[0].reason == "api returned -352"
+
+
+def test_tophub_import_keeps_record_ids_unique_when_platform_has_multiple_boards(tmp_path):
+    path = tmp_path / "tophub.json"
+    path.write_text(
+        '[{"platform":"微博","items":[{"rank":"1","title":"事件A"}]},'
+        '{"platform":"微博","items":[{"rank":"1","title":"事件B"}]}]',
+        encoding="utf-8",
+    )
+    snapshot = import_tophub_snapshot(
+        path=path,
+        snapshot_id="t0",
+        captured_at=datetime.fromisoformat("2026-08-10T19:40:00+08:00"),
+        timezone="Asia/Shanghai",
+        platform_aliases={"微博": "weibo"},
+        failures={},
+    )
+    assert len({item.record_id for item in snapshot.records}) == 2

@@ -6,13 +6,21 @@ import argparse
 import json
 import shutil
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import yaml
+from pydantic import BaseModel
 
 from avatar_pipeline.config import load_config
+from avatar_pipeline.hotspot_collectors import (
+    import_canonical_snapshot,
+    import_tophub_snapshot,
+)
+from avatar_pipeline.hotspot_models import CandidateVerification, EditorialSignals
+from avatar_pipeline.hotspot_repository import HotspotRepository
+from avatar_pipeline.hotspot_service import HotspotService
 from avatar_pipeline.models import (
     DailyTask,
     HostProfile,
@@ -37,6 +45,7 @@ from avatar_pipeline.research_repository import ResearchRunRepository
 from avatar_pipeline.research_service import ResearchService
 from avatar_pipeline.service import DailyWorkflowService
 from avatar_pipeline.skill_contracts import load_contracts
+from avatar_pipeline.workflow_refresh import topic_candidates_from_report
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_CONFIG = _PROJECT_ROOT / "configs" / "default.yaml"
@@ -164,6 +173,31 @@ def build_parser() -> argparse.ArgumentParser:
 
     research_status = subparsers.add_parser("research-status")
     _add_date_argument(research_status)
+    hotspot_import = subparsers.add_parser("hotspot-import-snapshot")
+    _add_date_argument(hotspot_import)
+    hotspot_import.add_argument("--file", required=True, type=Path)
+    hotspot_import.add_argument("--format", required=True, choices=("canonical", "tophub"))
+    hotspot_import.add_argument("--snapshot-id")
+    hotspot_import.add_argument("--captured-at")
+    hotspot_import.add_argument("--timezone", default="Asia/Shanghai")
+    hotspot_import.add_argument("--failures", type=Path)
+
+    hotspot_review = subparsers.add_parser("hotspot-import-review")
+    _add_date_argument(hotspot_review)
+    hotspot_review.add_argument("--verification", required=True, type=Path)
+    hotspot_review.add_argument("--editorial-signals", required=True, type=Path)
+
+    hotspot_build = subparsers.add_parser("hotspot-build-report")
+    _add_date_argument(hotspot_build)
+
+    hotspot_status = subparsers.add_parser("hotspot-status")
+    _add_date_argument(hotspot_status)
+
+    hotspot_refresh = subparsers.add_parser("hotspot-refresh")
+    _add_date_argument(hotspot_refresh)
+    hotspot_refresh.add_argument("--archive-reason", required=True)
+    hotspot_refresh.add_argument("--confirmed-host-profile", required=True, type=Path)
+
     subparsers.add_parser("research-health")
     return parser
 
@@ -330,6 +364,94 @@ def _dispatch_research(args: argparse.Namespace) -> dict[str, Any]:
     return _research_payload(run)
 
 
+ReviewModelT = TypeVar("ReviewModelT", bound=BaseModel)
+
+
+def _load_review_items(
+    path: Path,
+    model_type: type[ReviewModelT],
+) -> list[ReviewModelT]:
+    payload = _load_json(path)
+    if not isinstance(payload, list):
+        raise ValueError(f"{path} must contain a JSON list")
+    return [model_type.model_validate(item) for item in payload]
+
+
+def _dispatch_hotspot(args: argparse.Namespace) -> dict[str, Any]:
+    app_config = load_config(_DEFAULT_CONFIG)
+    repository = HotspotRepository(args.workspace)
+    service = HotspotService(repository, app_config.hotspot)
+    if args.command == "hotspot-import-snapshot":
+        if args.format == "canonical":
+            snapshot = import_canonical_snapshot(args.file)
+        else:
+            if not args.snapshot_id or not args.captured_at:
+                raise ValueError("tophub import requires --snapshot-id and --captured-at")
+            failures_payload = _load_json(args.failures) if args.failures else {}
+            if not isinstance(failures_payload, dict):
+                raise ValueError("failures file must contain a JSON object")
+            failures = {}
+            for platform, value in failures_payload.items():
+                if not isinstance(value, list) or len(value) != 2:
+                    raise ValueError("each failure must be [reason, raw_snapshot_path]")
+                failures[str(platform)] = (str(value[0]), str(value[1]))
+            snapshot = import_tophub_snapshot(
+                path=args.file,
+                snapshot_id=args.snapshot_id,
+                captured_at=datetime.fromisoformat(args.captured_at),
+                timezone=args.timezone,
+                platform_aliases=app_config.hotspot.platform_aliases,
+                failures=failures,
+            )
+        repository.save_snapshot(args.date, snapshot)
+        return snapshot.model_dump(mode="json")
+    if args.command == "hotspot-import-review":
+        verifications = _load_review_items(args.verification, CandidateVerification)
+        editorial = _load_review_items(args.editorial_signals, EditorialSignals)
+        repository.save_verifications(args.date, verifications)
+        repository.save_editorial_signals(args.date, editorial)
+        return {
+            "verification_event_ids": sorted(item.event_id for item in verifications),
+            "editorial_event_ids": sorted(item.event_id for item in editorial),
+        }
+    if args.command == "hotspot-build-report":
+        return service.build_report(args.date).model_dump(mode="json")
+    if args.command == "hotspot-status":
+        snapshots = repository.list_snapshots(args.date)
+        try:
+            report = repository.load_report(args.date)
+        except FileNotFoundError:
+            report = None
+        return {
+            "date": args.date.isoformat(),
+            "snapshot_ids": [item.snapshot_id for item in snapshots],
+            "successful_platforms": sorted({
+                platform for item in snapshots for platform in item.successful_platforms
+            }),
+            "failures": [
+                failure.model_dump(mode="json")
+                for item in snapshots
+                for failure in item.failures
+            ],
+            "report_outcome": report.outcome if report else None,
+            "candidate_event_ids": [item.event_id for item in report.candidates] if report else [],
+        }
+    if args.command == "hotspot-refresh":
+        report = repository.load_report(args.date)
+        production = DailyWorkflowService(DailyTaskRepository(args.workspace))
+        confirmed_host = HostProfile.model_validate_json(
+            args.confirmed_host_profile.read_text(encoding="utf-8")
+        )
+        task = production.refresh_unapproved_hotspots(
+            args.date,
+            topic_candidates_from_report(report),
+            archive_reason=args.archive_reason,
+            confirmed_host=confirmed_host,
+        )
+        return _task_payload(task)
+    raise ValueError(f"unsupported hotspot command: {args.command}")
+
+
 def _dispatch_production(args: argparse.Namespace) -> dict[str, Any]:
     repository = DailyTaskRepository(args.workspace)
     service = DailyWorkflowService(repository)
@@ -396,6 +518,8 @@ def dispatch(args: argparse.Namespace) -> dict[str, Any]:
         return _research_health_payload()
     if args.command.startswith("research-"):
         return _dispatch_research(args)
+    if args.command.startswith("hotspot-"):
+        return _dispatch_hotspot(args)
     return _dispatch_production(args)
 
 
