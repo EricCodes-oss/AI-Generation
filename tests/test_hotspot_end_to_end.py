@@ -2,7 +2,13 @@ from datetime import date
 
 from avatar_pipeline.config import load_config
 from avatar_pipeline.event_clusterer import cluster_events
-from avatar_pipeline.hotspot_models import CollectionStatus, HotspotFailure, TrendLabel
+from avatar_pipeline.hotspot_models import (
+    CollectionStatus,
+    EventShortVideoEvidence,
+    HotspotFailure,
+    ShortVideoPlatformEvidence,
+    TrendLabel,
+)
 from avatar_pipeline.hotspot_repository import HotspotRepository
 from avatar_pipeline.hotspot_service import HotspotService
 from avatar_pipeline.models import DailyTask, HostProfile, TaskStatus
@@ -47,13 +53,45 @@ def _three_snapshots():
     return snapshots
 
 
-def _save_reviews(repository, snapshots):
+def _strong_short_video_evidence(event_id):
+    return EventShortVideoEvidence(
+        event_id=event_id,
+        captured_at=snapshot(
+            "capture-time", "2026-08-10T20:00:00+08:00"
+        ).captured_at,
+        platforms={
+            platform: ShortVideoPlatformEvidence(
+                platform=platform,
+                source_count=3,
+                comment_sample_count=20,
+                views=100_000,
+                likes=5_000,
+                comments=500,
+                shares=200,
+                saves=300,
+                emotional_signals=["惊讶"],
+                conflict_signals=["预期冲突"],
+                hook_patterns=["结果先行"],
+                visual_materials=["现场画面"],
+                suitability_score=0.85,
+                raw_evidence_paths=[f"tmp/{platform}.json"],
+            )
+            for platform in ("douyin", "xiaohongshu")
+        },
+    )
+
+
+def _save_reviews(repository, snapshots, *, include_short_video=True):
     records = [item for shot in snapshots for item in shot.records]
     events = cluster_events(records, aliases={})
     repository.save_verifications(DAY, [verification(event_id=item.event_id) for item in events])
     repository.save_editorial_signals(
         DAY, [editorial_signals(event_id=item.event_id) for item in events]
     )
+    if include_short_video:
+        repository.save_short_video_evidence(
+            DAY, [_strong_short_video_evidence(item.event_id) for item in events]
+        )
 
 
 def test_three_snapshots_produce_only_top_three_and_preserve_failure_reason(tmp_path):
@@ -129,3 +167,21 @@ def test_verified_report_refresh_keeps_c2_host_and_creates_no_generation_assets(
     assert refreshed.news_script is None
     assert refreshed.media_plan is None
     assert refreshed.artifacts == []
+
+
+def test_verified_rank_hot_but_missing_short_video_evidence_cannot_refresh(tmp_path):
+    repository = HotspotRepository(tmp_path)
+    snapshots = _three_snapshots()
+    for item in snapshots:
+        repository.save_snapshot(DAY, item)
+    _save_reviews(repository, snapshots, include_short_video=False)
+    report = HotspotService(repository, CONFIG).build_report(DAY)
+    assert report.outcome == "qualified_candidates"
+    assert report.director_recommendation_event_id is None
+    assert all(item.director_action.value == "watch" for item in report.candidates)
+    try:
+        topic_candidates_from_report(report)
+    except ValueError as error:
+        assert "director-ready" in str(error)
+    else:
+        raise AssertionError("missing Douyin/Xiaohongshu evidence must block refresh")

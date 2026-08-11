@@ -40,3 +40,32 @@ def test_repository_loads_the_saved_report(tmp_path):
     )
     repository.save_report(date(2026, 8, 10), report, "# report\n")
     assert repository.load_report(date(2026, 8, 10)) == report
+
+
+def test_repository_round_trips_short_video_evidence(tmp_path):
+    from datetime import datetime
+
+    from avatar_pipeline.hotspot_models import (
+        EventShortVideoEvidence,
+        ShortVideoPlatformEvidence,
+    )
+
+    repository = HotspotRepository(tmp_path)
+    evidence = EventShortVideoEvidence(
+        event_id="event-1",
+        captured_at=datetime.fromisoformat("2026-08-11T11:30:00+08:00"),
+        platforms={
+            "douyin": ShortVideoPlatformEvidence(
+                platform="douyin",
+                source_count=2,
+                comment_sample_count=10,
+                views=1000,
+                likes=100,
+                suitability_score=0.8,
+                raw_evidence_paths=["tmp/douyin.json"],
+            )
+        },
+    )
+    repository.save_short_video_evidence(date(2026, 8, 11), [evidence])
+    loaded = repository.load_short_video_evidence(date(2026, 8, 11))
+    assert loaded == {"event-1": evidence}

@@ -19,6 +19,13 @@ _ALLOWED_REFRESH_STATES = {TaskStatus.FACT_SCREENED, TaskStatus.TOPIC_SCRIPT_REV
 def topic_candidates_from_report(report: HotspotReport) -> list[TopicCandidate]:
     if report.outcome != "qualified_candidates" or not report.candidates:
         raise ValueError("report contains no qualified hotspot")
+    director_ready = [
+        item for item in report.candidates if item.director_action.value == "do_now"
+    ]
+    if not director_ready:
+        raise ValueError(
+            "report contains no director-ready hotspot with Douyin/Xiaohongshu evidence"
+        )
     return [
         TopicCandidate(
             id=item.event_id,
@@ -38,7 +45,7 @@ def topic_candidates_from_report(report: HotspotReport) -> list[TopicCandidate]:
             verification_summary=item.verification_summary,
             publishable=True,
         )
-        for item in report.candidates
+        for item in director_ready
     ]
 
 

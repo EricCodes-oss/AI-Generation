@@ -37,6 +37,10 @@ def _candidate(
     assert item.editorial_signals is not None
     editorial = item.editorial_signals
     verification = item.verification
+    assert item.short_video_assessment is not None
+    short_video_ready = item.short_video_assessment.passed
+    director_ready = item.score.total >= director_score_min and short_video_ready
+    strong_ready = item.score.total >= strong_score_min or director_ready
     return HotspotCandidateReport(
         event_id=item.cluster.event_id,
         representative_title=item.cluster.representative_title,
@@ -50,9 +54,9 @@ def _candidate(
         score=item.score,
         score_band=(
             ViralityBand.DIRECTOR_FIRST
-            if item.score.total >= director_score_min
+            if director_ready
             else ViralityBand.STRONG_CANDIDATE
-            if item.score.total >= strong_score_min
+            if strong_ready
             else ViralityBand.BACKUP
         ),
         why_click=editorial.why_click,
@@ -61,16 +65,17 @@ def _candidate(
         visual_assets=verification.visual_plan.assets,
         copyright_notes=verification.visual_plan.copyright_notes,
         expected_lifetime=editorial.expected_lifetime,
-        risks=[*verification.unresolved_claims, *item.gate.reasons],
+        risks=[
+            *verification.unresolved_claims,
+            *item.gate.reasons,
+            *item.short_video_assessment.reasons,
+        ],
         wording_to_avoid=verification.wording_to_avoid,
-        director_action=(
-            DirectorAction.DO_NOW
-            if item.score.total >= director_score_min
-            else DirectorAction.WATCH
-        ),
+        director_action=(DirectorAction.DO_NOW if director_ready else DirectorAction.WATCH),
         pillar=editorial.pillar,
         source_evidence=verification.sources,
         verification_summary=verification.core_fact,
+        short_video_assessment=item.short_video_assessment,
     )
 
 
@@ -94,13 +99,21 @@ def build_hotspot_report(
         and item.score.total >= display_score_min
         and item.verification is not None
         and item.editorial_signals is not None
+        and item.short_video_assessment is not None
     ]
     eligible.sort(key=lambda item: (-item.score.total, item.cluster.event_id))
     candidates = [
         _candidate(item, strong_score_min=strong_score_min, director_score_min=director_score_min)
         for item in eligible[:max_candidates]
     ]
-    recommendation = candidates[0].event_id if candidates else None
+    recommendation = next(
+        (
+            candidate.event_id
+            for candidate in candidates
+            if candidate.director_action is DirectorAction.DO_NOW
+        ),
+        None,
+    )
     candidate_ids = {candidate.event_id for candidate in candidates}
     rejected = [
         HotspotRejectedEvent(
@@ -135,7 +148,7 @@ def render_hotspot_markdown(report: HotspotReport) -> str:
         lines.extend(["## 结果", "", "今日暂无合格爆点，流程安全停止。", ""])
     for index, item in enumerate(report.candidates, start=1):
         badge = (
-            "（本轮跨平台综合评分第一）"
+            "（本轮导演首选）"
             if item.event_id == report.director_recommendation_event_id
             else ""
         )
@@ -171,6 +184,12 @@ def render_hotspot_markdown(report: HotspotReport) -> str:
                 f"- 版权边界：{'；'.join(item.copyright_notes) or '需在生产前确认'}",
                 f"- 事实核验：{item.verification_summary}",
                 f"- 禁用措辞：{'；'.join(item.wording_to_avoid) or '无新增禁用措辞'}",
+                "- 短视频适配："
+                + (
+                    "抖音与小红书证据通过"
+                    if item.short_video_assessment.passed
+                    else "短视频适配证据不足，仅观察，不进入生产刷新"
+                ),
                 f"- 风险：{'；'.join(item.risks) or '无新增风险'}",
                 "",
             ]

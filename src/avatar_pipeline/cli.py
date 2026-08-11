@@ -18,7 +18,11 @@ from avatar_pipeline.hotspot_collectors import (
     import_canonical_snapshot,
     import_tophub_snapshot,
 )
-from avatar_pipeline.hotspot_models import CandidateVerification, EditorialSignals
+from avatar_pipeline.hotspot_models import (
+    CandidateVerification,
+    EditorialSignals,
+    EventShortVideoEvidence,
+)
 from avatar_pipeline.hotspot_repository import HotspotRepository
 from avatar_pipeline.hotspot_service import HotspotService
 from avatar_pipeline.models import (
@@ -186,6 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_date_argument(hotspot_review)
     hotspot_review.add_argument("--verification", required=True, type=Path)
     hotspot_review.add_argument("--editorial-signals", required=True, type=Path)
+    hotspot_review.add_argument("--short-video-evidence", required=True, type=Path)
 
     hotspot_build = subparsers.add_parser("hotspot-build-report")
     _add_date_argument(hotspot_build)
@@ -408,11 +413,16 @@ def _dispatch_hotspot(args: argparse.Namespace) -> dict[str, Any]:
     if args.command == "hotspot-import-review":
         verifications = _load_review_items(args.verification, CandidateVerification)
         editorial = _load_review_items(args.editorial_signals, EditorialSignals)
+        short_video = _load_review_items(
+            args.short_video_evidence, EventShortVideoEvidence
+        )
         repository.save_verifications(args.date, verifications)
         repository.save_editorial_signals(args.date, editorial)
+        repository.save_short_video_evidence(args.date, short_video)
         return {
             "verification_event_ids": sorted(item.event_id for item in verifications),
             "editorial_event_ids": sorted(item.event_id for item in editorial),
+            "short_video_event_ids": sorted(item.event_id for item in short_video),
         }
     if args.command == "hotspot-build-report":
         return service.build_report(args.date).model_dump(mode="json")

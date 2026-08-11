@@ -195,6 +195,68 @@ class EditorialSignals(DomainModel):
     explanatory_depth: float = Field(ge=0, le=1)
 
 
+
+
+class ShortVideoPlatformEvidence(DomainModel):
+    platform: str = Field(min_length=1)
+    collection_status: CollectionStatus = CollectionStatus.SUCCESS
+    failure_reason: str | None = None
+    source_count: int = Field(default=0, ge=0)
+    comment_sample_count: int = Field(default=0, ge=0)
+    views: int | None = Field(default=None, ge=0)
+    likes: int | None = Field(default=None, ge=0)
+    comments: int | None = Field(default=None, ge=0)
+    shares: int | None = Field(default=None, ge=0)
+    saves: int | None = Field(default=None, ge=0)
+    emotional_signals: list[str] = Field(default_factory=list)
+    conflict_signals: list[str] = Field(default_factory=list)
+    hook_patterns: list[str] = Field(default_factory=list)
+    visual_materials: list[str] = Field(default_factory=list)
+    suitability_score: float | None = Field(default=None, ge=0, le=1)
+    raw_evidence_paths: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_collection_result(self) -> "ShortVideoPlatformEvidence":
+        if self.collection_status is not CollectionStatus.SUCCESS and not self.failure_reason:
+            raise ValueError("failed or restricted short-video evidence requires failure_reason")
+        if self.collection_status is CollectionStatus.SUCCESS and self.failure_reason:
+            raise ValueError("successful short-video evidence cannot declare failure_reason")
+        return self
+
+    @property
+    def engagement_rate(self) -> float | None:
+        if not self.views:
+            return None
+        interactions = sum(
+            value or 0 for value in (self.likes, self.comments, self.shares, self.saves)
+        )
+        return interactions / self.views
+
+
+class EventShortVideoEvidence(DomainModel):
+    event_id: str = Field(min_length=1)
+    captured_at: datetime
+    platforms: dict[str, ShortVideoPlatformEvidence] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_platform_keys(self) -> "EventShortVideoEvidence":
+        if any(key != item.platform for key, item in self.platforms.items()):
+            raise ValueError("short-video platform keys must match evidence platform")
+        return self
+
+
+class ShortVideoAssessment(DomainModel):
+    event_id: str = Field(min_length=1)
+    passed: bool
+    required_platforms: list[str] = Field(default_factory=list)
+    missing_platforms: list[str] = Field(default_factory=list)
+    restricted_platforms: list[str] = Field(default_factory=list)
+    strong_platforms: list[str] = Field(default_factory=list)
+    platform_scores: dict[str, float | None] = Field(default_factory=dict)
+    checks: dict[str, bool] = Field(default_factory=dict)
+    reasons: list[str] = Field(default_factory=list)
+
+
 class GateDecision(DomainModel):
     event_id: str = Field(min_length=1)
     passed: bool
@@ -256,6 +318,7 @@ class HotspotCandidateReport(DomainModel):
     pillar: NewsPillarSlug
     source_evidence: list[SourceEvidence]
     verification_summary: str
+    short_video_assessment: ShortVideoAssessment
 
 
 class EvaluatedHotspot(DomainModel):
@@ -265,6 +328,8 @@ class EvaluatedHotspot(DomainModel):
     score: ViralityScore | None = None
     verification: CandidateVerification | None = None
     editorial_signals: EditorialSignals | None = None
+    short_video_evidence: EventShortVideoEvidence | None = None
+    short_video_assessment: ShortVideoAssessment | None = None
 
 
 class HotspotRejectedEvent(DomainModel):

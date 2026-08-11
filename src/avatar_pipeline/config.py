@@ -158,6 +158,12 @@ class HotspotScoreWeights(StrictModel):
 class HotspotConfig(StrictModel):
     rule_version: str = Field(min_length=1)
     core_platforms: list[str] = Field(min_length=3)
+    required_short_video_platforms: list[str] = Field(min_length=1)
+    min_short_video_sources_per_platform: int = Field(ge=1)
+    min_short_video_comment_samples_per_platform: int = Field(ge=1)
+    min_short_video_engagement_rate: float = Field(gt=0, le=1)
+    min_short_video_observed_interactions: int = Field(ge=1)
+    min_short_video_platform_score: float = Field(ge=0, le=1)
     platform_aliases: dict[str, str]
     platform_categories: dict[str, str]
     event_aliases: dict[str, list[str]] = Field(default_factory=dict)

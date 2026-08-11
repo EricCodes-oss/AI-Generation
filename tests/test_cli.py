@@ -7,6 +7,7 @@ from avatar_pipeline.hotspot_models import (
     DirectorAction,
     HotspotCandidateReport,
     HotspotReport,
+    ShortVideoAssessment,
     TrendLabel,
     ViralityBand,
     ViralityScore,
@@ -135,6 +136,17 @@ def test_cli_refresh_preserves_confirmed_host_and_creates_no_assets(tmp_path):
         pillar=NewsPillarSlug.SOCIAL_PHENOMENA,
         source_evidence=[],
         verification_summary="核心事实已核验",
+        short_video_assessment=ShortVideoAssessment(
+            event_id="event-1",
+            passed=True,
+            required_platforms=["douyin", "xiaohongshu"],
+            strong_platforms=["douyin", "xiaohongshu"],
+            platform_scores={"douyin": 0.9, "xiaohongshu": 0.85},
+            checks={
+                "short_video_evidence:douyin": True,
+                "short_video_evidence:xiaohongshu": True,
+            },
+        ),
     )
     report = HotspotReport(
         day=day.isoformat(),
@@ -162,3 +174,58 @@ def test_cli_refresh_preserves_confirmed_host_and_creates_no_assets(tmp_path):
     assert payload["news_script"] is None
     assert payload["media_plan"] is None
     assert payload["artifacts"] == []
+
+
+def test_cli_imports_short_video_evidence_with_review_inputs(tmp_path):
+    verification_path = tmp_path / "verification.json"
+    editorial_path = tmp_path / "editorial.json"
+    short_video_path = tmp_path / "short-video.json"
+    verification_path.write_text("[]\n", encoding="utf-8")
+    editorial_path.write_text("[]\n", encoding="utf-8")
+    short_video_path.write_text(
+        json.dumps(
+            [
+                {
+                    "event_id": "event-1",
+                    "captured_at": "2026-08-11T11:30:00+08:00",
+                    "platforms": {
+                        "douyin": {
+                            "platform": "douyin",
+                            "collection_status": "success",
+                            "source_count": 2,
+                            "comment_sample_count": 10,
+                            "views": 100000,
+                            "likes": 5000,
+                            "comments": 300,
+                            "shares": 200,
+                            "saves": 100,
+                            "suitability_score": 0.8,
+                            "raw_evidence_paths": ["tmp/douyin.json"],
+                        },
+                        "xiaohongshu": {
+                            "platform": "xiaohongshu",
+                            "collection_status": "restricted",
+                            "failure_reason": "login verification required",
+                            "raw_evidence_paths": ["tmp/xiaohongshu-error.json"],
+                        },
+                    },
+                }
+            ],
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    result = run_cli(
+        tmp_path,
+        "hotspot-import-review",
+        "--date", "2026-08-11",
+        "--verification", str(verification_path),
+        "--editorial-signals", str(editorial_path),
+        "--short-video-evidence", str(short_video_path),
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["short_video_event_ids"] == ["event-1"]
+    loaded = HotspotRepository(tmp_path).load_short_video_evidence(date(2026, 8, 11))
+    assert loaded["event-1"].platforms["xiaohongshu"].collection_status.value == "restricted"

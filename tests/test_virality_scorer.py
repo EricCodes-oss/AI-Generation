@@ -56,7 +56,7 @@ def test_score_uses_exact_confirmed_weights_and_is_replayable():
         CONFIG,
     )
     assert first == second
-    assert first.rule_version == "viral-v1.0"
+    assert first.rule_version == "viral-v1.1"
     assert first.cross_platform_resonance == 25
     assert first.trend_velocity == 14.5
     assert first.conflict_suspense == 13.5

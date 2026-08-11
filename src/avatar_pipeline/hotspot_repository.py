@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from avatar_pipeline.hotspot_models import (
     CandidateVerification,
     EditorialSignals,
+    EventShortVideoEvidence,
     HotspotReport,
     HotspotSnapshot,
 )
@@ -52,6 +53,24 @@ class HotspotRepository:
             return {}
         payload = json.loads(path.read_text(encoding="utf-8"))
         items = [CandidateVerification.model_validate(item) for item in payload]
+        return {item.event_id: item for item in items}
+
+    def save_short_video_evidence(
+        self, day: date, items: list[EventShortVideoEvidence]
+    ) -> Path:
+        return self._write_json(
+            self._day_root(day) / "short-video-evidence.json",
+            [item.model_dump(mode="json") for item in items],
+        )
+
+    def load_short_video_evidence(
+        self, day: date, *, missing_ok: bool = False
+    ) -> dict[str, EventShortVideoEvidence]:
+        path = self._day_root(day) / "short-video-evidence.json"
+        if missing_ok and not path.exists():
+            return {}
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        items = [EventShortVideoEvidence.model_validate(item) for item in payload]
         return {item.event_id: item for item in items}
 
     def save_editorial_signals(self, day: date, items: list[EditorialSignals]) -> Path:

@@ -8,6 +8,7 @@ from avatar_pipeline.event_clusterer import cluster_events
 from avatar_pipeline.hotspot_models import EvaluatedHotspot, GateDecision, HotspotReport
 from avatar_pipeline.hotspot_report import build_hotspot_report, render_hotspot_markdown
 from avatar_pipeline.hotspot_repository import HotspotRepository
+from avatar_pipeline.short_video_signals import assess_short_video_evidence
 from avatar_pipeline.trend_analyzer import analyze_event_trend
 from avatar_pipeline.virality_gate import evaluate_virality_gate
 from avatar_pipeline.virality_scorer import score_virality
@@ -26,10 +27,15 @@ class HotspotService:
         failures = [failure for snapshot in snapshots for failure in snapshot.failures]
         verifications = self.repository.load_verifications(day, missing_ok=True)
         editorial_signals = self.repository.load_editorial_signals(day, missing_ok=True)
+        short_video_evidence = self.repository.load_short_video_evidence(day, missing_ok=True)
         evaluations = []
         for event in cluster_events(records, aliases=self.config.event_aliases):
             evidence = verifications.get(event.event_id)
             editorial = editorial_signals.get(event.event_id)
+            short_video = short_video_evidence.get(event.event_id)
+            short_video_assessment = assess_short_video_evidence(
+                short_video, self.config, event_id=event.event_id
+            )
             event_trend = analyze_event_trend(
                 event,
                 snapshots,
@@ -54,6 +60,8 @@ class HotspotService:
                             checks={},
                             reasons=missing,
                         ),
+                        short_video_evidence=short_video,
+                        short_video_assessment=short_video_assessment,
                     )
                 )
                 continue
@@ -86,6 +94,8 @@ class HotspotService:
                     score=score,
                     verification=evidence,
                     editorial_signals=editorial,
+                    short_video_evidence=short_video,
+                    short_video_assessment=short_video_assessment,
                 )
             )
         report = build_hotspot_report(
