@@ -1,4 +1,4 @@
-"""Safe migration for legacy task JSON."""
+"""Safe sequential migration for legacy task JSON."""
 
 from collections.abc import Mapping
 from typing import Any
@@ -18,9 +18,7 @@ _STATUS_MAP = {
 }
 
 
-def migrate_task_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
-    if payload.get("schema_version", 1) >= 2:
-        return dict(payload)
+def _migrate_v1_to_v2(payload: Mapping[str, Any]) -> dict[str, Any]:
     result = dict(payload)
     result["schema_version"] = 2
     result["status"] = _STATUS_MAP.get(result.get("status", "created"), "input_received")
@@ -41,4 +39,22 @@ def migrate_task_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     result.setdefault("approvals", [])
     result.setdefault("artifacts", [])
     result.setdefault("stop_reason", "legacy_task_not_verified")
+    return result
+
+
+def _migrate_v2_to_v3(payload: Mapping[str, Any]) -> dict[str, Any]:
+    result = dict(payload)
+    result["schema_version"] = 3
+    result.setdefault("archived_topic_plans", [])
+    return result
+
+
+def migrate_task_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    result = dict(payload)
+    version = int(result.get("schema_version", 1))
+    if version < 2:
+        result = _migrate_v1_to_v2(result)
+        version = 2
+    if version < 3:
+        result = _migrate_v2_to_v3(result)
     return result

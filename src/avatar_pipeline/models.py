@@ -184,8 +184,19 @@ class ArtifactRecord(DomainModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class ArchivedTopicPlan(DomainModel):
+    reason: str = Field(min_length=1)
+    previous_status: TaskStatus
+    candidates: list[TopicCandidate] = Field(default_factory=list)
+    skipped_candidates: list[TopicCandidate] = Field(default_factory=list)
+    selected_topic_id: str | None = None
+    news_script: NewsScript | None = None
+    media_plan: MediaPlan | None = None
+    archived_at: datetime = Field(default_factory=utc_now)
+
+
 class DailyTask(DomainModel):
-    schema_version: int = 2
+    schema_version: Literal[3] = 3
     day: date
     mode: RunMode = RunMode.MANUAL
     topic_source: TopicSource = TopicSource.AUTO_HOT
@@ -198,6 +209,7 @@ class DailyTask(DomainModel):
     host_profile: HostProfile | None = None
     news_script: NewsScript | None = None
     media_plan: MediaPlan | None = None
+    archived_topic_plans: list[ArchivedTopicPlan] = Field(default_factory=list)
     subtitle_enabled: bool = False
     video_structure: str = "studio_anchor_plus_vertical_news_insert"
     media_policy: str = "reliable_original_first_ai_demo_fallback"

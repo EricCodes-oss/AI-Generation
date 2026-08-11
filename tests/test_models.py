@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from avatar_pipeline.models import (
     ApprovalRecord,
+    ArchivedTopicPlan,
     DailyTask,
     HostProfile,
     MediaKind,
@@ -55,7 +56,7 @@ def test_daily_task_models_news_run_with_default_no_subtitles():
     )
     assert task.subtitle_enabled is False
     assert task.video_structure == "studio_anchor_plus_vertical_news_insert"
-    assert task.schema_version == 2
+    assert task.schema_version == 3
 
 
 def test_topic_candidate_requires_verified_evidence_for_publishable_flag():
@@ -144,3 +145,20 @@ def test_approval_records_use_only_three_new_gate_names():
     assert ApprovalRecord(gate="final_video", actor="owner")
     with pytest.raises(ValidationError):
         ApprovalRecord(gate="script", actor="owner")
+
+
+def test_schema_v3_task_accepts_explicit_archived_plan_history():
+    task = DailyTask(
+        day=date(2026, 8, 10),
+        status=TaskStatus.TOPIC_SCRIPT_REVIEW,
+        archived_topic_plans=[
+            ArchivedTopicPlan(
+                reason="旧候选传播性不足",
+                previous_status=TaskStatus.TOPIC_SCRIPT_REVIEW,
+                candidates=[],
+                skipped_candidates=[],
+            )
+        ],
+    )
+    assert task.schema_version == 3
+    assert task.archived_topic_plans[0].reason == "旧候选传播性不足"

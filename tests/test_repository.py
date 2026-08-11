@@ -17,7 +17,7 @@ def test_repository_round_trips_utf8_json(tmp_path):
     repo.create(task)
     loaded = repo.get(date(2026, 8, 6))
     assert loaded.day == task.day
-    assert loaded.schema_version == 2
+    assert loaded.schema_version == 3
     assert (tmp_path / "days" / "2026-08-06" / "task.json").exists()
 
 
@@ -40,6 +40,20 @@ def test_repository_migrates_legacy_task_without_fabricating_verification(tmp_pa
         json.dumps({"day": "2026-08-04", "status": "created", "candidates": []}), encoding="utf-8"
     )
     task = DailyTaskRepository(tmp_path).get(date(2026, 8, 4))
-    assert task.schema_version == 2
+    assert task.schema_version == 3
     assert task.status.value == "input_received"
     assert task.candidates == []
+
+
+def test_repository_migrates_v2_to_v3_without_inventing_archive_or_approval(tmp_path):
+    day = date(2026, 8, 10)
+    path = tmp_path / "days" / day.isoformat() / "task.json"
+    path.parent.mkdir(parents=True)
+    payload = DailyTask(day=day).model_dump(mode="json")
+    payload["schema_version"] = 2
+    payload.pop("archived_topic_plans", None)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    loaded = DailyTaskRepository(tmp_path).get(day)
+    assert loaded.schema_version == 3
+    assert loaded.archived_topic_plans == []
+    assert loaded.approvals == []

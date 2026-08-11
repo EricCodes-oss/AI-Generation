@@ -18,6 +18,7 @@ from avatar_pipeline.models import (
 from avatar_pipeline.policy import screen_candidates
 from avatar_pipeline.repository import DailyTaskRepository
 from avatar_pipeline.state import ensure_transition
+from avatar_pipeline.workflow_refresh import refresh_unapproved_task
 
 
 class WorkflowPreconditionError(ValueError):
@@ -177,6 +178,22 @@ class DailyWorkflowService:
     def _require_script_plan(task: DailyTask) -> None:
         if task.selected_topic_id is None or task.news_script is None or task.media_plan is None:
             raise WorkflowPreconditionError("topic, script, and media plan are required")
+
+    def refresh_unapproved_hotspots(
+        self,
+        day: date,
+        candidates: Sequence[TopicCandidate],
+        archive_reason: str,
+        confirmed_host: HostProfile,
+    ) -> DailyTask:
+        task = self.repository.get(day)
+        refreshed = refresh_unapproved_task(
+            task,
+            candidates=candidates,
+            archive_reason=archive_reason,
+            confirmed_host=confirmed_host,
+        )
+        return self.repository.save(refreshed)
 
     def _require_status(self, day: date, *expected: TaskStatus) -> DailyTask:
         task = self.repository.get(day)

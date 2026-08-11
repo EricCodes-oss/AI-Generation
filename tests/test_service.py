@@ -47,6 +47,12 @@ def candidate(topic_id="t1", score=94):
     )
 
 
+def _candidate_verified(topic_id: str) -> TopicCandidate:
+    return candidate(topic_id=topic_id).model_copy(
+        update={"fact_status": FactStatus.VERIFIED, "publishable": True}
+    )
+
+
 def script_and_plan():
     script = NewsScript(
         title="热点解读",
@@ -144,3 +150,35 @@ def test_unverified_candidate_cannot_be_selected(tmp_path):
         service.record_script_and_media_plan(
             day, "pending", script_and_plan()[0], script_and_plan()[1]
         )
+
+
+def test_service_refreshes_only_unapproved_topic_fields_and_preserves_host(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 10)
+    service.start_day(day, mode=RunMode.MANUAL)
+    service.record_research(day, [candidate("old")])
+    host = HostProfile(
+        id="host-c2-pro-candidate-2-final",
+        display_name="C2-Pro 新闻主持人",
+        reference_image=("output/host-v12-c2-pro/GPT-Image-2-Pro-C2-Pro-主持人最终选定.png"),
+        studio_reference="蓝色演播室、近景胸像、白衬衣、深藏青西装、无桌、避免手臂入镜",
+        visual_style="知性亲和、专业克制、低AI感、五官清晰稳定",
+        is_new=False,
+        version=12,
+    )
+    task = service.get(day)
+    task.host_profile = host
+    service.repository.save(task)
+    refreshed = service.refresh_unapproved_hotspots(
+        day,
+        [_candidate_verified("new")],
+        archive_reason="旧候选传播性不足",
+        confirmed_host=host,
+    )
+    assert refreshed.host_profile == host
+    assert refreshed.status is TaskStatus.TOPIC_SCRIPT_REVIEW
+    assert refreshed.selected_topic_id is None
+    assert refreshed.news_script is None
+    assert refreshed.media_plan is None
+    assert refreshed.approvals == task.approvals
+    assert refreshed.artifacts == task.artifacts
