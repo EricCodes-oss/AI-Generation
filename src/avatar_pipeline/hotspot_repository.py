@@ -34,42 +34,47 @@ class HotspotRepository:
     def list_snapshots(self, day: date) -> list[HotspotSnapshot]:
         paths = (self._day_root(day) / "snapshots").glob("*.json")
         snapshots = [
-            HotspotSnapshot.model_validate_json(path.read_text(encoding="utf-8"))
-            for path in paths
+            HotspotSnapshot.model_validate_json(path.read_text(encoding="utf-8")) for path in paths
         ]
         return sorted(snapshots, key=lambda item: item.captured_at)
 
-    def save_verifications(
-        self, day: date, items: list[CandidateVerification]
-    ) -> Path:
+    def save_verifications(self, day: date, items: list[CandidateVerification]) -> Path:
         return self._write_json(
             self._day_root(day) / "verification.json",
             [item.model_dump(mode="json") for item in items],
         )
 
-    def load_verifications(self, day: date) -> dict[str, CandidateVerification]:
+    def load_verifications(
+        self, day: date, *, missing_ok: bool = False
+    ) -> dict[str, CandidateVerification]:
         path = self._day_root(day) / "verification.json"
+        if missing_ok and not path.exists():
+            return {}
         payload = json.loads(path.read_text(encoding="utf-8"))
         items = [CandidateVerification.model_validate(item) for item in payload]
         return {item.event_id: item for item in items}
 
-    def save_editorial_signals(
-        self, day: date, items: list[EditorialSignals]
-    ) -> Path:
+    def save_editorial_signals(self, day: date, items: list[EditorialSignals]) -> Path:
         return self._write_json(
             self._day_root(day) / "editorial-signals.json",
             [item.model_dump(mode="json") for item in items],
         )
 
-    def load_editorial_signals(self, day: date) -> dict[str, EditorialSignals]:
+    def load_editorial_signals(
+        self, day: date, *, missing_ok: bool = False
+    ) -> dict[str, EditorialSignals]:
         path = self._day_root(day) / "editorial-signals.json"
+        if missing_ok and not path.exists():
+            return {}
         payload = json.loads(path.read_text(encoding="utf-8"))
         items = [EditorialSignals.model_validate(item) for item in payload]
         return {item.event_id: item for item in items}
 
-    def save_report(
-        self, day: date, report: HotspotReport, markdown: str
-    ) -> tuple[Path, Path]:
+    def load_report(self, day: date) -> HotspotReport:
+        path = self._day_root(day) / "reports" / "candidate-report.json"
+        return HotspotReport.model_validate_json(path.read_text(encoding="utf-8"))
+
+    def save_report(self, day: date, report: HotspotReport, markdown: str) -> tuple[Path, Path]:
         root = self._day_root(day) / "reports"
         json_path = root / "candidate-report.json"
         markdown_path = root / "candidate-report.md"

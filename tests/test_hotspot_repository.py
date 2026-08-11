@@ -13,7 +13,8 @@ def test_repository_round_trips_snapshot_and_lists_chronologically(tmp_path):
     repository.save_snapshot(date(2026, 8, 10), later)
     repository.save_snapshot(date(2026, 8, 10), earlier)
     assert [item.snapshot_id for item in repository.list_snapshots(date(2026, 8, 10))] == [
-        "t0", "t1"
+        "t0",
+        "t1",
     ]
 
 
@@ -23,3 +24,19 @@ def test_repository_refuses_to_overwrite_raw_snapshot(tmp_path):
     repository.save_snapshot(date(2026, 8, 10), item)
     with pytest.raises(SnapshotAlreadyExists, match="t0"):
         repository.save_snapshot(date(2026, 8, 10), item)
+
+
+def test_repository_loads_the_saved_report(tmp_path):
+    from avatar_pipeline.hotspot_models import HotspotReport
+
+    repository = HotspotRepository(tmp_path)
+    report = HotspotReport(
+        day="2026-08-10",
+        rule_version="viral-v1.0",
+        snapshot_ids=[],
+        collection_failures=[],
+        candidates=[],
+        outcome="no_qualified_hotspot",
+    )
+    repository.save_report(date(2026, 8, 10), report, "# report\n")
+    assert repository.load_report(date(2026, 8, 10)) == report
