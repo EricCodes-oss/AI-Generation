@@ -16,7 +16,7 @@ from avatar_pipeline.models import (
     TopicCandidate,
 )
 from avatar_pipeline.policy import screen_candidates
-from avatar_pipeline.repository import DailyTaskRepository
+from avatar_pipeline.repository import DailyTaskNotFound, DailyTaskRepository
 from avatar_pipeline.state import ensure_transition
 from avatar_pipeline.workflow_refresh import refresh_unapproved_task
 
@@ -186,7 +186,11 @@ class DailyWorkflowService:
         archive_reason: str,
         confirmed_host: HostProfile,
     ) -> DailyTask:
-        task = self.repository.get(day)
+        try:
+            task = self.repository.get(day)
+        except DailyTaskNotFound:
+            task = DailyTask(day=day, mode=RunMode.MANUAL)
+            self.repository.create(task)
         refreshed = refresh_unapproved_task(
             task,
             candidates=candidates,

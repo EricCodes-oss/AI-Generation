@@ -13,7 +13,11 @@ from avatar_pipeline.models import (
 )
 
 _LOCKED_HOST_REFERENCE = "output/host-v12-c2-pro/GPT-Image-2-Pro-C2-Pro-主持人最终选定.png"
-_ALLOWED_REFRESH_STATES = {TaskStatus.FACT_SCREENED, TaskStatus.TOPIC_SCRIPT_REVIEW}
+_ALLOWED_REFRESH_STATES = {
+    TaskStatus.INPUT_RECEIVED,
+    TaskStatus.FACT_SCREENED,
+    TaskStatus.TOPIC_SCRIPT_REVIEW,
+}
 
 
 def topic_candidates_from_report(report: HotspotReport) -> list[TopicCandidate]:
@@ -62,6 +66,14 @@ def refresh_unapproved_task(
         raise ValueError("saved host conflicts with confirmed host")
     if task.status not in _ALLOWED_REFRESH_STATES:
         raise ValueError(f"cannot refresh task in {task.status.value}")
+    if task.status is TaskStatus.INPUT_RECEIVED and (
+        task.approvals
+        or task.artifacts
+        or task.selected_topic_id is not None
+        or task.news_script is not None
+        or task.media_plan is not None
+    ):
+        raise ValueError("input_received task contains work that cannot be bypassed")
     if any(item.gate == "topic_script" for item in task.approvals):
         raise ValueError("topic and script are already approved")
     if not archive_reason.strip():

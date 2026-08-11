@@ -182,3 +182,57 @@ def test_service_refreshes_only_unapproved_topic_fields_and_preserves_host(tmp_p
     assert refreshed.media_plan is None
     assert refreshed.approvals == task.approvals
     assert refreshed.artifacts == task.artifacts
+
+
+def test_refresh_unapproved_hotspots_bootstraps_missing_manual_task(tmp_path):
+    service = DailyWorkflowService(DailyTaskRepository(tmp_path))
+    day = date(2026, 8, 11)
+    host = HostProfile(
+        id="host-c2-pro-candidate-2-final",
+        display_name="C2-Pro 新闻主持人",
+        reference_image="output/host-v12-c2-pro/GPT-Image-2-Pro-C2-Pro-主持人最终选定.png",
+        is_new=False,
+        version=12,
+    )
+
+    refreshed = service.refresh_unapproved_hotspots(
+        day,
+        [candidate("viral-event")],
+        archive_reason="manual viral hotspot flow",
+        confirmed_host=host,
+    )
+
+    assert refreshed.status is TaskStatus.TOPIC_SCRIPT_REVIEW
+    assert refreshed.mode is RunMode.MANUAL
+    assert refreshed.topic_source.value == "auto_hot"
+    assert refreshed.host_profile == host
+    assert [item.id for item in refreshed.candidates] == ["viral-event"]
+    assert refreshed.selected_topic_id is None
+    assert refreshed.news_script is None
+    assert refreshed.media_plan is None
+    assert refreshed.approvals == []
+    assert refreshed.artifacts == []
+
+
+def test_refresh_unapproved_hotspots_promotes_clean_input_received_task(tmp_path):
+    repository = DailyTaskRepository(tmp_path)
+    service = DailyWorkflowService(repository)
+    day = date(2026, 8, 11)
+    service.start_day(day, mode=RunMode.MANUAL)
+    host = HostProfile(
+        id="host-c2-pro-candidate-2-final",
+        display_name="C2-Pro 新闻主持人",
+        reference_image="output/host-v12-c2-pro/GPT-Image-2-Pro-C2-Pro-主持人最终选定.png",
+        is_new=False,
+        version=12,
+    )
+
+    refreshed = service.refresh_unapproved_hotspots(
+        day,
+        [candidate("viral-event")],
+        archive_reason="manual viral hotspot flow",
+        confirmed_host=host,
+    )
+
+    assert refreshed.status is TaskStatus.TOPIC_SCRIPT_REVIEW
+    assert refreshed.host_profile == host
