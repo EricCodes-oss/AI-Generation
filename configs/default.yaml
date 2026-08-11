@@ -84,3 +84,47 @@ research:
     - 父母养老与照护压力
     - 养老
     - 照护老人
+hotspot:
+  rule_version: viral-v1.0
+  core_platforms: [weibo, douyin, baidu, toutiao, kuaishou, zhihu, bilibili, wechat]
+  platform_aliases:
+    微博: weibo
+    抖音: douyin
+    百度: baidu
+    今日头条: toutiao
+    快手: kuaishou
+    知乎: zhihu
+    哔哩哔哩: bilibili
+    B站: bilibili
+    微信: wechat
+  platform_categories:
+    weibo: social
+    douyin: short_video
+    baidu: search
+    toutiao: news_feed
+    kuaishou: short_video
+    zhihu: knowledge
+    bilibili: long_video
+    wechat: social_content
+  event_aliases: {}
+  snapshot_interval_minutes: 10
+  snapshot_count: 3
+  min_platforms: 3
+  top_rank_single: 5
+  top_rank_multi: 10
+  min_top_rank_multi_platforms: 2
+  max_event_age_hours: 24
+  min_consecutive_snapshots: 2
+  display_score_min: 75
+  strong_score_min: 80
+  director_score_min: 85
+  max_candidates: 3
+  score_weights:
+    cross_platform_resonance: 25
+    trend_velocity: 20
+    conflict_suspense: 15
+    public_interest: 10
+    curiosity_gap: 10
+    visual_impact: 10
+    explanatory_depth: 5
+    fact_safety: 5

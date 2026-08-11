@@ -144,6 +144,38 @@ class ResearchConfig(StrictModel):
         return self
 
 
+class HotspotScoreWeights(StrictModel):
+    cross_platform_resonance: Literal[25]
+    trend_velocity: Literal[20]
+    conflict_suspense: Literal[15]
+    public_interest: Literal[10]
+    curiosity_gap: Literal[10]
+    visual_impact: Literal[10]
+    explanatory_depth: Literal[5]
+    fact_safety: Literal[5]
+
+
+class HotspotConfig(StrictModel):
+    rule_version: str = Field(min_length=1)
+    core_platforms: list[str] = Field(min_length=3)
+    platform_aliases: dict[str, str]
+    platform_categories: dict[str, str]
+    event_aliases: dict[str, list[str]] = Field(default_factory=dict)
+    snapshot_interval_minutes: int = Field(gt=0)
+    snapshot_count: int = Field(ge=2)
+    min_platforms: int = Field(ge=2)
+    top_rank_single: int = Field(gt=0)
+    top_rank_multi: int = Field(gt=0)
+    min_top_rank_multi_platforms: int = Field(ge=2)
+    max_event_age_hours: int = Field(gt=0)
+    min_consecutive_snapshots: int = Field(ge=2)
+    display_score_min: int = Field(ge=0, le=100)
+    strong_score_min: int = Field(ge=0, le=100)
+    director_score_min: int = Field(ge=0, le=100)
+    max_candidates: Literal[3]
+    score_weights: HotspotScoreWeights
+
+
 class AppConfig(StrictModel):
     mode: Literal["managed", "manual"]
     topic_source: Literal["user_topic", "auto_hot"]
@@ -157,6 +189,7 @@ class AppConfig(StrictModel):
     approval_policy: ApprovalConfig
     storage: StorageConfig
     research: ResearchConfig
+    hotspot: HotspotConfig
 
 
 def load_config(path: Path | str) -> AppConfig:

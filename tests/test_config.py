@@ -49,3 +49,20 @@ def test_config_rejects_subtitles_or_unknown_video_structure():
     }
     with pytest.raises(ValidationError):
         type(load_config(Path("configs/default.yaml"))).model_validate(config)
+
+
+def test_default_config_locks_confirmed_hotspot_rules():
+    config = load_config(Path("configs/default.yaml"))
+    assert config.hotspot.rule_version == "viral-v1.0"
+    assert config.hotspot.core_platforms == [
+        "weibo", "douyin", "baidu", "toutiao",
+        "kuaishou", "zhihu", "bilibili", "wechat",
+    ]
+    assert config.hotspot.platform_categories["weibo"] == "social"
+    assert config.hotspot.platform_categories["baidu"] == "search"
+    assert config.hotspot.snapshot_interval_minutes == 10
+    assert config.hotspot.snapshot_count == 3
+    assert config.hotspot.min_platforms == 3
+    assert config.hotspot.min_consecutive_snapshots == 2
+    assert config.hotspot.display_score_min == 75
+    assert sum(config.hotspot.score_weights.model_dump().values()) == 100
