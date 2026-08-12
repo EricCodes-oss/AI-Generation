@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 from datetime import date
+from pathlib import Path
 
 from avatar_pipeline.hotspot_models import (
     DirectorAction,
@@ -65,9 +66,12 @@ def test_cli_imports_snapshot_builds_report_and_shows_transparent_status(tmp_pat
     imported = run_cli(
         tmp_path,
         "hotspot-import-snapshot",
-        "--date", "2026-08-10",
-        "--format", "canonical",
-        "--file", "tests/fixtures/hotspots/canonical-t0.json",
+        "--date",
+        "2026-08-10",
+        "--format",
+        "canonical",
+        "--file",
+        "tests/fixtures/hotspots/canonical-t0.json",
     )
     assert imported.returncode == 0
     assert json.loads(imported.stdout)["snapshot_id"] == "t0"
@@ -162,9 +166,12 @@ def test_cli_refresh_preserves_confirmed_host_and_creates_no_assets(tmp_path):
     result = run_cli(
         tmp_path,
         "hotspot-refresh",
-        "--date", "2026-08-10",
-        "--archive-reason", "旧候选传播性不足",
-        "--confirmed-host-profile", str(confirmed_host_path),
+        "--date",
+        "2026-08-10",
+        "--archive-reason",
+        "旧候选传播性不足",
+        "--confirmed-host-profile",
+        str(confirmed_host_path),
     )
     assert result.returncode == 0
     payload = json.loads(result.stdout)
@@ -219,13 +226,185 @@ def test_cli_imports_short_video_evidence_with_review_inputs(tmp_path):
     result = run_cli(
         tmp_path,
         "hotspot-import-review",
-        "--date", "2026-08-11",
-        "--verification", str(verification_path),
-        "--editorial-signals", str(editorial_path),
-        "--short-video-evidence", str(short_video_path),
+        "--date",
+        "2026-08-11",
+        "--verification",
+        str(verification_path),
+        "--editorial-signals",
+        str(editorial_path),
+        "--short-video-evidence",
+        str(short_video_path),
     )
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["short_video_event_ids"] == ["event-1"]
     loaded = HotspotRepository(tmp_path).load_short_video_evidence(date(2026, 8, 11))
     assert loaded["event-1"].platforms["xiaohongshu"].collection_status.value == "restricted"
+
+
+def test_news_v5_guidance_reports_v5_rhythm_for_52_seconds():
+    from avatar_pipeline.cli import build_parser, dispatch
+
+    args = build_parser().parse_args(["news-v5-guidance", "--duration", "52.128"])
+    payload = dispatch(args)
+    assert payload["recommended_count"] == 3
+    assert payload["minimum_count"] == 2
+    assert payload["maximum_count"] == 3
+    assert payload["minimum_clip_seconds"] == 4.5
+    assert payload["maximum_clip_seconds"] == 6.5
+
+
+def test_news_v5_init_and_status_are_non_interactive_json_commands(tmp_path):
+    output_root = tmp_path / "output"
+    created = run_cli(
+        tmp_path,
+        "news-v5-init",
+        "--output-root",
+        str(output_root),
+        "--date",
+        "2026-08-12",
+        "--slug",
+        "台风暴雨",
+        "--topic",
+        "台风及城市积水影响",
+        "--version",
+        "1",
+    )
+    assert created.returncode == 0, created.stderr
+    payload = json.loads(created.stdout)
+    run_dir = output_root / "manual-news-2026-08-12-台风暴雨-v01"
+    assert payload["run_dir"] == str(run_dir)
+    assert payload["manifest"]["status"] == "initialized"
+
+    status = run_cli(tmp_path, "news-v5-status", "--run-dir", str(run_dir))
+    assert status.returncode == 0, status.stderr
+    status_payload = json.loads(status.stdout)
+    assert status_payload["run_id"] == run_dir.name
+    assert status_payload["status"] == "initialized"
+    assert status_payload["records"]["manifest"] is True
+    assert status_payload["records"]["final_qc_report"] is False
+
+    duplicate = run_cli(
+        tmp_path,
+        "news-v5-init",
+        "--output-root",
+        str(output_root),
+        "--date",
+        "2026-08-12",
+        "--slug",
+        "台风暴雨",
+        "--topic",
+        "台风及城市积水影响",
+        "--version",
+        "1",
+    )
+    assert duplicate.returncode != 0
+
+
+def test_news_v5_stage_commands_dispatch_to_quality_gates(monkeypatch, tmp_path):
+    from avatar_pipeline import cli
+    from avatar_pipeline.news_production import StageValidationResult
+    from avatar_pipeline.news_production_models import (
+        DirectorCheck,
+        DirectorReview,
+        NewsRunManifest,
+        NewsRunStatus,
+    )
+    from avatar_pipeline.news_qc import FinalQualityReport
+
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    calls = []
+
+    def fake_preflight(path):
+        calls.append(("preflight", Path(path)))
+        return StageValidationResult(
+            stage="timeline",
+            status=NewsRunStatus.TIMELINE_READY,
+            hard_failures=[],
+            advisories=["broll_count:2 outside director target"],
+        )
+
+    def fake_mark(path):
+        calls.append(("mark", Path(path)))
+        return NewsRunManifest(
+            run_id="run",
+            quality_profile="v5",
+            quality_profile_version="1.0",
+            topic="topic",
+            target_duration_seconds=60,
+            host_id="host",
+            host_reference_image="host.png",
+            host_sha256="a" * 64,
+            voice_id="voice",
+            status=NewsRunStatus.RENDERED_PENDING_QC,
+            final_video_path="video/final-clean.mp4",
+            created_at="2026-08-12T00:00:00Z",
+        )
+
+    def fake_qc(path):
+        calls.append(("qc", Path(path)))
+        return FinalQualityReport(
+            run_id="run",
+            overall_passed=False,
+            checks=[],
+            director_review=None,
+            final_video_sha256="b" * 64,
+        )
+
+    def fake_review(path):
+        calls.append(("review", Path(path)))
+        return FinalQualityReport(
+            run_id="run",
+            overall_passed=True,
+            checks=[],
+            director_review=DirectorReview(
+                run_id="run",
+                approved=True,
+                checks=[
+                    DirectorCheck(
+                        id="overall_news_effect",
+                        description="overall_news_effect",
+                        passed=True,
+                    )
+                ],
+                reviewed_at="2026-08-12T00:00:00Z",
+                actor="director",
+            ),
+            final_video_sha256="b" * 64,
+        )
+
+    monkeypatch.setattr(cli, "validate_timeline_preflight", fake_preflight)
+    monkeypatch.setattr(cli, "mark_rendered", fake_mark)
+    monkeypatch.setattr(cli, "build_automatic_qc_report", fake_qc)
+    monkeypatch.setattr(cli, "apply_director_review", fake_review)
+
+    preflight = cli.dispatch(
+        cli.build_parser().parse_args(
+            ["news-v5-preflight", "--run-dir", str(run_dir), "--stage", "timeline"]
+        )
+    )
+    assert preflight == {
+        "stage": "timeline",
+        "status": "timeline_ready",
+        "hard_failures": [],
+        "advisories": ["broll_count:2 outside director target"],
+    }
+    rendered = cli.dispatch(
+        cli.build_parser().parse_args(["news-v5-mark-rendered", "--run-dir", str(run_dir)])
+    )
+    assert rendered["status"] == "rendered_pending_qc"
+    automatic = cli.dispatch(
+        cli.build_parser().parse_args(["news-v5-build-qc", "--run-dir", str(run_dir)])
+    )
+    assert automatic["overall_passed"] is False
+    reviewed = cli.dispatch(
+        cli.build_parser().parse_args(["news-v5-apply-director-review", "--run-dir", str(run_dir)])
+    )
+    assert reviewed["overall_passed"] is True
+    assert calls == [
+        ("preflight", run_dir),
+        ("mark", run_dir),
+        ("qc", run_dir),
+        ("review", run_dir),
+    ]

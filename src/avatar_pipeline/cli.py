@@ -35,6 +35,18 @@ from avatar_pipeline.models import (
     TopicSource,
     utc_now,
 )
+from avatar_pipeline.news_production import (
+    initialize_news_run,
+    load_run_record,
+    mark_rendered,
+    recommend_broll,
+    validate_generation_preflight,
+    validate_render_preflight,
+    validate_timeline_preflight,
+)
+from avatar_pipeline.news_production_models import NewsRunManifest
+from avatar_pipeline.news_qc import apply_director_review, build_automatic_qc_report
+from avatar_pipeline.news_quality_config import load_news_quality_config
 from avatar_pipeline.query_planner import build_daily_plan
 from avatar_pipeline.repository import DailyTaskRepository
 from avatar_pipeline.research_adapters import CollectionBatch, RawCollectionItem
@@ -53,6 +65,7 @@ from avatar_pipeline.workflow_refresh import topic_candidates_from_report
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_CONFIG = _PROJECT_ROOT / "configs" / "default.yaml"
+_DEFAULT_NEWS_V5_CONFIG = _PROJECT_ROOT / "configs" / "news-video-quality-v5.yaml"
 _RESEARCH_LOCK = _PROJECT_ROOT / "skills" / "third_party.lock.yaml"
 
 
@@ -136,6 +149,35 @@ def build_parser() -> argparse.ArgumentParser:
     stop = subparsers.add_parser("stop")
     _add_date_argument(stop)
     stop.add_argument("--reason", required=True)
+
+    news_v5_init = subparsers.add_parser("news-v5-init")
+    news_v5_init.add_argument("--output-root", type=Path, default=_PROJECT_ROOT / "output")
+    _add_date_argument(news_v5_init)
+    news_v5_init.add_argument("--slug", required=True)
+    news_v5_init.add_argument("--topic", required=True)
+    news_v5_init.add_argument("--version", required=True, type=int)
+    news_v5_init.add_argument("--quality-config", type=Path, default=_DEFAULT_NEWS_V5_CONFIG)
+    news_v5_init.add_argument("--parent-run-id")
+
+    news_v5_guidance = subparsers.add_parser("news-v5-guidance")
+    news_v5_guidance.add_argument("--duration", required=True, type=float)
+    news_v5_guidance.add_argument("--quality-config", type=Path, default=_DEFAULT_NEWS_V5_CONFIG)
+
+    news_v5_preflight = subparsers.add_parser("news-v5-preflight")
+    news_v5_preflight.add_argument("--run-dir", required=True, type=Path)
+    news_v5_preflight.add_argument(
+        "--stage", required=True, choices=("generation", "timeline", "render")
+    )
+    news_v5_preflight.add_argument("--project-root", type=Path, default=_PROJECT_ROOT)
+
+    for command in (
+        "news-v5-mark-rendered",
+        "news-v5-build-qc",
+        "news-v5-apply-director-review",
+        "news-v5-status",
+    ):
+        command_parser = subparsers.add_parser(command)
+        command_parser.add_argument("--run-dir", required=True, type=Path)
 
     # Phase 2A: user-gated research workflow.
     research_init = subparsers.add_parser("research-init")
@@ -413,9 +455,7 @@ def _dispatch_hotspot(args: argparse.Namespace) -> dict[str, Any]:
     if args.command == "hotspot-import-review":
         verifications = _load_review_items(args.verification, CandidateVerification)
         editorial = _load_review_items(args.editorial_signals, EditorialSignals)
-        short_video = _load_review_items(
-            args.short_video_evidence, EventShortVideoEvidence
-        )
+        short_video = _load_review_items(args.short_video_evidence, EventShortVideoEvidence)
         repository.save_verifications(args.date, verifications)
         repository.save_editorial_signals(args.date, editorial)
         repository.save_short_video_evidence(args.date, short_video)
@@ -435,13 +475,11 @@ def _dispatch_hotspot(args: argparse.Namespace) -> dict[str, Any]:
         return {
             "date": args.date.isoformat(),
             "snapshot_ids": [item.snapshot_id for item in snapshots],
-            "successful_platforms": sorted({
-                platform for item in snapshots for platform in item.successful_platforms
-            }),
+            "successful_platforms": sorted(
+                {platform for item in snapshots for platform in item.successful_platforms}
+            ),
             "failures": [
-                failure.model_dump(mode="json")
-                for item in snapshots
-                for failure in item.failures
+                failure.model_dump(mode="json") for item in snapshots for failure in item.failures
             ],
             "report_outcome": report.outcome if report else None,
             "candidate_event_ids": [item.event_id for item in report.candidates] if report else [],
@@ -460,6 +498,83 @@ def _dispatch_hotspot(args: argparse.Namespace) -> dict[str, Any]:
         )
         return _task_payload(task)
     raise ValueError(f"unsupported hotspot command: {args.command}")
+
+
+def _news_v5_status(run_dir: Path) -> dict[str, Any]:
+    manifest = load_run_record(run_dir, "production/run-manifest.json", NewsRunManifest)
+    record_paths = {
+        "manifest": "production/run-manifest.json",
+        "quality_profile": "production/quality-profile.yaml",
+        "fact_evidence": "production/fact-evidence.json",
+        "script_review": "production/script-review.json",
+        "footage_ledger": "production/footage-ledger.json",
+        "shot_selection": "production/shot-selection.json",
+        "timeline": "production/timeline.json",
+        "render_plan": "production/render-plan.json",
+        "director_review": "qc/director-review.json",
+        "final_qc_report": "qc/final-qc-report.json",
+        "final_video": manifest.final_video_path or "video/final-clean.mp4",
+    }
+    return {
+        "run_dir": str(run_dir),
+        "run_id": manifest.run_id,
+        "status": manifest.status.value,
+        "manifest": manifest.model_dump(mode="json"),
+        "records": {
+            name: (run_dir / relative).is_file() for name, relative in record_paths.items()
+        },
+        "evidence_paths": {name: relative for name, relative in record_paths.items()},
+    }
+
+
+def _dispatch_news_v5(args: argparse.Namespace) -> dict[str, Any]:
+    if args.command == "news-v5-init":
+        run_dir = initialize_news_run(
+            args.output_root,
+            day=args.date,
+            slug=args.slug,
+            topic=args.topic,
+            version=args.version,
+            quality_config_path=args.quality_config,
+            parent_run_id=args.parent_run_id,
+        )
+        payload = _news_v5_status(run_dir)
+        return {"run_dir": str(run_dir), **payload}
+    if args.command == "news-v5-guidance":
+        config = load_news_quality_config(args.quality_config)
+        guidance = recommend_broll(args.duration, config)
+        return {
+            "duration_seconds": args.duration,
+            "minimum_count": guidance.minimum_count,
+            "maximum_count": guidance.maximum_count,
+            "recommended_count": guidance.recommended_count,
+            "minimum_clip_seconds": guidance.minimum_clip_seconds,
+            "maximum_clip_seconds": guidance.maximum_clip_seconds,
+            "minimum_ratio": guidance.minimum_ratio,
+            "maximum_ratio": guidance.maximum_ratio,
+        }
+    if args.command == "news-v5-preflight":
+        validators = {
+            "generation": lambda: validate_generation_preflight(args.run_dir, args.project_root),
+            "timeline": lambda: validate_timeline_preflight(args.run_dir),
+            "render": lambda: validate_render_preflight(args.run_dir),
+        }
+        result = validators[args.stage]()
+        return {
+            "stage": result.stage,
+            "status": result.status.value,
+            "hard_failures": result.hard_failures,
+            "advisories": result.advisories,
+        }
+    if args.command == "news-v5-mark-rendered":
+        return mark_rendered(args.run_dir).model_dump(mode="json")
+    if args.command == "news-v5-build-qc":
+        return build_automatic_qc_report(args.run_dir).model_dump(mode="json")
+    if args.command == "news-v5-apply-director-review":
+        return apply_director_review(args.run_dir).model_dump(mode="json")
+    if args.command == "news-v5-status":
+        return _news_v5_status(args.run_dir)
+    raise ValueError(f"unsupported V5 news command: {args.command}")
 
 
 def _dispatch_production(args: argparse.Namespace) -> dict[str, Any]:
@@ -524,6 +639,8 @@ def dispatch(args: argparse.Namespace) -> dict[str, Any]:
 
     if args.command == "health":
         return _health_payload()
+    if args.command.startswith("news-v5-"):
+        return _dispatch_news_v5(args)
     if args.command == "research-health":
         return _research_health_payload()
     if args.command.startswith("research-"):
