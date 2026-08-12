@@ -1,6 +1,6 @@
 # V5 Standardized News Production Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build a reusable, testable manual-production quality gate that keeps every 45–90 second vertical avatar-news video aligned with the approved V5 host, voice, script, footage, timeline, render, QC, and delivery standards.
 
@@ -54,7 +54,7 @@
 - Produces: `NewsVideoQualityConfig` and `load_news_quality_config(path: Path | str) -> NewsVideoQualityConfig`.
 - Consumed by: all later production and QC tasks.
 
-- [ ] **Step 1: Write failing configuration tests**
+- [x] **Step 1: Write failing configuration tests**
 
 Test that the canonical file loads with exact V5 values, rejects durations outside 45–90, rejects non-1080×1920/25fps output, rejects enabled clean-master overlays/audio, and rejects a blank host hash or voice ID.
 
@@ -74,12 +74,12 @@ def test_canonical_v5_quality_config_is_locked():
     assert config.profile.max_duration_seconds == 90
 ```
 
-- [ ] **Step 2: Run tests and verify the module is missing**
+- [x] **Step 2: Run tests and verify the module is missing**
 
 Run: `PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_quality_config.py -q`  
 Expected: FAIL during import because `news_quality_config` does not exist.
 
-- [ ] **Step 3: Implement the strict models and canonical YAML**
+- [x] **Step 3: Implement the strict models and canonical YAML**
 
 Define focused `StrictModel` subclasses for `profile`, `output`, `clean_master`, `host`, `voice`, `broll`, `ending`, and `quality`. Use literal values for locked output and identity-lock behavior, validate ordered ranges, and reject any enabled clean-master decoration or secondary audio.
 
@@ -89,7 +89,7 @@ def load_news_quality_config(path: Path | str) -> NewsVideoQualityConfig:
         return NewsVideoQualityConfig.model_validate(yaml.safe_load(handle))
 ```
 
-- [ ] **Step 4: Run focused tests and lint**
+- [x] **Step 4: Run focused tests and lint**
 
 Run:
 
@@ -100,7 +100,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_quality_config.py -q
 
 Expected: all tests pass and Ruff reports no errors.
 
-- [ ] **Step 5: Commit the configuration unit**
+- [x] **Step 5: Commit the configuration unit**
 
 ```bash
 git add configs/news-video-quality-v5.yaml src/avatar_pipeline/news_quality_config.py tests/test_news_quality_config.py
@@ -117,7 +117,7 @@ git commit -m "feat: add locked v5 news quality profile"
 - Produces: `NewsRunStatus`, `NewsRunManifest`, `FactEvidence`, `ScriptReview`, `FootageLedger`, `ShotSelectionRecord`, `NewsTimeline`, `DirectorReview`, `QualityCheck`, and `FinalQualityReport`.
 - Consumed by: `news_production.py`, `news_qc.py`, and CLI commands.
 
-- [ ] **Step 1: Write failing model tests**
+- [x] **Step 1: Write failing model tests**
 
 Cover these invariants with concrete model fixtures:
 
@@ -133,12 +133,12 @@ with pytest.raises(ValidationError, match="watermark"):
     FootageAsset(..., watermark_free=False, user_usage_rule_passed=True)
 ```
 
-- [ ] **Step 2: Run tests and verify failure**
+- [x] **Step 2: Run tests and verify failure**
 
 Run: `PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_production_models.py -q`  
 Expected: FAIL during import.
 
-- [ ] **Step 3: Implement strict production models**
+- [x] **Step 3: Implement strict production models**
 
 Use `ConfigDict(extra="forbid", validate_assignment=True)` for every stored record. Store run IDs in every top-level file, use ISO dates/timestamps, and represent statuses with this enum:
 
@@ -157,7 +157,7 @@ class NewsRunStatus(StrEnum):
 
 Add model validators for interval ordering, approval implications, unique IDs, and internal QC consistency.
 
-- [ ] **Step 4: Run focused tests and lint**
+- [x] **Step 4: Run focused tests and lint**
 
 Run:
 
@@ -168,7 +168,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_production_models.py -
 
 Expected: all pass.
 
-- [ ] **Step 5: Commit the record schemas**
+- [x] **Step 5: Commit the record schemas**
 
 ```bash
 git add src/avatar_pipeline/news_production_models.py tests/test_news_production_models.py
@@ -189,7 +189,7 @@ git commit -m "feat: model v5 news production records"
   - `load_run_record(run_dir: Path, relative_path: str, model_type: type[T]) -> T`
   - `save_manifest(run_dir: Path, manifest: NewsRunManifest) -> None`
 
-- [ ] **Step 1: Write failing initialization and guidance tests**
+- [x] **Step 1: Write failing initialization and guidance tests**
 
 Verify exact directories, manifest identity values, output naming, parent version recording, non-overwrite behavior, and duration-aware guidance:
 
@@ -201,12 +201,12 @@ with pytest.raises(FileExistsError):
     initialize_news_run(...)
 ```
 
-- [ ] **Step 2: Run focused tests and verify failure**
+- [x] **Step 2: Run focused tests and verify failure**
 
 Run: `PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_production.py -q`  
 Expected: FAIL because the functions do not exist.
 
-- [ ] **Step 3: Implement initialization and guidance**
+- [x] **Step 3: Implement initialization and guidance**
 
 Create only these directories during initialization: `video`, `audio`, `copy`, `production`, and `qc`. Write `production/run-manifest.json` atomically and copy the selected quality configuration to `production/quality-profile.yaml`. Refuse an existing target directory.
 
@@ -222,7 +222,7 @@ return BrollGuidance(3, 4, 5.0, 8.0, 0.25, 0.38)
 
 The guidance remains advisory; later validation hard-blocks structural defects and emits advisory findings for rhythm deviations.
 
-- [ ] **Step 4: Run tests and lint**
+- [x] **Step 4: Run tests and lint**
 
 Run:
 
@@ -233,7 +233,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_production.py -q
 
 Expected: pass.
 
-- [ ] **Step 5: Commit the workspace unit**
+- [x] **Step 5: Commit the workspace unit**
 
 ```bash
 git add src/avatar_pipeline/news_production.py tests/test_news_production.py
@@ -254,36 +254,36 @@ git commit -m "feat: initialize version-safe v5 news runs"
   - `mark_rendered(run_dir: Path) -> NewsRunManifest`
 - Each function raises `NewsProductionGateError` on hard-block failures and updates status only after all checks pass.
 
-- [ ] **Step 1: Add failing generation preflight tests**
+- [x] **Step 1: Add failing generation preflight tests**
 
 Create valid fixture files, then independently corrupt host hash, voice ID, fact evidence, script approval, script/audio duration, and required copy paths. Assert each corruption produces a named hard-block issue and leaves the manifest status unchanged.
 
-- [ ] **Step 2: Run generation tests and verify failure**
+- [x] **Step 2: Run generation tests and verify failure**
 
 Run: `PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_production.py -q -k generation`  
 Expected: FAIL because preflight is missing.
 
-- [ ] **Step 3: Implement generation preflight**
+- [x] **Step 3: Implement generation preflight**
 
 Recompute the actual host image SHA-256 from `project_root / config.host.reference_image`; compare it with both the quality profile and manifest. Load `fact-evidence.json` and `script-review.json`, verify `copy/voiceover.txt` and `copy/title.txt`, compare voice ID, and enforce 45–90 seconds. Update status to `generation_ready` only after a clean result.
 
-- [ ] **Step 4: Add failing footage and timeline tests**
+- [x] **Step 4: Add failing footage and timeline tests**
 
 Test missing source URL, failed watermark/text checks, missing local assets, mismatched hashes, unapproved shots, unknown shot IDs, missing semantic mappings, gaps, overlaps, B-roll first/last segments, incomplete final duration, and short anchor tail.
 
-- [ ] **Step 5: Implement footage and timeline validation**
+- [x] **Step 5: Implement footage and timeline validation**
 
 Validate `footage-ledger.json`, `shot-selection.json`, and `timeline.json` as a joined graph. Hard-block source-integrity and structural errors. Return advisory findings when B-roll count, clip duration, or total ratio falls outside guidance. Set status to `timeline_ready` only after hard checks pass.
 
-- [ ] **Step 6: Add failing render-preflight and non-overwrite tests**
+- [x] **Step 6: Add failing render-preflight and non-overwrite tests**
 
 Test missing `render.sh`, references to files outside the run, `-map` of source audio, existing final output, and case-insensitive forbidden tokens such as `reverse`, `loop`, and `pingpong`.
 
-- [ ] **Step 7: Implement render preflight and mark-rendered**
+- [x] **Step 7: Implement render preflight and mark-rendered**
 
 Require a safe render script, all referenced assets, a declared final output under `video/`, no existing output before rendering, and no forbidden processing. `mark_rendered` requires a non-empty final video and changes status from `render_ready` to `rendered_pending_qc`.
 
-- [ ] **Step 8: Run the full production test file and lint**
+- [x] **Step 8: Run the full production test file and lint**
 
 Run:
 
@@ -294,7 +294,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_production.py -q
 
 Expected: pass.
 
-- [ ] **Step 9: Commit the stage gates**
+- [x] **Step 9: Commit the stage gates**
 
 ```bash
 git add src/avatar_pipeline/news_production.py tests/test_news_production.py
@@ -315,7 +315,7 @@ git commit -m "feat: enforce v5 production stage gates"
   - `apply_director_review(run_dir: Path) -> FinalQualityReport`
 - Consumes standard files under `qc/` and production records from earlier tasks.
 
-- [ ] **Step 1: Write failing technical QC tests**
+- [x] **Step 1: Write failing technical QC tests**
 
 Use small JSON/text fixtures to test:
 
@@ -328,24 +328,24 @@ Use small JSON/text fixtures to test:
 - final SHA-256 recording;
 - complete required QC evidence.
 
-- [ ] **Step 2: Run QC tests and verify failure**
+- [x] **Step 2: Run QC tests and verify failure**
 
 Run: `PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_qc.py -q`  
 Expected: FAIL during import.
 
-- [ ] **Step 3: Implement automatic QC parsing and report construction**
+- [x] **Step 3: Implement automatic QC parsing and report construction**
 
 Read `qc/ffprobe.json`, `qc/blackdetect.log`, `qc/silencedetect.log`, `qc/decode-errors.log`, and `qc/audio-comparison.json`. Reuse stage validators for identity, timeline, and render safety. Write grouped `QualityCheck` records with expected value, actual value, result, evidence path, and timestamp. Save `qc/final-qc-report.json` and `qc/sha256.txt`. Set `automatic_qc_passed` only when every hard check passes; otherwise set `changes_required`.
 
-- [ ] **Step 4: Write failing director-review and deliverable tests**
+- [x] **Step 4: Write failing director-review and deliverable tests**
 
 Test that all required human checks and contact sheets are present, `approved=true`, no failed director checks exist, all standard deliverables exist, and automatic QC has passed. Verify a missing title, contact sheet, or approval blocks delivery.
 
-- [ ] **Step 5: Implement the director delivery gate**
+- [x] **Step 5: Implement the director delivery gate**
 
 Load `qc/director-review.json`, validate the required review checklist and evidence files, merge director checks into `final-qc-report.json`, and update the manifest to `ready_to_deliver`. Failed review sets `changes_required`. Do not infer approval from the presence of a video.
 
-- [ ] **Step 6: Run focused tests and lint**
+- [x] **Step 6: Run focused tests and lint**
 
 Run:
 
@@ -356,7 +356,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/test_news_qc.py tests/test_news_
 
 Expected: pass.
 
-- [ ] **Step 7: Commit the QC gates**
+- [x] **Step 7: Commit the QC gates**
 
 ```bash
 git add src/avatar_pipeline/news_qc.py src/avatar_pipeline/news_production.py tests/test_news_qc.py tests/test_news_production.py
@@ -379,7 +379,7 @@ git commit -m "feat: add automatic and director v5 quality gates"
   - `news-v5-apply-director-review`
   - `news-v5-status`
 
-- [ ] **Step 1: Write failing parser and dispatch tests**
+- [x] **Step 1: Write failing parser and dispatch tests**
 
 Test command arguments, JSON stdout, non-zero error exits, run-directory creation, status reporting, guidance for 52.128 seconds, and every stage command against temporary fixtures.
 
@@ -388,16 +388,16 @@ args = build_parser().parse_args(["news-v5-guidance", "--duration", "52.128"])
 assert dispatch(args)["recommended_count"] == 3
 ```
 
-- [ ] **Step 2: Run CLI tests and verify failure**
+- [x] **Step 2: Run CLI tests and verify failure**
 
 Run: `PYTHONPATH=src .venv/bin/python -m pytest tests/test_cli.py -q -k news_v5`  
 Expected: FAIL because commands are unknown.
 
-- [ ] **Step 3: Implement parser branches and dispatch**
+- [x] **Step 3: Implement parser branches and dispatch**
 
 Keep commands non-interactive. Accept explicit paths and values, serialize Pydantic models with `mode="json"`, and return structured stage results containing status, hard failures, advisories, and evidence paths.
 
-- [ ] **Step 4: Run CLI and related tests**
+- [x] **Step 4: Run CLI and related tests**
 
 Run:
 
@@ -408,7 +408,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/test_cli.py tests/test_news_prod
 
 Expected: pass.
 
-- [ ] **Step 5: Commit the CLI**
+- [x] **Step 5: Commit the CLI**
 
 ```bash
 git add src/avatar_pipeline/cli.py tests/test_cli.py
@@ -431,20 +431,20 @@ git commit -m "feat: expose v5 manual news quality commands"
 - Consumed by: existing `load_contracts()` health checks and external-provider adapters.
 - Produces: contracts that declare V5 duration and clean-master behavior without enabling real generation.
 
-- [ ] **Step 1: Add failing contract assertions**
+- [x] **Step 1: Add failing contract assertions**
 
 Assert 90-second duration support for TTS/avatar/planner/compositor/QC, semantic mapping and forward-continuous footage requirements, clean-master no-text/no-source-audio constraints, fixed host/voice identity fields, and QC identity/timeline/ending outputs.
 
-- [ ] **Step 2: Run contract tests and verify failure**
+- [x] **Step 2: Run contract tests and verify failure**
 
 Run: `PYTHONPATH=src .venv/bin/python -m pytest tests/test_skill_contracts.py -q`  
 Expected: FAIL against the old 50/75-second and overlay-oriented contracts.
 
-- [ ] **Step 3: Update YAML contracts**
+- [x] **Step 3: Update YAML contracts**
 
 Keep `contract_version: "1.0"` and `real_generation_enabled: false` for parser compatibility. Add V5 requirements through required/optional inputs, outputs, duration values, and explicit safety constraints. Store source and AI provenance in sidecar records rather than visual overlays for the clean master.
 
-- [ ] **Step 4: Run contract tests and health checks**
+- [x] **Step 4: Run contract tests and health checks**
 
 Run:
 
@@ -455,7 +455,7 @@ PYTHONPATH=src .venv/bin/python -m avatar_pipeline.cli health
 
 Expected: tests pass and health reports all contracts loaded.
 
-- [ ] **Step 5: Commit contract alignment**
+- [x] **Step 5: Commit contract alignment**
 
 ```bash
 git add skills/contracts tests/test_skill_contracts.py
@@ -472,17 +472,17 @@ git commit -m "chore: align news skill contracts with v5 quality"
 - Consumes: all commands and records from Tasks 1–7.
 - Produces: one operator-ready SOP and a concise project entry point.
 
-- [ ] **Step 1: Write the full runbook**
+- [x] **Step 1: Write the full runbook**
 
 Document exact command order, directory layout, JSON record requirements, hotspot/fact/script gates, voice and host verification, footage download and watermark inspection, contact-sheet shot selection, duration-aware timeline planning, safe FFmpeg rendering, automatic evidence generation, two-pass director review, failure return paths, and the fixed delivery summary.
 
 Include complete command examples using an example run directory, but state that dates, topics, and source facts must come from the current run.
 
-- [ ] **Step 2: Update README product boundaries and CLI examples**
+- [x] **Step 2: Update README product boundaries and CLI examples**
 
 Separate legacy V1 behavior from the V5 manual clean-master profile. Add a short “V5手动新闻制作” section that links the runbook and lists the new commands.
 
-- [ ] **Step 3: Check documentation consistency**
+- [x] **Step 3: Check documentation consistency**
 
 Run:
 
@@ -494,7 +494,7 @@ git diff --check
 
 Expected: every locked value is documented consistently and no whitespace errors exist.
 
-- [ ] **Step 4: Commit documentation**
+- [x] **Step 4: Commit documentation**
 
 ```bash
 git add docs/runbooks/manual-news-v5-production.md README.md
@@ -510,7 +510,7 @@ git commit -m "docs: standardize v5 manual news production"
 - Consumes: complete implementation.
 - Produces: checked task list and final evidence summary.
 
-- [ ] **Step 1: Run the complete automated suite**
+- [x] **Step 1: Run the complete automated suite**
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest -q
@@ -518,7 +518,7 @@ PYTHONPATH=src .venv/bin/python -m pytest -q
 
 Expected: all tests pass.
 
-- [ ] **Step 2: Run static checks**
+- [x] **Step 2: Run static checks**
 
 ```bash
 .venv/bin/ruff check src tests
@@ -528,7 +528,7 @@ git diff --check
 
 Expected: all checks pass.
 
-- [ ] **Step 3: Exercise CLI health and V5 guidance**
+- [x] **Step 3: Exercise CLI health and V5 guidance**
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m avatar_pipeline.cli health
@@ -537,7 +537,7 @@ PYTHONPATH=src .venv/bin/python -m avatar_pipeline.cli news-v5-guidance --durati
 
 Expected: health is OK and guidance recommends three B-roll inserts within the V5 rhythm range.
 
-- [ ] **Step 4: Verify the approved V5 media was not changed**
+- [x] **Step 4: Verify the approved V5 media was not changed**
 
 ```bash
 test "$(shasum -a 256 'output/manual-run-2026-08-12-v5/video/白海豚-北方强降雨-新闻口播-无字净版-v5.mp4' | awk '{print $1}')" = \
@@ -546,14 +546,14 @@ test "$(shasum -a 256 'output/manual-run-2026-08-12-v5/video/白海豚-北方强
 
 Expected: exit 0.
 
-- [ ] **Step 5: Mark completed plan checkboxes and commit verification metadata**
+- [x] **Step 5: Mark completed plan checkboxes and commit verification metadata**
 
 ```bash
 git add docs/superpowers/plans/2026-08-12-v5-quality-standardized-news-production-implementation.md
 git commit -m "chore: verify v5 standardized news workflow"
 ```
 
-- [ ] **Step 6: Review final change impact and status**
+- [x] **Step 6: Review final change impact and status**
 
 Run:
 

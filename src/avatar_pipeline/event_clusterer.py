@@ -33,18 +33,12 @@ def _similarity(left: str, right: str, aliases: dict[str, list[str]]) -> float:
     right_tokens = normalize_title_tokens(right_text)
     union = left_tokens | right_tokens
     jaccard = len(left_tokens & right_tokens) / len(union) if union else 0.0
-    shared_alias = bool(
-        _matched_aliases(left, aliases) & _matched_aliases(right, aliases)
-    )
+    shared_alias = bool(_matched_aliases(left, aliases) & _matched_aliases(right, aliases))
     return min(1.0, jaccard + (0.50 if shared_alias else 0.0))
 
 
-def _event_key(
-    members: Sequence[HotspotRecord], aliases: dict[str, list[str]]
-) -> str:
-    shared_aliases = set.intersection(
-        *(_matched_aliases(item.title, aliases) for item in members)
-    )
+def _event_key(members: Sequence[HotspotRecord], aliases: dict[str, list[str]]) -> str:
+    shared_aliases = set.intersection(*(_matched_aliases(item.title, aliases) for item in members))
     if shared_aliases:
         return "alias:" + "|".join(sorted(shared_aliases))
     anchor = min(members, key=lambda item: (item.captured_at, item.record_id))
@@ -54,9 +48,7 @@ def _event_key(
 def cluster_events(
     records: Sequence[HotspotRecord], *, aliases: dict[str, list[str]]
 ) -> list[EventCluster]:
-    natural = [
-        item for item in records if item.content_nature is ContentNature.NATURAL
-    ]
+    natural = [item for item in records if item.content_nature is ContentNature.NATURAL]
     parents = list(range(len(natural)))
 
     def find(index: int) -> int:
@@ -72,9 +64,7 @@ def cluster_events(
 
     for left in range(len(natural)):
         for right in range(left + 1, len(natural)):
-            similarity = _similarity(
-                natural[left].title, natural[right].title, aliases
-            )
+            similarity = _similarity(natural[left].title, natural[right].title, aliases)
             if similarity >= _MATCH_THRESHOLD:
                 union(left, right)
 

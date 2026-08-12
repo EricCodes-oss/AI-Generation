@@ -195,8 +195,6 @@ class EditorialSignals(DomainModel):
     explanatory_depth: float = Field(ge=0, le=1)
 
 
-
-
 class ShortVideoPlatformEvidence(DomainModel):
     platform: str = Field(min_length=1)
     collection_status: CollectionStatus = CollectionStatus.SUCCESS

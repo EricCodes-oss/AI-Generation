@@ -75,9 +75,7 @@ def test_failed_platform_is_omitted_instead_of_becoming_zero_heat():
         cluster([first, second]),
         [
             snapshot("t0", "2026-08-10T19:40:00+08:00", records=[first]),
-            snapshot(
-                "t1", "2026-08-10T19:50:00+08:00", records=[second], failures=[failure]
-            ),
+            snapshot("t1", "2026-08-10T19:50:00+08:00", records=[second], failures=[failure]),
         ],
     )
     assert "baidu" not in result.platform_trend_labels

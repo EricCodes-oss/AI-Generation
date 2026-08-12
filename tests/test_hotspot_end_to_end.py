@@ -24,31 +24,37 @@ TITLES = ["白海豚路径变化", "存款利率调整", "机器人赛事反转"
 
 def _three_snapshots():
     snapshots = []
-    for offset, captured_at in enumerate((
-        "2026-08-10T19:40:00+08:00",
-        "2026-08-10T19:50:00+08:00",
-        "2026-08-10T20:00:00+08:00",
-    )):
+    for offset, captured_at in enumerate(
+        (
+            "2026-08-10T19:40:00+08:00",
+            "2026-08-10T19:50:00+08:00",
+            "2026-08-10T20:00:00+08:00",
+        )
+    ):
         records = []
         for event_index, title in enumerate(TITLES):
             for platform_index, platform in enumerate(("weibo", "baidu", "zhihu")):
-                records.append(record(
-                    f"{event_index}-{platform}-{offset}",
-                    platform,
-                    5 + platform_index - offset,
-                    title,
-                    captured_at=captured_at,
-                    heat_value=100 * (offset + 1) * (event_index + 1),
-                ))
+                records.append(
+                    record(
+                        f"{event_index}-{platform}-{offset}",
+                        platform,
+                        5 + platform_index - offset,
+                        title,
+                        captured_at=captured_at,
+                        heat_value=100 * (offset + 1) * (event_index + 1),
+                    )
+                )
         failures = []
         if offset == 1:
-            failures = [HotspotFailure(
-                platform="bilibili",
-                captured_at=records[0].captured_at,
-                reason="api returned -352",
-                raw_snapshot_path="tmp/bilibili.json",
-                status=CollectionStatus.RESTRICTED,
-            )]
+            failures = [
+                HotspotFailure(
+                    platform="bilibili",
+                    captured_at=records[0].captured_at,
+                    reason="api returned -352",
+                    raw_snapshot_path="tmp/bilibili.json",
+                    status=CollectionStatus.RESTRICTED,
+                )
+            ]
         snapshots.append(snapshot(f"t{offset}", captured_at, records=records, failures=failures))
     return snapshots
 
@@ -56,9 +62,7 @@ def _three_snapshots():
 def _strong_short_video_evidence(event_id):
     return EventShortVideoEvidence(
         event_id=event_id,
-        captured_at=snapshot(
-            "capture-time", "2026-08-10T20:00:00+08:00"
-        ).captured_at,
+        captured_at=snapshot("capture-time", "2026-08-10T20:00:00+08:00").captured_at,
         platforms={
             platform: ShortVideoPlatformEvidence(
                 platform=platform,

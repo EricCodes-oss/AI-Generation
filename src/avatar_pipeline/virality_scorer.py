@@ -24,13 +24,10 @@ def _cross_platform_score(
     members = [item for item in records if item.record_id in member_ids]
     best_ranks = {}
     for item in members:
-        best_ranks[item.platform] = min(
-            best_ranks.get(item.platform, item.rank), item.rank
-        )
+        best_ranks[item.platform] = min(best_ranks.get(item.platform, item.rank), item.rank)
     platform_points = min(13.0, 7.0 + 2.0 * len(best_ranks))
     categories = {
-        config.platform_categories.get(platform, f"unknown:{platform}")
-        for platform in best_ranks
+        config.platform_categories.get(platform, f"unknown:{platform}") for platform in best_ranks
     }
     diversity_points = min(2.0, max(0.0, float(len(categories) - 1)))
     best_rank = min(best_ranks.values())
@@ -54,20 +51,14 @@ def _trend_score(trend: EventTrend) -> float:
     subtopic_diffusion = min(2.0, float(trend.related_subtopic_count))
     return min(
         20.0,
-        persistence
-        + new_platforms
-        + rank_improvement
-        + heat_growth
-        + subtopic_diffusion,
+        persistence + new_platforms + rank_improvement + heat_growth + subtopic_diffusion,
     )
 
 
 def _fact_safety_score(
     evidence: CandidateVerification, verification: VerificationDecision
 ) -> float:
-    source_points = (
-        3.0 if verification.independent_reliable_source_count >= 2 else 0.0
-    )
+    source_points = 3.0 if verification.independent_reliable_source_count >= 2 else 0.0
     primary_points = 1.0 if evidence.primary_source_ids else 0.0
     resolved_points = 1.0 if not evidence.unresolved_claims else 0.0
     return min(5.0, source_points + primary_points + resolved_points)

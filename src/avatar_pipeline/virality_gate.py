@@ -22,26 +22,16 @@ def evaluate_virality_gate(
 ) -> GateDecision:
     member_ids = set(cluster.record_ids)
     members = [item for item in records if item.record_id in member_ids]
-    platforms = {
-        item.platform
-        for item in members
-        if item.content_nature is ContentNature.NATURAL
-    }
+    platforms = {item.platform for item in members if item.content_nature is ContentNature.NATURAL}
     best_rank_by_platform = {
         platform: min(item.rank for item in members if item.platform == platform)
         for platform in platforms
     }
-    has_top_five = any(
-        rank <= config.top_rank_single for rank in best_rank_by_platform.values()
-    )
-    top_ten_count = sum(
-        rank <= config.top_rank_multi for rank in best_rank_by_platform.values()
-    )
+    has_top_five = any(rank <= config.top_rank_single for rank in best_rank_by_platform.values())
+    top_ten_count = sum(rank <= config.top_rank_multi for rank in best_rank_by_platform.values())
     checks = {
         "three_independent_platforms": len(platforms) >= config.min_platforms,
-        "core_rank": (
-            has_top_five or top_ten_count >= config.min_top_rank_multi_platforms
-        ),
+        "core_rank": (has_top_five or top_ten_count >= config.min_top_rank_multi_platforms),
         "within_24_hours": verification.checks.get("within_24_hours", False),
         "two_consecutive_snapshots": (
             trend.consecutive_snapshot_count >= config.min_consecutive_snapshots

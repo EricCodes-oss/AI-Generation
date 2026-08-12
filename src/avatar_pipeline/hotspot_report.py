@@ -148,9 +148,7 @@ def render_hotspot_markdown(report: HotspotReport) -> str:
         lines.extend(["## 结果", "", "今日暂无合格爆点，流程安全停止。", ""])
     for index, item in enumerate(report.candidates, start=1):
         badge = (
-            "（本轮导演首选）"
-            if item.event_id == report.director_recommendation_event_id
-            else ""
+            "（本轮导演首选）" if item.event_id == report.director_recommendation_event_id else ""
         )
         lines.extend(
             [

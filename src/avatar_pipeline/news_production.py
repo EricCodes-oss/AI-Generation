@@ -163,9 +163,7 @@ def initialize_news_run(
     return run_dir
 
 
-def recommend_broll(
-    duration_seconds: float, config: NewsVideoQualityConfig
-) -> BrollGuidance:
+def recommend_broll(duration_seconds: float, config: NewsVideoQualityConfig) -> BrollGuidance:
     minimum = config.profile.min_duration_seconds
     maximum = config.profile.max_duration_seconds
     if not minimum <= duration_seconds <= maximum:

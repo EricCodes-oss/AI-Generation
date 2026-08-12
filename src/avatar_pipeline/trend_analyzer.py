@@ -58,9 +58,7 @@ def _event_label(
         for platform, label in platform_labels.items()
         if label is not PlatformTrendLabel.UNKNOWN
     }
-    has_positive = (
-        any(points[label] > 0 for label in known.values()) or new_platform_count > 0
-    )
+    has_positive = any(points[label] > 0 for label in known.values()) or new_platform_count > 0
     has_negative = any(points[label] < 0 for label in known.values())
     if has_positive and has_negative:
         return TrendLabel.VOLATILE
@@ -110,8 +108,7 @@ def analyze_event_trend(
                 snapshot_id=item.snapshot_id,
                 captured_at=item.captured_at,
                 platform_ranks={
-                    platform: record.rank
-                    for platform, record in sorted(best_by_platform.items())
+                    platform: record.rank for platform, record in sorted(best_by_platform.items())
                 },
                 platform_heat_values={
                     platform: record.heat_value
@@ -161,9 +158,7 @@ def analyze_event_trend(
         for platform in sorted(first_seen)
     }
     first_platforms = set(observations[0].platform_ranks)
-    later_platforms = set().union(
-        *(set(item.platform_ranks) for item in observations[1:])
-    )
+    later_platforms = set().union(*(set(item.platform_ranks) for item in observations[1:]))
     new_platform_count = len(later_platforms - first_platforms)
 
     return EventTrend(
@@ -178,9 +173,7 @@ def analyze_event_trend(
         platform_trend_labels=platform_labels,
         consecutive_snapshot_count=max(1, _longest_consecutive_presence(presence)),
         new_platform_count=new_platform_count,
-        related_subtopic_count=len(
-            {item.strip() for item in related_subtopic_ids if item.strip()}
-        ),
+        related_subtopic_count=len({item.strip() for item in related_subtopic_ids if item.strip()}),
         rank_delta_by_platform=rank_delta,
         heat_growth_by_platform=heat_growth,
     )

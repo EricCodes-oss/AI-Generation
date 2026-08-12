@@ -278,9 +278,7 @@ def _audio_integrity_check(run_dir: Path, minimum_correlation: float) -> Quality
     return _check(
         identifier="audio_integrity",
         category="audio",
-        expected=(
-            f"correlation >= {minimum_correlation}, lag <= 40ms, identical sample count"
-        ),
+        expected=(f"correlation >= {minimum_correlation}, lag <= 40ms, identical sample count"),
         actual=f"correlation={correlation}, lag_ms={lag}, same_samples={same_samples}",
         passed=passed,
         evidence_path=relative,
@@ -364,9 +362,7 @@ def build_automatic_qc_report(run_dir: Path) -> FinalQualityReport:
     checks.extend(probe_checks)
     for check in (
         _black_check(run_dir),
-        _silence_check(
-            run_dir, audio_duration, config.quality.max_unexpected_silence_seconds
-        ),
+        _silence_check(run_dir, audio_duration, config.quality.max_unexpected_silence_seconds),
         _decode_check(run_dir),
         _audio_integrity_check(run_dir, config.quality.audio_correlation_min),
     ):
@@ -428,9 +424,7 @@ def apply_director_review(run_dir: Path) -> FinalQualityReport:
         save_manifest(run_dir, manifest)
         raise ValueError("director review requires changes")
     missing_files = [
-        relative
-        for relative in _REQUIRED_DELIVERABLES
-        if not (run_dir / relative).is_file()
+        relative for relative in _REQUIRED_DELIVERABLES if not (run_dir / relative).is_file()
     ]
     if missing_files:
         raise ValueError(f"required deliverables are missing: {', '.join(missing_files)}")

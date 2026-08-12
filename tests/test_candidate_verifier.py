@@ -37,9 +37,7 @@ def test_old_event_and_one_independent_source_fail():
 def test_low_confidence_cluster_requires_explicit_human_review():
     item = record("w", "weibo", 1, "事件")
     low_confidence = cluster([item], confidence=0.62, needs_manual_review=True)
-    rejected = verify_candidate(
-        low_confidence, verification(), as_of=AS_OF, max_age_hours=24
-    )
+    rejected = verify_candidate(low_confidence, verification(), as_of=AS_OF, max_age_hours=24)
     accepted = verify_candidate(
         low_confidence,
         verification(cluster_review_approved=True),

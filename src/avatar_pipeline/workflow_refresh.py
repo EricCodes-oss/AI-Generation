@@ -23,9 +23,7 @@ _ALLOWED_REFRESH_STATES = {
 def topic_candidates_from_report(report: HotspotReport) -> list[TopicCandidate]:
     if report.outcome != "qualified_candidates" or not report.candidates:
         raise ValueError("report contains no qualified hotspot")
-    director_ready = [
-        item for item in report.candidates if item.director_action.value == "do_now"
-    ]
+    director_ready = [item for item in report.candidates if item.director_action.value == "do_now"]
     if not director_ready:
         raise ValueError(
             "report contains no director-ready hotspot with Douyin/Xiaohongshu evidence"

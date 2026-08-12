@@ -17,8 +17,7 @@ def _platform_score(
         return None
     engagement_rate = evidence.engagement_rate
     observed_interactions = sum(
-        value or 0
-        for value in (evidence.likes, evidence.comments, evidence.shares, evidence.saves)
+        value or 0 for value in (evidence.likes, evidence.comments, evidence.shares, evidence.saves)
     )
     engagement_score = (
         min(1.0, engagement_rate / config.min_short_video_engagement_rate)
@@ -35,10 +34,7 @@ def _platform_score(
     )
     suitability_score = evidence.suitability_score or 0.0
     return round(
-        0.2 * source_score
-        + 0.2 * comment_score
-        + 0.3 * engagement_score
-        + 0.3 * suitability_score,
+        0.2 * source_score + 0.2 * comment_score + 0.3 * engagement_score + 0.3 * suitability_score,
         4,
     )
 
@@ -84,12 +80,10 @@ def assess_short_video_evidence(
         platform_scores[platform] = score
         source_ok = item.source_count >= config.min_short_video_sources_per_platform
         comments_ok = (
-            item.comment_sample_count
-            >= config.min_short_video_comment_samples_per_platform
+            item.comment_sample_count >= config.min_short_video_comment_samples_per_platform
         )
         observed_interactions = sum(
-            value or 0
-            for value in (item.likes, item.comments, item.shares, item.saves)
+            value or 0 for value in (item.likes, item.comments, item.shares, item.saves)
         )
         engagement_ok = (
             item.engagement_rate is not None

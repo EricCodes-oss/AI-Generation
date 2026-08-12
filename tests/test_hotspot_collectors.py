@@ -8,9 +8,7 @@ from avatar_pipeline.hotspot_collectors import (
 
 
 def test_canonical_import_round_trips_the_auditable_snapshot():
-    snapshot = import_canonical_snapshot(
-        Path("tests/fixtures/hotspots/canonical-t0.json")
-    )
+    snapshot = import_canonical_snapshot(Path("tests/fixtures/hotspots/canonical-t0.json"))
     assert snapshot.snapshot_id == "t0"
     assert snapshot.captured_at == datetime.fromisoformat("2026-08-10T19:40:00+08:00")
     assert snapshot.records == []

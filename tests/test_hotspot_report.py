@@ -58,9 +58,7 @@ def _evaluated(event_id, total, *, passed=True, short_video_passed=True):
         score=_score(event_id, total) if passed else None,
         verification=verification(event_id=event_id),
         editorial_signals=editorial_signals(event_id=event_id),
-        short_video_assessment=_short_video_assessment(
-            event_id, passed=short_video_passed
-        ),
+        short_video_assessment=_short_video_assessment(event_id, passed=short_video_passed),
     )
 
 

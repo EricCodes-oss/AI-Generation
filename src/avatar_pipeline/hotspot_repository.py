@@ -55,9 +55,7 @@ class HotspotRepository:
         items = [CandidateVerification.model_validate(item) for item in payload]
         return {item.event_id: item for item in items}
 
-    def save_short_video_evidence(
-        self, day: date, items: list[EventShortVideoEvidence]
-    ) -> Path:
+    def save_short_video_evidence(self, day: date, items: list[EventShortVideoEvidence]) -> Path:
         return self._write_json(
             self._day_root(day) / "short-video-evidence.json",
             [item.model_dump(mode="json") for item in items],

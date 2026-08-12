@@ -35,8 +35,7 @@ def verify_candidate(
         if item.evidence_type in _RELIABLE_TYPES
     }
     visuals_ok = evidence.visual_plan.has_usable_factual_visuals or (
-        evidence.visual_plan.ai_demo_available
-        and bool(evidence.visual_plan.ai_disclosure)
+        evidence.visual_plan.ai_demo_available and bool(evidence.visual_plan.ai_disclosure)
     )
     checks = {
         "within_24_hours": age_hours <= max_age_hours,
@@ -46,9 +45,7 @@ def verify_candidate(
         "no_major_fact_conflict": not evidence.major_fact_conflict,
         "no_exploitative_harm": not evidence.exploitative_harm,
         "no_unresolved_high_stakes_claim": not evidence.high_stakes_unresolved,
-        "cluster_review": (
-            not cluster.needs_manual_review or evidence.cluster_review_approved
-        ),
+        "cluster_review": (not cluster.needs_manual_review or evidence.cluster_review_approved),
     }
     reason_by_check = {
         "within_24_hours": "outside_24_hours",
@@ -60,9 +57,7 @@ def verify_candidate(
         "no_unresolved_high_stakes_claim": "high_stakes_unresolved",
         "cluster_review": "cluster_review_required",
     }
-    reasons = [
-        reason_by_check[name] for name, passed in checks.items() if not passed
-    ]
+    reasons = [reason_by_check[name] for name, passed in checks.items() if not passed]
     return VerificationDecision(
         event_id=cluster.event_id,
         passed=not reasons,

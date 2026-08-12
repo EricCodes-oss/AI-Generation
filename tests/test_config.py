@@ -55,8 +55,15 @@ def test_default_config_locks_confirmed_hotspot_rules():
     config = load_config(Path("configs/default.yaml"))
     assert config.hotspot.rule_version == "viral-v1.1"
     assert config.hotspot.core_platforms == [
-        "weibo", "douyin", "xiaohongshu", "baidu", "toutiao",
-        "kuaishou", "zhihu", "bilibili", "wechat",
+        "weibo",
+        "douyin",
+        "xiaohongshu",
+        "baidu",
+        "toutiao",
+        "kuaishou",
+        "zhihu",
+        "bilibili",
+        "wechat",
     ]
     assert config.hotspot.required_short_video_platforms == ["douyin", "xiaohongshu"]
     assert config.hotspot.platform_aliases["小红书"] == "xiaohongshu"
@@ -64,7 +71,9 @@ def test_default_config_locks_confirmed_hotspot_rules():
     assert config.hotspot.platform_categories["weibo"] == "social"
     assert config.hotspot.platform_categories["baidu"] == "search"
     assert config.hotspot.event_aliases["台风白海豚"] == [
-        "白海豚", "台风“白海豚”", "台风「白海豚」",
+        "白海豚",
+        "台风“白海豚”",
+        "台风「白海豚」",
     ]
     assert config.hotspot.snapshot_interval_minutes == 10
     assert config.hotspot.snapshot_count == 3
