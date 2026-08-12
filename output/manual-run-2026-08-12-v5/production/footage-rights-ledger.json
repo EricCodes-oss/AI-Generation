@@ -1,0 +1,21 @@
+{
+  "project": "白海豚-北方强降雨-新闻口播-v5",
+  "release_status": "待授权内部预览版",
+  "assets": [
+    {
+      "asset": "media/candidates/pexels-trees-in-windy-weather-19280141.mp4",
+      "source_url": "https://www.pexels.com/video/trees-in-windy-weather-19280141/",
+      "rights_basis": "Pexels License",
+      "approved_for_release": true,
+      "preview_use_only": false
+    },
+    {
+      "asset": "media/candidates/BiliBili-BV1zCJJzWEun-武汉暴雨现场实拍.mp4",
+      "source_url": "https://www.bilibili.com/video/BV1zCJJzWEun/",
+      "rights_basis": "需确认",
+      "approved_for_release": false,
+      "preview_use_only": true,
+      "restriction": "取得发布授权或替换为可发布素材前，只能用于内部预览。"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "project": "白海豚-北方强降雨-新闻口播-v5",
+  "date_context": "2026-08-12",
+  "duration_seconds": 52.128,
+  "release_status": "待授权内部预览版",
+  "output": "video/白海豚-北方强降雨-新闻口播-无字净版-v5.mp4",
+  "reference_video": "/Users/liuweidong/Downloads/40591294975-1-192.mp4",
+  "reference_style": "主播主讲、现场证据画面按新闻语义成组出现；减少频繁切换，延长单次现场停留，最后连续回主播完成收尾。",
+  "master_audio": "audio/master-voiceover-future-tech-v5.wav",
+  "voice": {
+    "name": "未来科技解说",
+    "voice_id": "cobra_design_20250717_162347_664524",
+    "sample_rate_hz": 48000,
+    "channels": 1,
+    "music": "none"
+  },
+  "anchor": {
+    "asset": "video/anchor-c2-pro-short-hair-v5-raw.mp4",
+    "identity": "C2-Pro 候选2短发主持人",
+    "reference_image": "../host-v12-c2-pro/GPT-Image-2-Pro-C2-Pro-主持人最终选定.png",
+    "reference_image_sha256": "939324593eb718cd2a39be4c171f74178a6a48442f7e0d61afe8a875011e8a47",
+    "source_duration_seconds": 52.0,
+    "end_padding": "冻结最终画面0.2秒后裁至52.128秒，保证最后一句完整"
+  },
+  "edit_policy": {
+    "broll_count": 3,
+    "broll_total_seconds": 16.5,
+    "broll_share_percent": 31.65,
+    "anchor_total_seconds": 35.628,
+    "anchor_share_percent": 68.35,
+    "continuous_anchor_tail_seconds": 12.128
+  },
+  "visual_rules": [
+    "1080x1920，25fps",
+    "无字幕、无标题、无台标、无资料条、无新增水印",
+    "无背景音乐，插播素材原声全部弃用",
+    "三段插播均为正向连续播放",
+    "禁止倒放、循环、ping-pong和重复填时",
+    "40秒后连续保留主持人且最后一句完整"
+  ],
+  "segments": [
+    {"start": 0.0, "end": 6.5, "type": "anchor", "source_start": 0.0, "source_end": 6.5},
+    {"start": 6.5, "end": 11.5, "type": "broll", "asset": "media/candidates/pexels-trees-in-windy-weather-19280141.mp4", "source_start": 0.5, "source_end": 5.5, "rights": "Pexels License", "content": "强风持续压弯棕榈叶"},
+    {"start": 11.5, "end": 19.0, "type": "anchor", "source_start": 11.5, "source_end": 19.0},
+    {"start": 19.0, "end": 25.0, "type": "broll", "asset": "media/candidates/BiliBili-BV1zCJJzWEun-武汉暴雨现场实拍.mp4", "source_start": 0.0, "source_end": 6.0, "rights": "需确认，仅内部预览", "content": "城市道路大面积积水及受困车辆"},
+    {"start": 25.0, "end": 34.5, "type": "anchor", "source_start": 25.0, "source_end": 34.5},
+    {"start": 34.5, "end": 40.0, "type": "broll", "asset": "media/candidates/BiliBili-BV1zCJJzWEun-武汉暴雨现场实拍.mp4", "source_start": 30.0, "source_end": 35.5, "rights": "需确认，仅内部预览", "content": "多辆汽车涉水并形成明显水花"},
+    {"start": 40.0, "end": 52.128, "type": "anchor", "source_start": 40.0, "source_end": 52.128}
+  ],
+  "footage_ledger": "production/footage-rights-ledger.json",
+  "shot_selection": "production/shot-selection-v5.json"
+}

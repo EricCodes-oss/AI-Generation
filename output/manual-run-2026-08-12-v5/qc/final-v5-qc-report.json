@@ -1,0 +1,178 @@
+{
+  "project": "白海豚-北方强降雨-新闻口播-v5",
+  "date": "2026-08-12",
+  "release_status": "待授权内部预览版",
+  "final_video": "output/manual-run-2026-08-12-v5/video/白海豚-北方强降雨-新闻口播-无字净版-v5.mp4",
+  "sha256": "96556832d3e657dc1d78831d9eb0b25c517278488ec4d2a02acd1a665716338f",
+  "timeline_summary": {
+    "duration_target_seconds": 52.128,
+    "broll_count": 3,
+    "broll_durations_seconds": [
+      5.0,
+      6.0,
+      5.5
+    ],
+    "broll_total_seconds": 16.5,
+    "continuous_anchor_tail_seconds": 12.128
+  },
+  "checks": [
+    {
+      "id": "streams",
+      "description": "仅1条视频流和1条主音频流",
+      "status": "PASS",
+      "evidence": {
+        "video_streams": 1,
+        "audio_streams": 1
+      }
+    },
+    {
+      "id": "video_spec",
+      "description": "1080×1920、25fps、H.264",
+      "status": "PASS",
+      "evidence": {
+        "codec": "h264",
+        "width": 1080,
+        "height": 1920,
+        "fps": "25/1",
+        "frames": "1304"
+      }
+    },
+    {
+      "id": "audio_spec",
+      "description": "AAC、48kHz、单声道",
+      "status": "PASS",
+      "evidence": {
+        "codec": "aac",
+        "sample_rate": "48000",
+        "channels": 1,
+        "duration": "52.128000"
+      }
+    },
+    {
+      "id": "duration",
+      "description": "音频52.128秒；视频容器取整差不超过1帧",
+      "status": "PASS",
+      "evidence": {
+        "video_seconds": 52.16,
+        "audio_seconds": 52.128,
+        "difference_seconds": 0.031999999999996476
+      }
+    },
+    {
+      "id": "broll_count",
+      "description": "全片恰好3次插播",
+      "status": "PASS",
+      "evidence": {
+        "count": 3
+      }
+    },
+    {
+      "id": "broll_durations",
+      "description": "插播时长为5.0、6.0、5.5秒",
+      "status": "PASS",
+      "evidence": {
+        "durations_seconds": [
+          5.0,
+          6.0,
+          5.5
+        ],
+        "total_seconds": 16.5
+      }
+    },
+    {
+      "id": "continuous_tail",
+      "description": "40秒后连续主持人至结尾",
+      "status": "PASS",
+      "evidence": {
+        "start": 40.0,
+        "end": 52.128,
+        "duration": 12.128
+      }
+    },
+    {
+      "id": "no_black",
+      "description": "无检测到黑帧",
+      "status": "PASS",
+      "evidence": {
+        "black_events": 0
+      }
+    },
+    {
+      "id": "no_long_silence",
+      "description": "无1秒以上异常静音",
+      "status": "PASS",
+      "evidence": {
+        "long_silences": [],
+        "tail_silence": {
+          "start": 51.855521,
+          "end": 52.138667,
+          "duration": 0.283146
+        }
+      }
+    },
+    {
+      "id": "decode",
+      "description": "无解码错误",
+      "status": "PASS",
+      "evidence": {
+        "decode_error_log_bytes": 0
+      }
+    },
+    {
+      "id": "audio_integrity",
+      "description": "成片音频与主音频内容一致",
+      "status": "PASS",
+      "evidence": {
+        "sample_rate": 48000,
+        "final_samples": 2502144,
+        "master_samples": 2502144,
+        "best_lag_samples": 0,
+        "best_lag_ms": 0.0,
+        "normalized_correlation": 0.9999956635312715,
+        "rms_final": 5513.77477567738,
+        "rms_master": 5515.82876597997,
+        "rms_difference": 16.370377161829673,
+        "difference_vs_master_percent": 0.29678907479502276
+      }
+    },
+    {
+      "id": "forward_only",
+      "description": "渲染脚本无倒放或循环滤镜",
+      "status": "PASS",
+      "evidence": {
+        "forbidden_tokens_found": []
+      }
+    },
+    {
+      "id": "no_source_audio",
+      "description": "只映射独立未来科技主音频",
+      "status": "PASS",
+      "evidence": {
+        "audio_map": "[3:a] -> [a]",
+        "source_audio_mapped": false
+      }
+    },
+    {
+      "id": "v4_unchanged",
+      "description": "V4成片未被覆盖",
+      "status": "PASS",
+      "evidence": {
+        "recorded_sha256": "21d498dac9c2571736250adca6fecc628357b684e31c7be853eb412707b905ef",
+        "current_sha256": "21d498dac9c2571736250adca6fecc628357b684e31c7be853eb412707b905ef"
+      }
+    },
+    {
+      "id": "visual_review",
+      "description": "接触表确认短发主持人、3次插播、40秒后连续主持人且无新增文字",
+      "status": "PASS",
+      "evidence": {
+        "full_contact_sheet": "qc/final-v5-contact-sheet.jpg",
+        "boundary_contact_sheet": "qc/final-v5-boundary-contact.jpg",
+        "tail_contact_sheet": "qc/final-v5-tail-contact.jpg",
+        "review": "人工检查通过"
+      }
+    }
+  ],
+  "overall_status": "PASS",
+  "rights_notice": "武汉B站素材尚未确认发布授权；本文件只可作为待授权内部预览版。"
+}
