@@ -3,17 +3,26 @@ contract_version: "1.0"
 display_name: 原始新闻视频合规截取
 required_inputs:
   - source_reference
+  - source_url
+  - downloaded_at
+  - source_sha256
   - clip_start_seconds
   - clip_end_seconds
+  - script_segment_id
+  - semantic_role
   - usage_basis
 required_outputs:
   - asset_path
   - provenance_record
+  - shot_selection_record
 supported_aspect_ratios:
   - "9:16"
-max_duration_seconds: 75
+max_duration_seconds: 90
 real_generation_enabled: false
 safety_constraints:
-  - 保留来源、发布时间、截取区间和使用依据
-  - 不通过剪辑改变原始语义
-  - 不移除必要的来源标识或版权限制
+  - 保留来源URL、下载时间、文件哈希、截取区间和使用依据旁路记录
+  - 素材须无水印、无平台角标、无账号标识、无烧录字幕
+  - 无水印只代表满足项目画面准入规则，不代表已经获得版权授权
+  - 每个插播镜头必须映射到明确脚本段落和语义角色
+  - 只截取动作连续、时间顺序正常的连续正向镜头
+  - 禁止倒放、循环、乒乓播放或通过剪辑改变原始语义

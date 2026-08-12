@@ -12,13 +12,16 @@ optional_inputs:
 required_outputs:
   - video_path
   - task_id
+  - host_identity_record
 supported_aspect_ratios:
   - "9:16"
-max_duration_seconds: 50
+max_duration_seconds: 90
 real_generation_enabled: false
 primary_mode: image_plus_audio
 fallback_mode: image_plus_text
 safety_constraints:
-  - 固定主持人参考图与TTS音频驱动数字人
+  - 仅使用锁定主持人host-c2-pro-candidate-2-final及参考图SHA-256 939324593eb718cd2a39be4c171f74178a6a48442f7e0d61afe8a875011e8a47
+  - 固定主持人参考图与已批准TTS音频驱动数字人
   - 不冒充真实新闻记者或专业权威
-  - 保持主持人形象和演播室一致性
+  - 保持主持人形象、短发、五官清晰度和演播室一致性
+  - 输出45至90秒、9比16数字人主讲视频

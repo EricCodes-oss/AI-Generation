@@ -3,19 +3,23 @@ contract_version: "1.0"
 display_name: 热点新闻解读脚本
 required_inputs:
   - verified_topic
-  - source_evidence
+  - authoritative_source_evidence
+  - verified_facts
   - audience_context
+  - target_duration_seconds
 required_outputs:
   - title
   - spoken_segments
-  - information_bars
+  - script_segment_ids
   - source_ids
-  - disclosure_requirements
+  - script_review_record
 supported_aspect_ratios:
   - "9:16"
-max_duration_seconds: 75
+max_duration_seconds: 90
 real_generation_enabled: false
 safety_constraints:
-  - 严格区分事实、背景、解读和结论
-  - 不补写来源没有支持的事实
-  - 不做医疗法律金融等高风险断言
+  - 口播稿控制在45至90秒，并使用短句、清晰信息层级和新闻联播式权威表达
+  - 严格区分事实、背景、影响和结论，所有关键事实必须能追溯到权威来源
+  - 不使用类似转述编辑过程的措辞代替权威新闻陈述
+  - 结尾必须为完整句并自然收束，不使用可删除的空泛提醒
+  - 不补写来源没有支持的事实，不做医疗法律金融等高风险断言

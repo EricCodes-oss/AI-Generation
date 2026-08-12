@@ -4,17 +4,22 @@ display_name: 新闻主持人栏目视频合成
 required_inputs:
   - anchor_video_path
   - media_plan
+  - timeline
   - insert_media_paths
   - audio_path
+  - source_sidecar_records
 required_outputs:
   - master_video_path
   - timeline_report
 supported_aspect_ratios:
   - "9:16"
-max_duration_seconds: 75
+max_duration_seconds: 90
 real_generation_enabled: false
 safety_constraints:
-  - 输出1080x1920竖屏母版
-  - 默认不添加逐字口播字幕
-  - 保留来源标识和AI示意标识
-  - 不复制参考视频Logo、栏目名和版式
+  - 输出1080x1920、25fps、H.264、AAC 48kHz单声道无字净版
+  - 不烧录字幕、标题、来源条、平台角标、账号标识或Logo
+  - 不添加背景音乐，不映射或混入素材原声
+  - 来源URL、下载时间、文件哈希和AI生成信息只写入旁路记录
+  - 插播镜头连续正向播放，禁止倒放、循环或乒乓播放
+  - 保持时间线无间隙无重叠，并以连续主持人画面完整收尾
+  - 不复制参考视频Logo、栏目名、文字、音乐和版式

@@ -3,18 +3,23 @@ contract_version: "1.0"
 display_name: 主持人新闻插播分镜规划
 required_inputs:
   - news_script
+  - script_segment_ids
   - source_media_inventory
+  - source_sidecar_records
+  - semantic_mapping
   - host_profile
 required_outputs:
   - media_plan
   - timeline
-  - source_labels
-  - ai_demo_labels
+  - semantic_mapping
+  - source_sidecar_records
 supported_aspect_ratios:
   - "9:16"
-max_duration_seconds: 75
+max_duration_seconds: 90
 real_generation_enabled: false
 safety_constraints:
-  - 固定演播室主持人开场、解释、总结
-  - 竖屏插播必须映射到脚本内容
-  - AI画面必须标注为示意，不得伪装新闻证据
+  - 固定演播室主持人开场、解释和连续主持人结尾
+  - 每个竖屏插播镜头必须映射到对应脚本段落和事实语义
+  - 45至55秒建议2至3次插播，56至70秒建议3次，71至90秒建议3至4次
+  - 单次插播优先保持约5至8秒，避免过短、过密和频繁切换
+  - 来源与AI生成信息仅保存为旁路记录，不烧录到无字净版

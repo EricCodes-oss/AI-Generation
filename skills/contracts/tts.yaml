@@ -4,19 +4,22 @@ display_name: 独立语音合成
 required_inputs:
   - text
   - voice_id
+  - approved_script_review
 optional_inputs:
   - speaking_rate
   - emotion
 required_outputs:
   - audio_path
   - timestamps
+  - voice_identity_record
 supported_aspect_ratios:
   - "9:16"
-max_duration_seconds: 50
+max_duration_seconds: 90
 real_generation_enabled: false
 recommended_audio_format: wav
 timestamps_supported: true
 safety_constraints:
-  - 使用固定主持人音色和清晰稳定语速
-  - 不使用夸张煽动或误导性语气
-  - 语音文本必须来自已核验脚本
+  - 固定使用未来科技解说音色cobra_design_20250717_162347_664524
+  - 使用清晰、稳定、克制的新闻播报语速，不使用夸张煽动或误导性语气
+  - 语音文本必须来自导演已批准且结尾完整的核验脚本
+  - 输出45至90秒WAV音频母版并保留音色身份记录

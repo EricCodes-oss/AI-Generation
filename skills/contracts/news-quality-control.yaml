@@ -5,16 +5,28 @@ required_inputs:
   - master_video_path
   - news_script
   - media_plan
+  - timeline
+  - host_identity_record
+  - voice_identity_record
   - provenance_records
+  - automatic_qc_evidence
+  - director_review
 required_outputs:
   - passed
   - report_path
   - issues
+  - identity_check
+  - timeline_check
+  - ending_check
 supported_aspect_ratios:
   - "9:16"
-max_duration_seconds: 75
+max_duration_seconds: 90
 real_generation_enabled: false
 safety_constraints:
-  - 检查事实素材匹配、来源记录、AI标识和版权备注
-  - 检查黑帧、冻结帧、音画同步、口型和画面畸变
-  - 检查标题安全区和默认无逐字字幕规则
+  - 核验锁定主持人ID、参考图SHA-256和固定未来科技解说音色ID
+  - 检查事实素材匹配、来源旁路记录、下载文件哈希和无水印准入记录
+  - 检查H.264、1080x1920、25fps、AAC 48kHz单声道和45至90秒时长
+  - 检查黑帧、异常静音、解码错误、音频母版一致性、口型和五官自然度
+  - 检查时间线无间隙无重叠、无倒放循环，并以连续主持人结尾完整收束
+  - 检查无字幕、标题、来源条、Logo、音乐和素材原声的无字净版规则
+  - 自动QC通过后仍必须完成导演审核才能交付
