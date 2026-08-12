@@ -1,0 +1,52 @@
+profile:
+  id: v5_vertical_anchor_news
+  version: "1.0"
+  production_mode: manual_directed
+  min_duration_seconds: 45
+  max_duration_seconds: 90
+output:
+  width: 1080
+  height: 1920
+  fps: 25
+  video_codec: h264
+  audio_codec: aac
+  audio_sample_rate: 48000
+  audio_channels: 1
+clean_master:
+  subtitles: false
+  title_overlay: false
+  source_overlay: false
+  logo: false
+  background_music: false
+  footage_audio: false
+host:
+  id: host-c2-pro-candidate-2-final
+  display_name: C2-Pro候选2短发主持人
+  reference_image: output/host-v12-c2-pro/GPT-Image-2-Pro-C2-Pro-主持人最终选定.png
+  sha256: 939324593eb718cd2a39be4c171f74178a6a48442f7e0d61afe8a875011e8a47
+  identity_lock: strict
+voice:
+  display_name: 未来科技解说
+  voice_id: cobra_design_20250717_162347_664524
+  identity_lock: strict
+broll:
+  min_clip_seconds: 4.5
+  preferred_clip_seconds: 5.0
+  max_clip_seconds: 8.0
+  target_ratio_min: 0.25
+  target_ratio_max: 0.38
+  prohibit_reverse: true
+  prohibit_loop: true
+  prohibit_ping_pong: true
+  require_semantic_mapping: true
+ending:
+  min_anchor_ratio: 0.20
+  preferred_anchor_seconds: 10
+  require_complete_sentence: true
+quality:
+  prohibit_black_frames: true
+  max_unexpected_silence_seconds: 1.0
+  require_decode_clean: true
+  require_audio_master_match: true
+  audio_correlation_min: 0.99
+  require_director_review: true
