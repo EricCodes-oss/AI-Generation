@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from avatar_pipeline.news_production import initialize_news_run
+from avatar_pipeline.news_production import build_full_program_transcript, initialize_news_run
 from avatar_pipeline.news_production_models import NewsRunManifest, NewsRunStatus
 from avatar_pipeline.news_qc import (
     REQUIRED_DIRECTOR_CHECK_IDS,
@@ -43,6 +43,7 @@ def prepared_run(tmp_path: Path) -> Path:
 
     for relative, text in {
         "copy/voiceover.txt": "权威新闻口播。完整收束。\n",
+        "copy/full-program-transcript.txt": "《台风最新变化》\n\n完整成片台词。\n",
         "copy/title.txt": "台风最新变化\n强降雨仍在持续\n",
         "audio/master-voiceover.wav": "master",
         "production/render.sh": '#!/bin/sh\nffmpeg -map "[v]" -map "[a]" video/final-clean.mp4\n',
@@ -56,6 +57,40 @@ def prepared_run(tmp_path: Path) -> Path:
         "production/footage-ledger.json",
     ):
         write_json(run_dir / relative, {"run_id": manifest.run_id, "recorded": True})
+    write_json(
+        run_dir / "production/program-transcript.json",
+        {
+            "run_id": manifest.run_id,
+            "title_path": "copy/title.txt",
+            "director_approved": True,
+            "segments": [
+                {
+                    "script_segment_id": "s1",
+                    "visual_type": "anchor",
+                    "audio_role": "presenter",
+                    "start": 0,
+                    "end": 6.5,
+                    "lines": [{"speaker": "主持人", "text": "权威新闻口播。"}],
+                },
+                {
+                    "script_segment_id": "s2",
+                    "visual_type": "broll",
+                    "audio_role": "presenter",
+                    "start": 6.5,
+                    "end": 11.5,
+                    "lines": [{"speaker": "主持人", "text": "强降雨仍在持续。"}],
+                },
+                {
+                    "script_segment_id": "s3",
+                    "visual_type": "anchor",
+                    "audio_role": "presenter",
+                    "start": 11.5,
+                    "end": 52.128,
+                    "lines": [{"speaker": "主持人", "text": "完整收束。"}],
+                },
+            ],
+        },
+    )
     write_json(
         run_dir / "production/timeline.json",
         {
@@ -74,6 +109,7 @@ def prepared_run(tmp_path: Path) -> Path:
             ],
         },
     )
+    build_full_program_transcript(run_dir)
     write_json(
         run_dir / "qc/ffprobe.json",
         {
@@ -205,4 +241,14 @@ def test_missing_director_evidence_or_deliverable_blocks_delivery(tmp_path):
     (run_dir / "qc/tail-contact.jpg").write_bytes(b"image")
     (run_dir / "copy/title.txt").unlink()
     with pytest.raises(ValueError, match="title"):
+        apply_director_review(run_dir)
+
+
+def test_missing_full_program_transcript_blocks_delivery(tmp_path):
+    run_dir = prepared_run(tmp_path)
+    build_automatic_qc_report(run_dir)
+    add_director_review(run_dir)
+    (run_dir / "copy/full-program-transcript.txt").unlink()
+
+    with pytest.raises(ValueError, match="full-program-transcript"):
         apply_director_review(run_dir)

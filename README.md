@@ -26,7 +26,8 @@ V5 是当前固定质量基线，仅覆盖：
 - 主持人参考图 SHA-256：`939324593eb718cd2a39be4c171f74178a6a48442f7e0d61afe8a875011e8a47`；
 - 固定音色 `未来科技解说`，音色 ID：`cobra_design_20250717_162347_664524`；
 - 真实现场素材必须保留来源 URL、下载时间和文件哈希旁路记录；
-- 无水印准入不等同于已经获得版权授权；
+- 素材可保留用户明确接受的来源水印、平台角标或账号标识，但必须如实记录；
+- 来源水印可用不等同于已经获得版权授权；
 - 自动 QC 通过后仍须完成两遍导演审核。
 
 完整操作流程见 [`docs/runbooks/manual-news-v5-production.md`](docs/runbooks/manual-news-v5-production.md)。
@@ -41,7 +42,7 @@ V5 是当前固定质量基线，仅覆盖：
 
 Legacy 手动流程在选题脚本、主持人和最终视频节点显式确认。已保存且未变更的主持人不重复确认，普通转场、音量和编码参数不单独确认。
 
-V5 流程为非交互式 SOP：准备阶段记录后直接运行质量门，不会在每个小步骤反复询问；只有需求冲突或硬质量门失败才停止。
+V5 只有热点选题门需要用户确认：系统先用双漏斗从 20—40 个原始话题中筛选注意力与内容价值，只展示真正合格的 3—8 个候选，也允许少于 3 个；没有 S 级选题时明确报告，不用弱题凑数。用户与导演确认后，事实核验、稿件、TTS、数字人、素材、剪辑和 QC 均按非交互式 SOP 连续执行；只有事实冲突、权利风险或硬质量门失败才停止。
 
 ## 安装
 
@@ -54,31 +55,50 @@ python -m pip install -e '.[dev]'
 ## V5 手动新闻制作
 
 ```bash
-# 1. 初始化不可覆盖的新版本目录
+# 1. 对内部评审后的 v2 选题证据打分，生成动态候选池和导演报告
+avatar-pipeline --workspace workspace editorial-build-report \
+  --date 2026-08-13 \
+  --file tmp/editorial-opportunities/2026-08-13/opportunities.json
+
+avatar-pipeline --workspace workspace hotspot-pool-status --date 2026-08-13
+
+# 2. 用户与导演共同评估后，只确认一次选题
+avatar-pipeline --workspace workspace hotspot-select \
+  --date 2026-08-13 \
+  --candidate-id candidate-2 \
+  --actor owner \
+  --reason "共同评估后确认"
+
+# 3. 用批准记录初始化不可覆盖的新版本目录
 avatar-pipeline news-v5-init \
   --output-root output \
-  --date 2026-08-12 \
-  --slug 台风强降雨 \
-  --topic "台风影响减弱但北方强降雨风险仍在持续" \
-  --version 1
+  --date 2026-08-13 \
+  --slug 已确认选题 \
+  --topic "候选池中已确认的完整标题" \
+  --version 1 \
+  --topic-selection workspace/hotspot-selections/2026-08-13/topic-selection.json
 
-RUN_DIR="output/manual-news-2026-08-12-台风强降雨-v01"
+RUN_DIR="output/manual-news-2026-08-13-已确认选题-v01"
 
-# 2. 根据实际音频时长获取插播节奏建议
+# 4. 获取宽松的插播参考范围；最终段数、时长、占比由导演动态决定
 avatar-pipeline news-v5-guidance --duration 52.128
 
-# 3. 依次通过生产质量门
+# 5. 依次通过生产质量门
 avatar-pipeline news-v5-preflight \
   --run-dir "$RUN_DIR" --stage generation --project-root "$PWD"
 avatar-pipeline news-v5-preflight --run-dir "$RUN_DIR" --stage timeline
 avatar-pipeline news-v5-preflight --run-dir "$RUN_DIR" --stage render
 
-# 4. 渲染后进入自动QC和导演审核
+# 6. 渲染后进入自动QC和导演审核
 avatar-pipeline news-v5-mark-rendered --run-dir "$RUN_DIR"
 avatar-pipeline news-v5-build-qc --run-dir "$RUN_DIR"
 avatar-pipeline news-v5-apply-director-review --run-dir "$RUN_DIR"
 avatar-pipeline news-v5-status --run-dir "$RUN_DIR"
 ```
+
+热点发现覆盖国内榜单、权威媒体、搜索需求、社交讨论、视频传播和垂直社区六类信号，不得只由百度或任何单一平台主导。候选可覆盖社会民生、科技、财经、国际、政策、消费、教育、网红热点、普通人热议、文娱文化和天气灾害。平台热度只证明关注变化，事实必须回到第一方、官方或独立可靠来源；素材还须核验画面相关性、清晰度、年代、口罩或疫情时期错配、水印/文字、哈希以及版权或使用依据。
+
+插播采用 `director_dynamic`：不固定三段，也不按视频时长机械分配次数。题材、稿件结构、素材质量、动作完整性和最终观看效果共同决定插播数量、单段时长及占比；优先少而长、语义连贯的叙事块，避免频繁短切。1—5 段、4.5—12 秒、20%—45% 仅为宽松参考范围，不是达标配额。
 
 日期、主题、来源事实、素材 URL 和剪辑区间必须来自当次运行。详细 JSON 格式、FFmpeg 规则、QC 证据和返工方式以 Runbook 为准。
 
@@ -135,9 +155,8 @@ CLI 是非交互式的；Legacy 手动模式通过显式审批命令推进。
 ## 测试与检查
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest -q
-.venv/bin/ruff check src tests
-.venv/bin/ruff format --check src tests
+PYTHONPATH="$(pwd):$(pwd)/src" .venv/bin/python -m pytest -q
+git ls-files '*.py' -z | xargs -0 .venv/bin/ruff check
 git diff --check
 ```
 

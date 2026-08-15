@@ -242,16 +242,21 @@ def test_cli_imports_short_video_evidence_with_review_inputs(tmp_path):
     assert loaded["event-1"].platforms["xiaohongshu"].collection_status.value == "restricted"
 
 
-def test_news_v5_guidance_reports_v5_rhythm_for_52_seconds():
+def test_news_v5_guidance_reports_dynamic_director_rhythm_for_52_seconds():
     from avatar_pipeline.cli import build_parser, dispatch
 
     args = build_parser().parse_args(["news-v5-guidance", "--duration", "52.128"])
     payload = dispatch(args)
-    assert payload["recommended_count"] == 3
-    assert payload["minimum_count"] == 2
-    assert payload["maximum_count"] == 3
+    assert payload["selection_mode"] == "director_dynamic"
+    assert payload["count_fixed"] is False
+    assert payload["recommended_count"] is None
+    assert payload["minimum_count"] == 1
+    assert payload["maximum_count"] == 5
     assert payload["minimum_clip_seconds"] == 4.5
-    assert payload["maximum_clip_seconds"] == 6.5
+    assert payload["maximum_clip_seconds"] == 12.0
+    assert payload["maximum_ratio"] == 0.45
+    assert payload["prefer_coherent_blocks"] is True
+    assert payload["avoid_frequent_short_cuts"] is True
 
 
 def test_news_v5_init_and_status_are_non_interactive_json_commands(tmp_path):
@@ -269,6 +274,7 @@ def test_news_v5_init_and_status_are_non_interactive_json_commands(tmp_path):
         "台风及城市积水影响",
         "--version",
         "1",
+        "--allow-unconfirmed-topic",
     )
     assert created.returncode == 0, created.stderr
     payload = json.loads(created.stdout)
@@ -297,9 +303,33 @@ def test_news_v5_init_and_status_are_non_interactive_json_commands(tmp_path):
         "台风及城市积水影响",
         "--version",
         "1",
+        "--allow-unconfirmed-topic",
     )
     assert duplicate.returncode != 0
 
+
+
+def test_news_v5_build_transcript_dispatches_to_canonical_builder(tmp_path, monkeypatch):
+    from avatar_pipeline import cli
+
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    output = run_dir / "copy/full-program-transcript.txt"
+    calls = []
+
+    def fake_build(path):
+        calls.append(Path(path))
+        return output
+
+    monkeypatch.setattr(cli, "build_full_program_transcript", fake_build)
+    payload = cli.dispatch(
+        cli.build_parser().parse_args(
+            ["news-v5-build-transcript", "--run-dir", str(run_dir)]
+        )
+    )
+
+    assert payload == {"path": str(output)}
+    assert calls == [run_dir]
 
 def test_news_v5_stage_commands_dispatch_to_quality_gates(monkeypatch, tmp_path):
     from avatar_pipeline import cli
@@ -408,3 +438,276 @@ def test_news_v5_stage_commands_dispatch_to_quality_gates(monkeypatch, tmp_path)
         ("qc", run_dir),
         ("review", run_dir),
     ]
+
+
+def _candidate_pool_payload():
+    categories = [
+        "social_livelihood",
+        "technology",
+        "finance",
+        "international",
+        "policy",
+        "consumer",
+        "education",
+        "ordinary_people",
+    ]
+    return {
+        "day": "2026-08-12",
+        "status": "awaiting_user_evaluation",
+        "candidates": [
+            {
+                "candidate_id": f"candidate-{index}",
+                "title": f"候选话题{index}",
+                "category": category,
+                "latest_development": f"2026年8月12日最新进展{index}",
+                "heat_basis": ["多平台集中传播", "权威媒体当天更新"],
+                "authoritative_sources": [
+                    {
+                        "source_id": f"source-{index}",
+                        "platform": "xinhuanet",
+                        "title": f"新华网来源{index}",
+                        "url_or_reference": f"https://example.com/{index}",
+                        "evidence_type": "reputable_media",
+                        "published_at": "2026-08-12T12:00:00Z",
+                    }
+                ],
+                "why_watch": "与公众利益直接相关，并有明确的新变化。",
+                "visual_material_plan": ["新华网相关视频", "权威机构实景画面"],
+                "suggested_title": f"候选话题{index}出现新变化",
+                "risks": ["制作前复核最新状态"],
+                "director_rating": "A",
+                "preferred_media_sources": ["新华网", "人民日报B站官方账号"],
+            }
+            for index, category in enumerate(categories, start=1)
+        ],
+    }
+
+
+def test_cli_candidate_pool_gate_renders_report_and_binds_v5_run(tmp_path):
+    pool_file = tmp_path / "pool.json"
+    pool_file.write_text(
+        json.dumps(_candidate_pool_payload(), ensure_ascii=False), encoding="utf-8"
+    )
+
+    imported = run_cli(
+        tmp_path,
+        "hotspot-pool-import",
+        "--date",
+        "2026-08-12",
+        "--file",
+        str(pool_file),
+    )
+    assert imported.returncode == 0, imported.stderr
+    imported_payload = json.loads(imported.stdout)
+    report_path = Path(imported_payload["report_path"])
+    assert report_path.is_file()
+    assert "等待用户共同评估" in report_path.read_text(encoding="utf-8")
+
+    selected = run_cli(
+        tmp_path,
+        "hotspot-select",
+        "--date",
+        "2026-08-12",
+        "--candidate-id",
+        "candidate-2",
+        "--actor",
+        "owner",
+        "--reason",
+        "共同评估后确认",
+    )
+    assert selected.returncode == 0, selected.stderr
+    selection_path = Path(json.loads(selected.stdout)["selection_path"])
+
+    output_root = tmp_path / "output"
+    created = run_cli(
+        tmp_path,
+        "news-v5-init",
+        "--output-root",
+        str(output_root),
+        "--date",
+        "2026-08-12",
+        "--slug",
+        "候选话题2",
+        "--topic",
+        "候选话题2",
+        "--version",
+        "1",
+        "--topic-selection",
+        str(selection_path),
+    )
+    assert created.returncode == 0, created.stderr
+    payload = json.loads(created.stdout)
+    assert payload["manifest"]["topic_selection_id"] == "candidate-2"
+    assert payload["records"]["topic_selection"] is True
+
+
+def test_cli_news_v5_init_rejects_unconfirmed_topic_by_default(tmp_path):
+    result = run_cli(
+        tmp_path,
+        "news-v5-init",
+        "--output-root",
+        str(tmp_path / "output"),
+        "--date",
+        "2026-08-12",
+        "--slug",
+        "未确认",
+        "--topic",
+        "未经共同评估的选题",
+        "--version",
+        "1",
+    )
+    assert result.returncode != 0
+    assert "--topic-selection" in result.stderr
+
+
+def _editorial_opportunity_payload():
+    return {
+        "opportunity_id": "odyssey",
+        "title": "《奥德赛》到底讲了什么？为什么突然刷屏全网？",
+        "category": "culture_entertainment",
+        "latest_development": "影片进入上映前传播窗口",
+        "why_today": "解释型搜索和视频传播同步增加",
+        "strongest_tension": "三千年史诗与现代电影工业的反差",
+        "ordinary_people_relevance": "帮助普通观众理解刷屏内容",
+        "viewer_payoff": "看懂原作、改编难点和当下热度原因",
+        "three_second_hook": "一部三千年前的史诗，为什么突然刷屏？",
+        "expected_heat_lifetime": "上映前后两周",
+        "attention_signals": [
+            {
+                "signal_id": "baidu-1",
+                "source_kind": "domestic_boards",
+                "platform": "baidu",
+                "captured_at": "2026-08-13T10:00:00+08:00",
+                "url_or_reference": "baidu:odyssey",
+                "roles": ["attention_signal"],
+                "raw_snapshot_path": "raw/baidu.json",
+                "confidence": 0.9,
+                "velocity_score": 1.0,
+                "outlier_score": 1.0,
+                "persistence_score": 1.0,
+            },
+            {
+                "signal_id": "x-1",
+                "source_kind": "social_discussion",
+                "platform": "x",
+                "captured_at": "2026-08-13T10:00:00+08:00",
+                "url_or_reference": "x:odyssey",
+                "roles": ["attention_signal"],
+                "raw_snapshot_path": "raw/x.json",
+                "confidence": 0.9,
+                "velocity_score": 1.0,
+                "outlier_score": 1.0,
+                "persistence_score": 1.0,
+            },
+            {
+                "signal_id": "trends-1",
+                "source_kind": "search_demand",
+                "platform": "google_trends",
+                "captured_at": "2026-08-13T10:00:00+08:00",
+                "url_or_reference": "trends:odyssey",
+                "roles": ["attention_signal"],
+                "raw_snapshot_path": "raw/trends.json",
+                "confidence": 0.8,
+                "velocity_score": 1.0,
+                "search_growth_score": 1.0,
+                "outlier_score": 1.0,
+                "persistence_score": 1.0,
+            },
+        ],
+        "fact_evidence": [
+            {
+                "evidence_id": "studio",
+                "claim_id": "core",
+                "claim_text": "影片和上映窗口信息",
+                "source_name": "片方资料",
+                "source_tier": "first_party",
+                "published_at": "2026-08-13T08:00:00+08:00",
+                "url_or_reference": "studio:odyssey",
+                "status": "supported",
+                "is_first_party": True,
+                "independent_source_group": "studio",
+                "is_core_claim": True,
+            },
+            {
+                "evidence_id": "media",
+                "claim_id": "core",
+                "claim_text": "影片和上映窗口信息",
+                "source_name": "权威媒体",
+                "source_tier": "reputable_media",
+                "published_at": "2026-08-13T09:00:00+08:00",
+                "url_or_reference": "media:odyssey",
+                "status": "supported",
+                "independent_source_group": "media",
+                "is_core_claim": True,
+            },
+        ],
+        "footage": {
+            "has_factual_relevant_footage": True,
+            "coherent_narrative_score": 1.0,
+            "quality_era_match_score": 1.0,
+            "acquisition_feasibility_score": 1.0,
+            "assets": ["官方预告片", "主创采访"],
+            "risks": ["记录素材来源和权利依据"],
+            "usable_continuous_seconds": 45,
+        },
+        "editorial_values": {
+            "curiosity_gap": 1.0,
+            "conflict_contrast_suspense": 1.0,
+            "human_stakes": 0.8,
+            "emotional_intensity": 0.8,
+            "explanatory_payoff": 1.0,
+            "ordinary_people_proximity": 0.9,
+        },
+    }
+
+
+def test_cli_builds_v2_editorial_report_and_keeps_selection_gate(tmp_path):
+    source = tmp_path / "opportunities.json"
+    source.write_text(
+        json.dumps([_editorial_opportunity_payload()], ensure_ascii=False),
+        encoding="utf-8",
+    )
+    result = run_cli(
+        tmp_path,
+        "editorial-build-report",
+        "--date",
+        "2026-08-13",
+        "--file",
+        str(source),
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["quality_status"] == "has_s_tier"
+    assert payload["candidate_count"] == 1
+    assert payload["next_gate"] == "user_joint_topic_evaluation"
+    report = Path(payload["report_path"]).read_text(encoding="utf-8")
+    assert "存在 S 级选题" in report
+    assert "前三秒开场" in report
+    assert Path(payload["pool_path"]).is_file()
+
+
+def test_cli_v2_report_does_not_pad_and_can_report_no_s_tier(tmp_path):
+    item = _editorial_opportunity_payload()
+    item["editorial_values"] = {
+        "curiosity_gap": 0.1,
+        "conflict_contrast_suspense": 0.1,
+        "human_stakes": 0.1,
+        "emotional_intensity": 0.1,
+        "explanatory_payoff": 0.1,
+        "ordinary_people_proximity": 0.1,
+    }
+    source = tmp_path / "weak.json"
+    source.write_text(json.dumps([item], ensure_ascii=False), encoding="utf-8")
+    result = run_cli(
+        tmp_path,
+        "editorial-build-report",
+        "--date",
+        "2026-08-13",
+        "--file",
+        str(source),
+    )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["quality_status"] == "no_s_tier"
+    assert payload["candidate_count"] == 0
+    assert "暂无 S 级选题" in Path(payload["report_path"]).read_text(encoding="utf-8")

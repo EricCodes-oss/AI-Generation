@@ -37,7 +37,7 @@ class CleanMasterConfig(StrictModel):
     source_overlay: Literal[False]
     logo: Literal[False]
     background_music: Literal[False]
-    footage_audio: Literal[False]
+    footage_audio: Literal["director_selected"]
 
 
 class HostLockConfig(StrictModel):
@@ -55,11 +55,17 @@ class VoiceLockConfig(StrictModel):
 
 
 class BrollConfig(StrictModel):
+    selection_mode: Literal["director_dynamic"]
+    count_fixed: Literal[False]
+    guidance_min_count: int = Field(ge=1)
+    guidance_max_count: int = Field(ge=1)
     min_clip_seconds: float = Field(gt=0)
     preferred_clip_seconds: float = Field(gt=0)
     max_clip_seconds: float = Field(gt=0)
     target_ratio_min: float = Field(gt=0, lt=1)
     target_ratio_max: float = Field(gt=0, lt=1)
+    prefer_coherent_blocks: Literal[True]
+    avoid_frequent_short_cuts: Literal[True]
     prohibit_reverse: Literal[True]
     prohibit_loop: Literal[True]
     prohibit_ping_pong: Literal[True]
@@ -67,6 +73,8 @@ class BrollConfig(StrictModel):
 
     @model_validator(mode="after")
     def validate_ranges(self) -> BrollConfig:
+        if self.guidance_min_count > self.guidance_max_count:
+            raise ValueError("B-roll guidance counts must be ordered")
         if not self.min_clip_seconds <= self.preferred_clip_seconds <= self.max_clip_seconds:
             raise ValueError("B-roll clip durations must be ordered")
         if self.target_ratio_min > self.target_ratio_max:

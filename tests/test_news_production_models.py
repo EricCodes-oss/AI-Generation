@@ -91,11 +91,40 @@ def test_approved_script_review_requires_every_editorial_check():
         )
 
 
-def test_footage_usage_rule_requires_all_visual_checks():
+def test_footage_usage_rule_allows_disclosed_source_marks_when_user_approved():
+    payload = approved_asset().model_dump()
+    payload.update(
+        watermark_free=False,
+        platform_logo_free=False,
+        account_mark_free=False,
+        visible_source_marks_allowed_by_user=True,
+    )
+
+    asset = FootageAsset.model_validate(payload)
+
+    assert asset.user_usage_rule_passed is True
+    assert asset.visible_source_marks_allowed_by_user is True
+
+
+def test_footage_usage_rule_rejects_undisclosed_source_marks():
     payload = approved_asset().model_dump()
     payload["watermark_free"] = False
-    with pytest.raises(ValidationError, match="watermark"):
+    with pytest.raises(ValidationError, match="source marks"):
         FootageAsset.model_validate(payload)
+
+
+def test_footage_usage_rule_keeps_burned_captions_as_separate_policy():
+    payload = approved_asset().model_dump()
+    payload.update(
+        burned_caption_free=False,
+        visible_source_marks_allowed_by_user=True,
+    )
+    with pytest.raises(ValidationError, match="burned captions"):
+        FootageAsset.model_validate(payload)
+
+    payload["burned_captions_allowed_by_user"] = True
+    asset = FootageAsset.model_validate(payload)
+    assert asset.burned_captions_allowed_by_user is True
 
 
 def test_shot_requires_forward_continuous_approved_interval():

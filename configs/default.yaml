@@ -140,3 +140,69 @@ hotspot:
     visual_impact: 10
     explanatory_depth: 5
     fact_safety: 5
+hotspot_selection:
+  target_min_candidates: 3
+  max_candidates: 8
+  allow_fewer_than_target: true
+  pad_weak_candidates: false
+  require_user_selection: true
+  categories:
+    - social_livelihood
+    - technology
+    - finance
+    - international
+    - policy
+    - consumer
+    - education
+    - influencer
+    - ordinary_people
+    - ordinary_life_moment
+    - culture_entertainment
+    - weather_disaster
+  ordinary_life_moment_gate:
+    enabled: true
+    reject_professional_influencers: true
+    require_personal_daily_recorder: true
+    require_ordinary_people_as_primary_subjects: true
+    reject_creator_initiated_events: true
+    require_event_preexisted_filming: true
+    require_daily_life_context: true
+    require_human_warmth_evidence: true
+    max_staging_risk: 0.35
+    require_original_recorder: true
+    require_continuous_scene: true
+  preferred_authoritative_media:
+    - name: 新华网
+      platform: xinhuanet
+      roles: [fact_source, hotspot_signal, footage_candidate]
+    - name: 人民日报
+      platform: bilibili
+      account_name: 人民日报
+      roles: [hotspot_signal, footage_candidate]
+    - name: 中国青年报
+      platform: bilibili
+      account_name: 中国青年报
+      roles: [hotspot_signal, footage_candidate]
+
+editorial_opportunity:
+  rule_version: editorial-opportunity-v2.0
+  score_weights:
+    real_heat: 30
+    content_attractiveness: 35
+    fact_reliability: 20
+    video_potential: 15
+  s_score_min: 85
+  a_score_min: 78
+  max_user_candidates: 8
+  target_min_candidates: 3
+  allow_fewer_than_target: true
+  pad_weak_candidates: false
+  require_user_selection: true
+  no_s_tier_message: 暂无S级选题
+  source_signal_classes:
+    - domestic_boards
+    - authoritative_media
+    - search_demand
+    - social_discussion
+    - video_propagation
+    - vertical_communities

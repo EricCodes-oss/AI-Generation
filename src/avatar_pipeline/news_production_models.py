@@ -31,6 +31,7 @@ class NewsRunManifest(ProductionModel):
     quality_profile_version: str = Field(min_length=1)
     production_mode: Literal["manual_directed"] = "manual_directed"
     topic: str = Field(min_length=1)
+    topic_selection_id: str | None = None
     target_duration_seconds: float = Field(ge=45, le=90)
     host_id: str = Field(min_length=1)
     host_reference_image: str = Field(min_length=1)
@@ -111,19 +112,27 @@ class FootageAsset(ProductionModel):
     platform_logo_free: bool
     account_mark_free: bool
     burned_caption_free: bool
+    visible_source_marks_allowed_by_user: bool = False
+    burned_captions_allowed_by_user: bool = False
     visual_relevance: str = Field(min_length=1)
     user_usage_rule_passed: bool
 
     @model_validator(mode="after")
     def validate_usage_rule(self) -> FootageAsset:
-        checks = (
-            self.watermark_free,
-            self.platform_logo_free,
-            self.account_mark_free,
-            self.burned_caption_free,
+        if not self.user_usage_rule_passed:
+            return self
+
+        source_marks_free = (
+            self.watermark_free and self.platform_logo_free and self.account_mark_free
         )
-        if self.user_usage_rule_passed and not all(checks):
-            raise ValueError("watermark and visual-text checks must pass before project use")
+        if not source_marks_free and not self.visible_source_marks_allowed_by_user:
+            raise ValueError(
+                "visible source marks require explicit user approval before project use"
+            )
+        if not self.burned_caption_free and not self.burned_captions_allowed_by_user:
+            raise ValueError(
+                "burned captions require separate explicit user approval before project use"
+            )
         return self
 
 
@@ -217,6 +226,34 @@ class NewsTimeline(ProductionModel):
         if self.segments[-1].type != "anchor":
             raise ValueError("news timeline must close with the anchor")
         return self
+
+
+class TranscriptLine(ProductionModel):
+    speaker: str = Field(min_length=1)
+    text: str = Field(min_length=1)
+
+
+class ProgramTranscriptSegment(ProductionModel):
+    script_segment_id: str = Field(min_length=1)
+    visual_type: Literal["anchor", "broll"]
+    audio_role: Literal["presenter", "source_audio"]
+    start: float = Field(ge=0)
+    end: float = Field(gt=0)
+    lines: list[TranscriptLine] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_interval(self) -> ProgramTranscriptSegment:
+        if self.end <= self.start:
+            raise ValueError("program transcript segment must have a positive duration")
+        return self
+
+
+class ProgramTranscript(ProductionModel):
+    run_id: str = Field(min_length=1)
+    title_path: str = Field(min_length=1)
+    output_path: str = "copy/full-program-transcript.txt"
+    director_approved: bool
+    segments: list[ProgramTranscriptSegment] = Field(default_factory=list)
 
 
 class DirectorCheck(ProductionModel):

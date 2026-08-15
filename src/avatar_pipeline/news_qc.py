@@ -9,7 +9,11 @@ from datetime import UTC, datetime
 from fractions import Fraction
 from pathlib import Path
 
-from avatar_pipeline.news_production import load_run_record, save_manifest
+from avatar_pipeline.news_production import (
+    load_run_record,
+    save_manifest,
+    validate_full_program_transcript,
+)
 from avatar_pipeline.news_production_models import (
     DirectorReview,
     FinalQualityReport,
@@ -47,6 +51,7 @@ _REQUIRED_DELIVERABLES = (
     "video/final-clean.mp4",
     "audio/master-voiceover.wav",
     "copy/voiceover.txt",
+    "copy/full-program-transcript.txt",
     "copy/title.txt",
     "production/run-manifest.json",
     "production/quality-profile.yaml",
@@ -54,6 +59,7 @@ _REQUIRED_DELIVERABLES = (
     "production/script-review.json",
     "production/shot-selection.json",
     "production/timeline.json",
+    "production/program-transcript.json",
     "production/footage-ledger.json",
     "production/render.sh",
     "qc/final-qc-report.json",
@@ -337,7 +343,8 @@ def _identity_and_timeline_checks(run_dir: Path) -> list[QualityCheck]:
             category="timeline",
             expected=(
                 f"{config.broll.target_ratio_min:.2f}-"
-                f"{config.broll.target_ratio_max:.2f} director target"
+                f"{config.broll.target_ratio_max:.2f} advisory range; "
+                "final ratio is director-decided"
             ),
             actual=f"{broll_total / timeline.audio_duration_seconds:.4f}",
             passed=True,
@@ -428,6 +435,7 @@ def apply_director_review(run_dir: Path) -> FinalQualityReport:
     ]
     if missing_files:
         raise ValueError(f"required deliverables are missing: {', '.join(missing_files)}")
+    validate_full_program_transcript(run_dir)
     for relative in ("qc/contact-sheet.jpg", "qc/boundary-contact.jpg", "qc/tail-contact.jpg"):
         if (run_dir / relative).stat().st_size == 0:
             raise ValueError(f"director evidence is empty: {relative}")

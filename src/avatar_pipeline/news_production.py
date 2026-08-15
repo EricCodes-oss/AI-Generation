@@ -14,12 +14,14 @@ from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from avatar_pipeline.hotspot_selection import TopicSelectionApproval
 from avatar_pipeline.news_production_models import (
     FactEvidence,
     FootageLedger,
     NewsRunManifest,
     NewsRunStatus,
     NewsTimeline,
+    ProgramTranscript,
     ScriptReview,
     ShotSelection,
 )
@@ -42,18 +44,23 @@ class NewsProductionGateError(ValueError):
 
 @dataclass(frozen=True)
 class BrollGuidance:
+    selection_mode: str
+    count_fixed: bool
     minimum_count: int
     maximum_count: int
     minimum_clip_seconds: float
+    preferred_clip_seconds: float
     maximum_clip_seconds: float
     minimum_ratio: float
     maximum_ratio: float
+    prefer_coherent_blocks: bool
+    avoid_frequent_short_cuts: bool
 
     @property
-    def recommended_count(self) -> int:
-        if self.minimum_count == self.maximum_count:
-            return self.minimum_count
-        return 3 if self.minimum_count <= 3 <= self.maximum_count else self.minimum_count
+    def recommended_count(self) -> int | None:
+        """Do not turn a broad editorial range into a fixed insert quota."""
+
+        return None if not self.count_fixed else self.minimum_count
 
 
 @dataclass(frozen=True)
@@ -97,6 +104,26 @@ def _write_json(path: Path, model: BaseModel) -> None:
             temporary.unlink()
 
 
+def _write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            handle.write(text)
+            temporary = Path(handle.name)
+        temporary.replace(path)
+    finally:
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
+
+
 def load_run_record(run_dir: Path, relative_path: str, model_type: type[T]) -> T:
     path = Path(run_dir) / relative_path
     if not path.is_file():
@@ -121,6 +148,7 @@ def initialize_news_run(
     version: int,
     quality_config_path: Path,
     parent_run_id: str | None = None,
+    topic_selection_path: Path | None = None,
 ) -> Path:
     """Create one immutable-version run directory and its locked manifest."""
 
@@ -133,6 +161,18 @@ def initialize_news_run(
         )
     config_path = Path(quality_config_path)
     config = load_news_quality_config(config_path)
+    selection = None
+    if topic_selection_path is not None:
+        selection_path = Path(topic_selection_path)
+        selection = TopicSelectionApproval.model_validate_json(
+            selection_path.read_text(encoding="utf-8")
+        )
+        if not selection.approved:
+            raise ValueError("topic selection must be approved")
+        if selection.day != day:
+            raise ValueError("topic selection date does not match run date")
+        if selection.title != topic:
+            raise ValueError("topic selection title does not match run topic")
     run_id = f"manual-news-{day.isoformat()}-{safe_slug}-v{version:02d}"
     run_dir = Path(output_root) / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -145,6 +185,7 @@ def initialize_news_run(
             quality_profile=config.profile.id,
             quality_profile_version=config.profile.version,
             topic=topic,
+            topic_selection_id=selection.candidate_id if selection else None,
             target_duration_seconds=60,
             host_id=config.host.id,
             host_reference_image=config.host.reference_image,
@@ -157,6 +198,8 @@ def initialize_news_run(
             created_at=_utc_now(),
         )
         _write_json(run_dir / "production/run-manifest.json", manifest)
+        if topic_selection_path is not None:
+            shutil.copy2(topic_selection_path, run_dir / "production/topic-selection.json")
     except Exception:
         shutil.rmtree(run_dir)
         raise
@@ -164,15 +207,26 @@ def initialize_news_run(
 
 
 def recommend_broll(duration_seconds: float, config: NewsVideoQualityConfig) -> BrollGuidance:
+    """Return broad director guidance, never a duration-derived insert quota."""
+
     minimum = config.profile.min_duration_seconds
     maximum = config.profile.max_duration_seconds
     if not minimum <= duration_seconds <= maximum:
         raise ValueError("V5 duration must stay within 45-90 seconds")
-    if duration_seconds <= 55:
-        return BrollGuidance(2, 3, 4.5, 6.5, 0.25, 0.35)
-    if duration_seconds <= 70:
-        return BrollGuidance(3, 3, 5.0, 7.0, 0.25, 0.35)
-    return BrollGuidance(3, 4, 5.0, 8.0, 0.25, 0.38)
+    broll = config.broll
+    return BrollGuidance(
+        selection_mode=broll.selection_mode,
+        count_fixed=broll.count_fixed,
+        minimum_count=broll.guidance_min_count,
+        maximum_count=broll.guidance_max_count,
+        minimum_clip_seconds=broll.min_clip_seconds,
+        preferred_clip_seconds=broll.preferred_clip_seconds,
+        maximum_clip_seconds=broll.max_clip_seconds,
+        minimum_ratio=broll.target_ratio_min,
+        maximum_ratio=broll.target_ratio_max,
+        prefer_coherent_blocks=broll.prefer_coherent_blocks,
+        avoid_frequent_short_cuts=broll.avoid_frequent_short_cuts,
+    )
 
 
 def _load_context(run_dir: Path) -> tuple[NewsRunManifest, NewsVideoQualityConfig]:
@@ -187,6 +241,88 @@ def _require_same_run(run_id: str, *records: BaseModel) -> list[str]:
         if getattr(record, "run_id", None) != run_id:
             failures.append(f"run_id:{record.__class__.__name__}")
     return failures
+
+
+def _format_timestamp(seconds: float) -> str:
+    total_milliseconds = round(seconds * 1000)
+    minutes, remainder = divmod(total_milliseconds, 60_000)
+    whole_seconds, milliseconds = divmod(remainder, 1000)
+    return f"{minutes:02d}:{whole_seconds:02d}.{milliseconds:03d}"
+
+
+def render_full_program_transcript(run_dir: Path) -> str:
+    """Render every audible programme segment, including approved source dialogue."""
+
+    run_dir = Path(run_dir)
+    manifest = load_run_record(run_dir, "production/run-manifest.json", NewsRunManifest)
+    timeline = load_run_record(run_dir, "production/timeline.json", NewsTimeline)
+    transcript = load_run_record(
+        run_dir, "production/program-transcript.json", ProgramTranscript
+    )
+    failures = _require_same_run(manifest.run_id, timeline, transcript)
+    if not transcript.director_approved:
+        failures.append("director_approval")
+
+    if len(transcript.segments) != len(timeline.segments):
+        failures.append("segment_coverage")
+    else:
+        for index, (timeline_segment, transcript_segment) in enumerate(
+            zip(timeline.segments, transcript.segments, strict=True), start=1
+        ):
+            if transcript_segment.script_segment_id != timeline_segment.script_segment_id:
+                failures.append(f"segment_id:{index}")
+            if transcript_segment.visual_type != timeline_segment.type:
+                failures.append(f"visual_type:{index}")
+            if abs(transcript_segment.start - timeline_segment.start) > 0.01:
+                failures.append(f"segment_start:{index}")
+            if abs(transcript_segment.end - timeline_segment.end) > 0.01:
+                failures.append(f"segment_end:{index}")
+    if failures:
+        raise NewsProductionGateError("program_transcript", failures)
+
+    title_path = run_dir / transcript.title_path
+    if not title_path.is_file() or not title_path.read_text(encoding="utf-8").strip():
+        raise NewsProductionGateError("program_transcript", ["title:missing_or_empty"])
+    title = title_path.read_text(encoding="utf-8").strip().splitlines()[0].strip()
+    if not (title.startswith("《") and title.endswith("》")):
+        title = f"《{title}》"
+
+    blocks = [title]
+    for segment in transcript.segments:
+        role = "主持人口播" if segment.audio_role == "presenter" else "现场原声"
+        heading = (
+            f"【{_format_timestamp(segment.start)}—{_format_timestamp(segment.end)}｜{role}】"
+        )
+        lines = [f"{line.speaker}：{line.text}" for line in segment.lines]
+        blocks.append("\n".join([heading, *lines]))
+    return "\n\n".join(blocks) + "\n"
+
+
+def build_full_program_transcript(run_dir: Path) -> Path:
+    """Generate the canonical complete programme transcript as a delivery artifact."""
+
+    run_dir = Path(run_dir)
+    record = load_run_record(
+        run_dir, "production/program-transcript.json", ProgramTranscript
+    )
+    output_path = run_dir / record.output_path
+    _write_text(output_path, render_full_program_transcript(run_dir))
+    return output_path
+
+
+def validate_full_program_transcript(run_dir: Path) -> None:
+    """Reject missing, incomplete, or stale programme transcript deliverables."""
+
+    run_dir = Path(run_dir)
+    record = load_run_record(
+        run_dir, "production/program-transcript.json", ProgramTranscript
+    )
+    output_path = run_dir / record.output_path
+    if not output_path.is_file() or output_path.stat().st_size == 0:
+        raise NewsProductionGateError("program_transcript", ["output:missing_or_empty"])
+    expected = render_full_program_transcript(run_dir)
+    if output_path.read_text(encoding="utf-8") != expected:
+        raise NewsProductionGateError("program_transcript", ["output:stale_or_incomplete"])
 
 
 def validate_generation_preflight(run_dir: Path, project_root: Path) -> StageValidationResult:
@@ -324,8 +460,19 @@ def validate_render_preflight(run_dir: Path) -> StageValidationResult:
     for label, pattern in forbidden_patterns.items():
         if re.search(pattern, lowered):
             failures.append(f"forbidden_filter:{label}")
-    if re.search(r"-map\s+[\"']?[0-9]+:a", text):
-        failures.append("source_audio_map")
+    input_paths = re.findall(r"(?:^|\s)-i\s+[\"']?([^\"'\s]+)", text)
+    for match in re.finditer(r"-map\s+[\"']?(?P<index>[0-9]+):a", text):
+        index = int(match.group("index"))
+        input_path = input_paths[index] if index < len(input_paths) else ""
+        if not input_path.endswith("/audio/master-voiceover.wav"):
+            failures.append("source_audio_map")
+            break
+    for match in re.finditer(r"\[(?P<index>[0-9]+):a(?::[0-9]+)?\]", text):
+        index = int(match.group("index"))
+        input_path = input_paths[index] if index < len(input_paths) else ""
+        if not input_path.endswith("/audio/master-voiceover.wav"):
+            failures.append("source_audio_filter")
+            break
     for relative in re.findall(r"\$ROOT/([^\"'\s]+)", text):
         if relative == (manifest.final_video_path or "video/final-clean.mp4"):
             continue

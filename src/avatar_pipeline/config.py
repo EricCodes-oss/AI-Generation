@@ -182,6 +182,134 @@ class HotspotConfig(StrictModel):
     score_weights: HotspotScoreWeights
 
 
+HotspotSelectionCategory = Literal[
+    "social_livelihood",
+    "technology",
+    "finance",
+    "international",
+    "policy",
+    "consumer",
+    "education",
+    "influencer",
+    "ordinary_people",
+    "ordinary_life_moment",
+    "culture_entertainment",
+    "weather_disaster",
+]
+
+
+class PreferredAuthoritativeMediaConfig(StrictModel):
+    name: str = Field(min_length=1)
+    platform: str = Field(min_length=1)
+    account_name: str | None = None
+    roles: list[Literal["fact_source", "hotspot_signal", "footage_candidate"]] = Field(min_length=1)
+
+
+class OrdinaryLifeMomentGateConfig(StrictModel):
+    enabled: Literal[True]
+    reject_professional_influencers: Literal[True]
+    require_personal_daily_recorder: Literal[True]
+    require_ordinary_people_as_primary_subjects: Literal[True]
+    reject_creator_initiated_events: Literal[True]
+    require_event_preexisted_filming: Literal[True]
+    require_daily_life_context: Literal[True]
+    require_human_warmth_evidence: Literal[True]
+    max_staging_risk: float = Field(ge=0, le=0.35)
+    require_original_recorder: Literal[True]
+    require_continuous_scene: Literal[True]
+
+
+def _default_ordinary_life_moment_gate() -> OrdinaryLifeMomentGateConfig:
+    return OrdinaryLifeMomentGateConfig(
+        enabled=True,
+        reject_professional_influencers=True,
+        require_personal_daily_recorder=True,
+        require_ordinary_people_as_primary_subjects=True,
+        reject_creator_initiated_events=True,
+        require_event_preexisted_filming=True,
+        require_daily_life_context=True,
+        require_human_warmth_evidence=True,
+        max_staging_risk=0.35,
+        require_original_recorder=True,
+        require_continuous_scene=True,
+    )
+
+
+class HotspotSelectionConfig(StrictModel):
+    target_min_candidates: int | None = Field(default=None, ge=0, le=8)
+    min_candidates: int | None = Field(default=None, ge=0, le=8)
+    max_candidates: int = Field(ge=1, le=12)
+    min_categories: int | None = Field(default=None, ge=0)
+    allow_fewer_than_target: bool = False
+    pad_weak_candidates: bool = False
+    require_user_selection: Literal[True]
+    categories: list[HotspotSelectionCategory] = Field(min_length=5)
+    preferred_authoritative_media: list[PreferredAuthoritativeMediaConfig] = Field(min_length=1)
+    ordinary_life_moment_gate: OrdinaryLifeMomentGateConfig = Field(
+        default_factory=_default_ordinary_life_moment_gate
+    )
+
+    @model_validator(mode="after")
+    def validate_selection_policy(self) -> HotspotSelectionConfig:
+        if len(self.categories) != len(set(self.categories)):
+            raise ValueError("hotspot selection categories must be unique")
+        if self.target_min_candidates is None and self.min_candidates is None:
+            raise ValueError("candidate selection requires a target or legacy minimum")
+        if (
+            self.target_min_candidates is not None
+            and self.target_min_candidates > self.max_candidates
+        ):
+            raise ValueError("target candidate count cannot exceed maximum")
+        if self.min_candidates is not None and self.min_candidates > self.max_candidates:
+            raise ValueError("legacy minimum candidate count cannot exceed maximum")
+        required_names = {"新华网", "人民日报", "中国青年报"}
+        configured_names = {item.name for item in self.preferred_authoritative_media}
+        if not required_names.issubset(configured_names):
+            raise ValueError("preferred media must include 新华网、人民日报和中国青年报")
+        return self
+
+
+class EditorialOpportunityScoreWeights(StrictModel):
+    real_heat: Literal[30]
+    content_attractiveness: Literal[35]
+    fact_reliability: Literal[20]
+    video_potential: Literal[15]
+
+
+EditorialSignalClass = Literal[
+    "domestic_boards",
+    "authoritative_media",
+    "search_demand",
+    "social_discussion",
+    "video_propagation",
+    "vertical_communities",
+]
+
+
+class EditorialOpportunityConfig(StrictModel):
+    rule_version: Literal["editorial-opportunity-v2.0"]
+    score_weights: EditorialOpportunityScoreWeights
+    s_score_min: int = Field(ge=0, le=100)
+    a_score_min: int = Field(ge=0, le=100)
+    max_user_candidates: Literal[8]
+    target_min_candidates: int = Field(default=3, ge=0, le=8)
+    allow_fewer_than_target: Literal[True]
+    pad_weak_candidates: Literal[False]
+    require_user_selection: Literal[True]
+    no_s_tier_message: str = Field(min_length=1)
+    source_signal_classes: list[EditorialSignalClass] = Field(min_length=6)
+
+    @model_validator(mode="after")
+    def validate_editorial_policy(self) -> EditorialOpportunityConfig:
+        if self.a_score_min >= self.s_score_min:
+            raise ValueError("A threshold must be lower than S threshold")
+        if len(self.source_signal_classes) != len(set(self.source_signal_classes)):
+            raise ValueError("source signal classes must be unique")
+        if self.target_min_candidates > self.max_user_candidates:
+            raise ValueError("target candidates cannot exceed user-visible maximum")
+        return self
+
+
 class AppConfig(StrictModel):
     mode: Literal["managed", "manual"]
     topic_source: Literal["user_topic", "auto_hot"]
@@ -196,6 +324,8 @@ class AppConfig(StrictModel):
     storage: StorageConfig
     research: ResearchConfig
     hotspot: HotspotConfig
+    hotspot_selection: HotspotSelectionConfig
+    editorial_opportunity: EditorialOpportunityConfig | None = None
 
 
 def load_config(path: Path | str) -> AppConfig:

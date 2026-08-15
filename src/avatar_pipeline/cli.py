@@ -14,6 +14,13 @@ import yaml
 from pydantic import BaseModel
 
 from avatar_pipeline.config import load_config
+from avatar_pipeline.editorial_opportunity import (
+    EditorialOpportunityPolicy,
+    build_opportunity_pool,
+)
+from avatar_pipeline.editorial_opportunity_report import (
+    render_editorial_opportunity_report,
+)
 from avatar_pipeline.hotspot_collectors import (
     import_canonical_snapshot,
     import_tophub_snapshot,
@@ -24,6 +31,16 @@ from avatar_pipeline.hotspot_models import (
     EventShortVideoEvidence,
 )
 from avatar_pipeline.hotspot_repository import HotspotRepository
+from avatar_pipeline.hotspot_selection import (
+    DirectorRating,
+    HotspotCandidatePool,
+    HotspotPoolCandidate,
+    HotspotSelectionRepository,
+    HotspotSelectionService,
+    HotspotTopicCategory,
+    load_candidate_pool,
+)
+from avatar_pipeline.hotspot_selection_report import render_candidate_pool_markdown
 from avatar_pipeline.hotspot_service import HotspotService
 from avatar_pipeline.models import (
     DailyTask,
@@ -31,11 +48,17 @@ from avatar_pipeline.models import (
     MediaPlan,
     NewsScript,
     RunMode,
+    SourceEvidence,
     TopicCandidate,
     TopicSource,
     utc_now,
 )
+from avatar_pipeline.news_intelligence_models import (
+    EditorialGrade,
+    EditorialOpportunity,
+)
 from avatar_pipeline.news_production import (
+    build_full_program_transcript,
     initialize_news_run,
     load_run_record,
     mark_rendered,
@@ -158,6 +181,12 @@ def build_parser() -> argparse.ArgumentParser:
     news_v5_init.add_argument("--version", required=True, type=int)
     news_v5_init.add_argument("--quality-config", type=Path, default=_DEFAULT_NEWS_V5_CONFIG)
     news_v5_init.add_argument("--parent-run-id")
+    news_v5_init.add_argument("--topic-selection", type=Path)
+    news_v5_init.add_argument(
+        "--allow-unconfirmed-topic",
+        action="store_true",
+        help="legacy compatibility only; bypass the required joint topic-evaluation gate",
+    )
 
     news_v5_guidance = subparsers.add_parser("news-v5-guidance")
     news_v5_guidance.add_argument("--duration", required=True, type=float)
@@ -171,6 +200,7 @@ def build_parser() -> argparse.ArgumentParser:
     news_v5_preflight.add_argument("--project-root", type=Path, default=_PROJECT_ROOT)
 
     for command in (
+        "news-v5-build-transcript",
         "news-v5-mark-rendered",
         "news-v5-build-qc",
         "news-v5-apply-director-review",
@@ -240,10 +270,27 @@ def build_parser() -> argparse.ArgumentParser:
     hotspot_status = subparsers.add_parser("hotspot-status")
     _add_date_argument(hotspot_status)
 
+    hotspot_pool_import = subparsers.add_parser("hotspot-pool-import")
+    _add_date_argument(hotspot_pool_import)
+    hotspot_pool_import.add_argument("--file", required=True, type=Path)
+
+    hotspot_pool_status = subparsers.add_parser("hotspot-pool-status")
+    _add_date_argument(hotspot_pool_status)
+
+    hotspot_select = subparsers.add_parser("hotspot-select")
+    _add_date_argument(hotspot_select)
+    hotspot_select.add_argument("--candidate-id", required=True)
+    hotspot_select.add_argument("--actor", required=True)
+    hotspot_select.add_argument("--reason", required=True)
+
     hotspot_refresh = subparsers.add_parser("hotspot-refresh")
     _add_date_argument(hotspot_refresh)
     hotspot_refresh.add_argument("--archive-reason", required=True)
     hotspot_refresh.add_argument("--confirmed-host-profile", required=True, type=Path)
+
+    editorial_build = subparsers.add_parser("editorial-build-report")
+    _add_date_argument(editorial_build)
+    editorial_build.add_argument("--file", required=True, type=Path)
 
     subparsers.add_parser("research-health")
     return parser
@@ -424,8 +471,131 @@ def _load_review_items(
     return [model_type.model_validate(item) for item in payload]
 
 
+def _load_editorial_opportunities(path: Path) -> list[EditorialOpportunity]:
+    payload = _load_json(path)
+    items = payload.get("opportunities") if isinstance(payload, dict) else payload
+    if not isinstance(items, list):
+        raise ValueError("editorial opportunity file must be a list or contain opportunities")
+    return [EditorialOpportunity.model_validate(item) for item in items]
+
+
+def _legacy_pool_from_editorial(pool) -> HotspotCandidatePool:
+    candidates: list[HotspotPoolCandidate] = []
+    for card in pool.candidates:
+        supported_sources = []
+        for index, source in enumerate(card.reliable_fact_sources, start=1):
+            supported_sources.append(
+                SourceEvidence(
+                    source_id=f"{card.opportunity_id}-fact-{index}",
+                    platform="verified_source",
+                    title=source,
+                    url_or_reference=f"editorial:{card.opportunity_id}:fact:{index}",
+                    evidence_type="corroboration",
+                )
+            )
+        candidates.append(
+            HotspotPoolCandidate(
+                candidate_id=card.opportunity_id,
+                title=card.candidate_title,
+                category=HotspotTopicCategory(card.category),
+                latest_development=card.latest_development,
+                heat_basis=card.heat_evidence,
+                authoritative_sources=supported_sources,
+                why_watch=f"{card.strongest_tension}；{card.viewer_payoff}",
+                visual_material_plan=card.footage_candidates,
+                suggested_title=card.candidate_title,
+                risks=card.footage_risks,
+                director_rating=(
+                    DirectorRating.S if card.grade is EditorialGrade.S else DirectorRating.A
+                ),
+                preferred_media_sources=card.reliable_fact_sources,
+                ordinary_moment_assessment=card.ordinary_moment_assessment,
+            )
+        )
+    return HotspotCandidatePool(day=pool.day, candidates=candidates)
+
+
+def _dispatch_editorial(args: argparse.Namespace) -> dict[str, Any]:
+    config = load_config(_DEFAULT_CONFIG)
+    editorial_config = config.editorial_opportunity
+    if editorial_config is None:
+        raise ValueError("editorial-opportunity-v2.0 is not configured")
+    opportunities = _load_editorial_opportunities(args.file)
+    policy = EditorialOpportunityPolicy(
+        s_score_min=editorial_config.s_score_min,
+        a_score_min=editorial_config.a_score_min,
+        max_user_candidates=editorial_config.max_user_candidates,
+    )
+    pool = build_opportunity_pool(args.date, opportunities, policy=policy)
+    repository = HotspotSelectionRepository(args.workspace)
+    legacy_pool = _legacy_pool_from_editorial(pool)
+    repository.save_pool(args.date, legacy_pool)
+    report = render_editorial_opportunity_report(pool)
+    report_path = repository.save_pool_report(args.date, report)
+    editorial_pool_path = report_path.with_name("editorial-opportunity-pool.json")
+    editorial_pool_path.write_text(
+        pool.model_dump_json(indent=2) + "\n", encoding="utf-8"
+    )
+    return {
+        "date": args.date.isoformat(),
+        "rule_version": pool.rule_version,
+        "quality_status": pool.quality_status.value,
+        "reviewed_count": pool.reviewed_count,
+        "candidate_count": len(pool.candidates),
+        "pool_path": str(repository.pool_path(args.date)),
+        "editorial_pool_path": str(editorial_pool_path),
+        "report_path": str(report_path),
+        "next_gate": "user_joint_topic_evaluation",
+    }
+
+
 def _dispatch_hotspot(args: argparse.Namespace) -> dict[str, Any]:
     app_config = load_config(_DEFAULT_CONFIG)
+    if args.command in {"hotspot-pool-import", "hotspot-pool-status", "hotspot-select"}:
+        selection_repository = HotspotSelectionRepository(args.workspace)
+        selection_service = HotspotSelectionService(selection_repository)
+        if args.command == "hotspot-pool-import":
+            pool = load_candidate_pool(args.file)
+            selection_service.import_pool(args.date, pool)
+            report_path = selection_repository.save_pool_report(
+                args.date, render_candidate_pool_markdown(pool)
+            )
+            return {
+                "date": args.date.isoformat(),
+                "status": pool.status.value,
+                "candidate_count": len(pool.candidates),
+                "category_count": len(pool.covered_categories),
+                "pool_path": str(selection_repository.pool_path(args.date)),
+                "report_path": str(report_path),
+                "next_gate": "user_joint_topic_evaluation",
+            }
+        if args.command == "hotspot-pool-status":
+            pool = selection_repository.load_pool(args.date)
+            try:
+                selection = selection_repository.load_selection(args.date)
+            except FileNotFoundError:
+                selection = None
+            return {
+                "date": args.date.isoformat(),
+                "status": "selected" if selection else pool.status.value,
+                "candidate_count": len(pool.candidates),
+                "category_count": len(pool.covered_categories),
+                "pool_path": str(selection_repository.pool_path(args.date)),
+                "report_path": str(selection_repository.pool_report_path(args.date)),
+                "selection_path": (
+                    str(selection_repository.selection_path(args.date)) if selection else None
+                ),
+                "selection": selection.model_dump(mode="json") if selection else None,
+            }
+        approval = selection_service.select(
+            args.date, candidate_id=args.candidate_id, actor=args.actor, reason=args.reason
+        )
+        return {
+            "selection_path": str(selection_repository.selection_path(args.date)),
+            "approval": approval.model_dump(mode="json"),
+            "next_gate": "automatic_v5_production",
+        }
+
     repository = HotspotRepository(args.workspace)
     service = HotspotService(repository, app_config.hotspot)
     if args.command == "hotspot-import-snapshot":
@@ -505,11 +675,14 @@ def _news_v5_status(run_dir: Path) -> dict[str, Any]:
     record_paths = {
         "manifest": "production/run-manifest.json",
         "quality_profile": "production/quality-profile.yaml",
+        "topic_selection": "production/topic-selection.json",
         "fact_evidence": "production/fact-evidence.json",
         "script_review": "production/script-review.json",
         "footage_ledger": "production/footage-ledger.json",
         "shot_selection": "production/shot-selection.json",
         "timeline": "production/timeline.json",
+        "program_transcript": "production/program-transcript.json",
+        "full_program_transcript": "copy/full-program-transcript.txt",
         "render_plan": "production/render-plan.json",
         "director_review": "qc/director-review.json",
         "final_qc_report": "qc/final-qc-report.json",
@@ -529,6 +702,11 @@ def _news_v5_status(run_dir: Path) -> dict[str, Any]:
 
 def _dispatch_news_v5(args: argparse.Namespace) -> dict[str, Any]:
     if args.command == "news-v5-init":
+        if args.topic_selection is None and not args.allow_unconfirmed_topic:
+            raise ValueError(
+                "news-v5-init requires --topic-selection after joint topic evaluation; "
+                "use --allow-unconfirmed-topic only for legacy runs"
+            )
         run_dir = initialize_news_run(
             args.output_root,
             day=args.date,
@@ -537,6 +715,7 @@ def _dispatch_news_v5(args: argparse.Namespace) -> dict[str, Any]:
             version=args.version,
             quality_config_path=args.quality_config,
             parent_run_id=args.parent_run_id,
+            topic_selection_path=args.topic_selection,
         )
         payload = _news_v5_status(run_dir)
         return {"run_dir": str(run_dir), **payload}
@@ -545,13 +724,18 @@ def _dispatch_news_v5(args: argparse.Namespace) -> dict[str, Any]:
         guidance = recommend_broll(args.duration, config)
         return {
             "duration_seconds": args.duration,
+            "selection_mode": guidance.selection_mode,
+            "count_fixed": guidance.count_fixed,
             "minimum_count": guidance.minimum_count,
             "maximum_count": guidance.maximum_count,
             "recommended_count": guidance.recommended_count,
             "minimum_clip_seconds": guidance.minimum_clip_seconds,
+            "preferred_clip_seconds": guidance.preferred_clip_seconds,
             "maximum_clip_seconds": guidance.maximum_clip_seconds,
             "minimum_ratio": guidance.minimum_ratio,
             "maximum_ratio": guidance.maximum_ratio,
+            "prefer_coherent_blocks": guidance.prefer_coherent_blocks,
+            "avoid_frequent_short_cuts": guidance.avoid_frequent_short_cuts,
         }
     if args.command == "news-v5-preflight":
         validators = {
@@ -566,6 +750,8 @@ def _dispatch_news_v5(args: argparse.Namespace) -> dict[str, Any]:
             "hard_failures": result.hard_failures,
             "advisories": result.advisories,
         }
+    if args.command == "news-v5-build-transcript":
+        return {"path": str(build_full_program_transcript(args.run_dir))}
     if args.command == "news-v5-mark-rendered":
         return mark_rendered(args.run_dir).model_dump(mode="json")
     if args.command == "news-v5-build-qc":
@@ -645,6 +831,8 @@ def dispatch(args: argparse.Namespace) -> dict[str, Any]:
         return _research_health_payload()
     if args.command.startswith("research-"):
         return _dispatch_research(args)
+    if args.command == "editorial-build-report":
+        return _dispatch_editorial(args)
     if args.command.startswith("hotspot-"):
         return _dispatch_hotspot(args)
     return _dispatch_production(args)

@@ -1,6 +1,6 @@
 # V5 手动新闻视频生产 Runbook
 
-本 Runbook 固化 V5 成功案例的生产方法，用于制作 **45—90 秒、数字人主持人主讲、9:16、1080×1920、25fps 的无字净版新闻短视频**。流程为非交互式：操作员按阶段准备记录和文件，CLI 只在质量门失败时停止，不在普通步骤中反复请求确认。
+本 Runbook 固化 V5 成功案例的生产方法，用于制作 **45—90 秒、数字人主持人主讲、9:16、1080×1920、25fps 的无字净版新闻短视频**。流程只有一个显式交互点：系统用双漏斗从广泛注意力信号中筛出最多 8 个真正合格的热点候选，也允许少于 3 个或明确报告没有 S 级选题；用户与导演共同评估并确认选题。确认后，下游事实核验、口播稿、TTS、数字人、素材、剪辑和 QC 均按非交互式流程连续执行；CLI 只在事实冲突、权利风险或硬质量门失败时停止，不在普通步骤中反复请求确认。
 
 > 示例日期、主题、标题、事实、URL 和素材区间仅展示文件格式。每次生产必须使用当次运行的真实日期、当前热点、权威来源和实际素材，不得照抄示例事实。
 
@@ -18,12 +18,13 @@
 - 音色：`未来科技解说`；
 - 音色 ID：`cobra_design_20250717_162347_664524`；
 - 成片不烧录字幕、标题、来源条、Logo、平台角标或账号标识；
-- 不添加背景音乐，不保留或混入插播素材原声；
+- 不添加背景音乐；插播素材原声由导演逐段判断，仅关键事实对话或强烈自然反应可保留，并须先剪取、响度标准化并合入批准的完整主音频；
 - 禁止倒放、循环、乒乓播放；
 - 结尾必须回到主持人，使用完整句自然收束；
 - 来源、下载时间、哈希和 AI 生成信息保存为旁路记录，不烧录到无字净版。
+- 最终渲染不得临时直接映射任一素材音轨；批准的现场原声必须提前写入 `audio/master-voiceover.wav`，自动 QC 以该完整混合母版为唯一音频基准。
 
-“无水印”只表示素材满足本项目的画面准入规则，**不等同于已经获得版权授权**。必须保留来源和使用依据，发布方仍需自行判断授权、合理使用和平台规则。
+素材可以保留用户明确接受的来源水印、平台角标或账号标识，但必须在素材账本中如实披露并记录该次用户授权。**允许保留来源标识不等同于已经获得版权授权**。烧录字幕仍是独立的画面质量策略，除非用户另外明确接受，否则不得用于成片。发布方仍需自行判断授权、合理使用和平台规则。
 
 ## 2. 环境和变量
 
@@ -40,15 +41,50 @@ export PYTHONPATH=src
 ```bash
 export PROJECT_ROOT="$PWD"
 export RUN_DATE="2026-08-12"
-export RUN_SLUG="台风强降雨"
-export RUN_TOPIC="台风影响减弱但北方强降雨风险仍在持续"
+export RUN_SLUG="已确认选题的短标识"
+export RUN_TOPIC="候选池中经用户确认的完整标题"
 export RUN_VERSION="1"
+export TOPIC_SELECTION="$PROJECT_ROOT/workspace/hotspot-selections/${RUN_DATE}/topic-selection.json"
 export RUN_DIR="$PROJECT_ROOT/output/manual-news-${RUN_DATE}-${RUN_SLUG}-v01"
 ```
 
 同一目录不可覆盖。返工必须提高版本号并通过 `--parent-run-id` 关联上一版。
 
-## 3. 初始化版本安全的运行目录
+## 3. 跨领域热点候选门与运行初始化
+
+### 3.1 生成并导入候选池
+
+先从社会民生、科技、财经、国际、政策、消费、教育、网红热点、普通人热议、文娱文化、天气灾害等领域抓取当日信号，形成 20—40 个原始话题；聚类和内部评审后，只向用户展示最多 8 个通过硬核验的 S/A 级候选。允许少于 3 个，不为数量或类别补入弱题。候选 JSON 必须给出最新进展、热度依据、观看动机、权威来源、画面条件、风险和导演评级。
+
+```bash
+python -m avatar_pipeline.cli --workspace "$PROJECT_ROOT/workspace" hotspot-pool-import \
+  --date "$RUN_DATE" \
+  --file "$PROJECT_ROOT/tmp/hotspot-selection/${RUN_DATE}/candidate-pool.json"
+
+python -m avatar_pipeline.cli --workspace "$PROJECT_ROOT/workspace" hotspot-pool-status \
+  --date "$RUN_DATE"
+```
+
+评估文件：
+
+```text
+workspace/hotspot-selections/YYYY-MM-DD/candidate-pool.json
+workspace/hotspot-selections/YYYY-MM-DD/candidate-pool.md
+```
+
+此时状态必须是 `awaiting_user_evaluation`，**未确认前禁止进入 V5 生产**。用户与导演共同评估后，执行一次选题批准：
+
+```bash
+python -m avatar_pipeline.cli --workspace "$PROJECT_ROOT/workspace" hotspot-select \
+  --date "$RUN_DATE" \
+  --candidate-id "用户确认的候选编号" \
+  --actor owner \
+  --reason "共同评估后确认"
+```
+
+批准记录保存为 `workspace/hotspot-selections/YYYY-MM-DD/topic-selection.json`，并绑定候选池 SHA-256，防止候选池变化后误用旧批准。
+
+### 3.2 初始化版本安全的运行目录
 
 ```bash
 python -m avatar_pipeline.cli news-v5-init \
@@ -57,6 +93,7 @@ python -m avatar_pipeline.cli news-v5-init \
   --slug "$RUN_SLUG" \
   --topic "$RUN_TOPIC" \
   --version "$RUN_VERSION" \
+  --topic-selection "$TOPIC_SELECTION" \
   --quality-config "$PROJECT_ROOT/configs/news-video-quality-v5.yaml"
 
 mkdir -p "$RUN_DIR/media"
@@ -72,6 +109,7 @@ RUN_DIR/
 ├── media/                  # 操作员创建，保存下载原片和批准镜头
 ├── production/
 │   ├── quality-profile.yaml
+│   ├── topic-selection.json
 │   └── run-manifest.json
 ├── qc/
 └── video/
@@ -83,15 +121,21 @@ RUN_DIR/
 
 ### 4.1 热点选择
 
-热点抓取是制作上游的核心。进入生产前，导演必须确认：
+热点抓取是制作上游的核心，必须优先于写稿和找素材。候选池不得由平庸、常青或低传播话题补位，也不得只集中于天气，更不能因为百度榜单靠前就宣称“今日最热”。进入生产前，导演必须确认：
 
-1. 事件正在当日传播，而不是泛化、常青或过时话题；
-2. 有明确变化、冲突、影响、数字、风险或认知缺口；
-3. 至少有权威来源可以支撑核心事实；
-4. 有足够强的真实视觉素材，例如台风、强风、城市积水、抢险、交通影响；
-5. 标题和开场能准确制造信息需求，但不夸大事实。
+1. 事件在今天出现新增事实、搜索增长或跨平台传播，而不是泛化、常青或过时话题；
+2. 能回答“为什么是今天”，并有明确变化、冲突、反差、影响、数字、风险或认知缺口；
+3. 普通人有清晰的观看理由，观众看完能获得具体解释；
+4. 核心事实至少有第一方、官方或独立可靠来源支撑，且不存在未解决冲突；
+5. 有足够强的真实视觉素材，并提前检查相关性、清晰度、年代、口罩或疫情时期错配和可用连续时长；
+6. 标题和前三秒开场能准确制造信息需求，但不夸大事实；
+7. 热度寿命仍足以覆盖制作与发布，未错过窗口。
 
-抖音、小红书、B站、X 等短视频可用于判断传播热度和寻找现场素材线索，但不能代替事实核验。新闻事实必须回到政府部门、气象部门、权威媒体、当事机构或原始文件。
+成功案例说明，选题吸引力可以来自不同结构：胖东来门店关停依靠“仍然盈利却关闭”的强反差；《奥德赛》依靠“三千年史诗为什么今天突然刷屏”的知识缺口和时机解释。系统应识别这类结构，而不是只寻找传统突发新闻。
+
+热点发现应交叉观察国内榜单、权威媒体、搜索需求、社交讨论、视频传播和垂直社区。新华社/新华网、人民日报、央视新闻、中国青年报、政府部门和当事机构内容，可用于热点发现、事实核验或素材候选。抖音、小红书、B站、X、YouTube 等平台内容可用于判断传播热度、重复问题和寻找现场素材线索，但注意力证据不能自动代替事实证据。内部可以记录平台信号，口播不得机械说“B站上最近很火”；核心事实应回到原始公告、第一方资料或独立可靠报道。
+
+评分采用真实热度 30、内容吸引力 35、事实可靠性 20、视频潜力 15。单平台伪热点、旧闻回流、营销账号独占传播、无可靠事实、无相关素材、核心事实冲突和必须依靠失真标题才能点击的题目直接淘汰。用户候选最多 8 条，允许少于 3 条；无 S 级时明确报告，不凑数。
 
 ### 4.2 事实证据记录
 
@@ -128,6 +172,8 @@ copy/title.txt
 copy/voiceover.txt
 production/script-review.json
 ```
+
+其中 `copy/voiceover.txt` 只记录主持人口播，不得用它代替完整成片台词。只要时间线保留了现场原声，后续还必须生成 `production/program-transcript.json` 和 `copy/full-program-transcript.txt`。
 
 稿件标准：
 
@@ -224,10 +270,10 @@ python -m avatar_pipeline.cli news-v5-preflight \
 
 每个文件进入制作前必须人工确认：
 
-- 无水印；
-- 无平台角标；
-- 无账号标识；
-- 无烧录字幕；
+- 水印、平台角标和账号标识是否存在，并在账本中如实记录；
+- 如果存在来源标识，是否已有本次运行的用户明确接受记录；
+- 烧录字幕是否存在；除非用户另外明确接受，否则不得使用；
+- 项目自身不新增字幕、标题、来源条、Logo 或账号标识；
 - 画质足够；
 - 没有倒放、循环或重复片段；
 - 时间顺序自然，动作连续；
@@ -256,6 +302,8 @@ shasum -a 256 "$RUN_DIR/media/source-01.mp4"
       "platform_logo_free": true,
       "account_mark_free": true,
       "burned_caption_free": true,
+      "visible_source_marks_allowed_by_user": false,
+      "burned_captions_allowed_by_user": false,
       "visual_relevance": "强风造成城市现场影响",
       "user_usage_rule_passed": true
     }
@@ -277,21 +325,23 @@ ffmpeg -hide_banner -y -i "$RUN_DIR/media/source-01.mp4" \
 
 必要时对候选区间单独制作高密度接触表。不能只看首帧，也不能用随机切片替代完整动作检查。
 
-### 7.2 插播次数和时长建议
+### 7.2 导演动态插播设计
 
 ```bash
 python -m avatar_pipeline.cli news-v5-guidance --duration 52.128
 ```
 
-导演目标：
+命令只返回宽松的导演参考范围，不根据时长自动指定固定段数。当前基线为：
 
-| 成片时长 | 插播次数 | 单次建议 | 总占比 |
-|---|---:|---:|---:|
-| 45—55 秒 | 2—3 次 | 4.5—6.5 秒 | 25%—35% |
-| 56—70 秒 | 3 次 | 5—7 秒 | 25%—35% |
-| 71—90 秒 | 3—4 次 | 5—8 秒 | 25%—38% |
+- `selection_mode=director_dynamic`，`count_fixed=false`；
+- 常见参考为 1—5 个插播块，但不是配额；
+- 单个连贯块参考 4.5—12 秒，优先约 9 秒；
+- 总占比参考 20%—45%；
+- 优先连贯叙事块，避免频繁短切。
 
-这不是机械定额。专业新闻节奏以“一个镜头完整表达一个信息”为先：不要将一段连续现场拆成多次过短插播；不要在相邻短句间频繁来回切主持人；同一事件阶段优先使用一个 5—8 秒、动作完整的镜头。
+插播次数、单段时长和总占比必须由导演根据题材、稿件结构、素材质量、动作完整性和整体观看效果共同决定。不要为了凑数量而拆镜头，也不要因为过去常用三段就把三段写成模板。对于视觉驱动的 80 秒新闻解释视频，2—4 个约 9—12 秒的长块通常是合理起点；如果素材或叙事需要，也可以少于或多于这个起点。
+
+专业节奏以“一个插播块完整表达一个信息”为先：同一语义段优先连续呈现，避免在相邻短句间反复切回主持人。短块只有在信息变化、动作节点或证据切换确实需要时使用。
 
 ### 7.3 镜头记录
 
@@ -358,6 +408,55 @@ python -m avatar_pipeline.cli news-v5-guidance --duration 52.128
 - 最后一段连续主持人时长至少占总时长 20%；
 - 尾句音频完整，画面不能提前结束。
 
+### 8.1 完整节目台词
+
+时间线确定后，创建 `production/program-transcript.json`。它必须逐段覆盖 `production/timeline.json`，包括主持人口播和保留的现场原声；每段的 `script_segment_id`、画面类型、开始时间和结束时间必须与时间线一致。
+
+```json
+{
+  "run_id": "manual-news-2026-08-12-台风强降雨-v01",
+  "title_path": "copy/title.txt",
+  "output_path": "copy/full-program-transcript.txt",
+  "director_approved": true,
+  "segments": [
+    {
+      "script_segment_id": "script-01",
+      "visual_type": "anchor",
+      "audio_role": "presenter",
+      "start": 0.0,
+      "end": 8.0,
+      "lines": [{"speaker": "主持人", "text": "经审核通过的主持人口播。"}]
+    },
+    {
+      "script_segment_id": "source-dialogue-01",
+      "visual_type": "broll",
+      "audio_role": "source_audio",
+      "start": 8.0,
+      "end": 14.0,
+      "lines": [
+        {"speaker": "现场人物", "text": "经听写核对的原声内容。"}
+      ]
+    }
+  ]
+}
+```
+
+规则：
+
+- 每个时间线片段必须且只能对应一个节目台词片段，不能遗漏原声段；
+- 现场原声必须根据最终采用的音频逐字核对，听不清时保守标注，不得推测或补写；
+- `director_approved` 只在导演核对成片声音、说话人和文字后设为 `true`；
+- 修改时间线或台词记录后必须重新生成，旧文件视为失效；
+- `copy/voiceover.txt` 是主持人口播稿；`copy/full-program-transcript.txt` 是最终成片全部可听台词。
+
+生成完整节目台词：
+
+```bash
+python -m avatar_pipeline.cli news-v5-build-transcript --run-dir "$RUN_DIR"
+```
+
+导演交付门会再次校验生成文件是否完整、是否与结构化记录及最终时间线一致。
+
 执行：
 
 ```bash
@@ -366,14 +465,14 @@ python -m avatar_pipeline.cli news-v5-preflight \
   --stage timeline
 ```
 
-插播次数、时长和占比偏离导演目标会产生 advisory；语义映射、文件哈希、镜头批准、时间线连续性和结尾不合格会硬阻断。
+插播次数、时长和占比只与宽松参考范围比较，偏离时产生 advisory，供导演复审而不自动否决；语义映射、文件哈希、镜头批准、时间线连续性和结尾不合格仍会硬阻断。导演可基于题材和最终效果批准范围外方案，但必须在 `director-review.json` 的 `edit_rhythm` 中记录理由。
 
 ## 9. 安全 FFmpeg 合成
 
 将脚本保存为 `production/render.sh`。脚本必须：
 
 - 只使用主持人视频画面、批准的正向镜头和 `audio/master-voiceover.wav`；
-- 插播素材只取视频，不映射素材音轨；
+- 最终渲染不直接映射素材音轨；批准的现场原声已经预先标准化并合入 `audio/master-voiceover.wav`；
 - 不使用 `reverse`、`loop`、`stream_loop` 或 ping-pong；
 - 不加字幕、标题、来源条、Logo 和音乐；
 - 不使用 `-y` 覆盖已有最终成片；
@@ -477,14 +576,14 @@ python -m avatar_pipeline.cli news-v5-status --run-dir "$RUN_DIR"
 2. `facial_naturalness`：五官清晰，无明显 AI 感、糊脸或漂移；
 3. `lip_sync`：全片口型和音频同步；
 4. `script_clarity`：短句、重点、权威语气和结尾完整；
-5. `footage_relevance`：台风、积水等现场画面与当句台词直接对应。
+5. `footage_relevance`：现场画面与当句台词直接对应，清晰、年代匹配，无口罩或疫情时期错配；题材不限于台风和积水。
 
 ### 第二遍：节奏、净版和完整交付
 
 逐项检查：
 
-1. `edit_rhythm`：插播不过短、不过密，一个镜头完整表达一个信息；
-2. `no_watermarks_text`：无水印、字幕、平台角标、账号标识和 Logo；
+1. `edit_rhythm`：插播数量不套固定公式；单块不过短、切换不过密，连贯叙事优先，并记录任何偏离宽松参考范围的导演理由；
+2. `no_watermarks_text`：兼容保留该 ID；实际检查为来源水印/平台标识已如实披露且符合本次用户策略、烧录字幕符合独立策略，并且项目没有新增字幕、标题、来源条、Logo 或账号标识；
 3. `no_reverse_repeat`：无倒放、循环、重复或异常跳帧；
 4. `ending_complete`：最后完整句播完，连续主持人画面自然收束；
 5. `overall_news_effect`：整体达到参考视频的主持人主讲加真实现场插播效果，但未复制其素材、文字、音乐、台标或版式。
@@ -543,7 +642,7 @@ qc/tail-contact.jpg
     },
     {
       "id": "no_watermarks_text",
-      "description": "无水印和烧录文字",
+      "description": "来源标识披露合规且无项目新增文字",
       "passed": true,
       "evidence_path": "qc/contact-sheet.jpg"
     },
@@ -585,7 +684,7 @@ python -m avatar_pipeline.cli news-v5-status --run-dir "$RUN_DIR"
 | 失败阶段 | 典型问题 | 返回动作 |
 |---|---|---|
 | generation | 主持人哈希、音色、事实包、稿件或音频不合格 | 修正输入记录；不要生成数字人 |
-| timeline | 素材有水印、哈希变化、语义不匹配、尾部太短 | 重新下载或重选完整镜头，重做时间线 |
+| timeline | 素材来源标识未披露或未获本次用户接受、烧录字幕不合规、哈希变化、语义不匹配、尾部太短 | 补全策略记录或重选完整镜头，重做时间线 |
 | render | 使用倒放/循环、映射素材声、缺输入、将覆盖旧成片 | 修正 `render.sh`；新版本输出不得覆盖 |
 | automatic QC | 编码、黑帧、静音、解码或音频一致性失败 | 重新渲染并重新生成全部 QC 证据 |
 | director review | 五官、口型、素材、节奏或结尾失败 | 创建新版本目录，针对失败项返工 |
@@ -612,6 +711,7 @@ python -m avatar_pipeline.cli news-v5-init \
 video/final-clean.mp4
 audio/master-voiceover.wav
 copy/voiceover.txt
+copy/full-program-transcript.txt
 copy/title.txt
 production/run-manifest.json
 production/quality-profile.yaml
@@ -620,6 +720,7 @@ production/script-review.json
 production/footage-ledger.json
 production/shot-selection.json
 production/timeline.json
+production/program-transcript.json
 production/render.sh
 qc/ffprobe.json
 qc/final-qc-report.json
@@ -635,14 +736,20 @@ qc/sha256.txt
 运行ID：<run_id>
 主题：<topic>
 标题：<copy/title.txt 第一行或批准标题>
+主持人口播：<copy/voiceover.txt>
+完整节目台词：<copy/full-program-transcript.txt，包含现场原声>
 成片：<video/final-clean.mp4>
 规格：1080×1920 / 25fps / H.264 / AAC 48kHz单声道
 时长：<实际秒数，须为45—90秒>
 主持人：host-c2-pro-candidate-2-final
 音色：未来科技解说（cobra_design_20250717_162347_664524）
-净版：无字幕、标题、来源条、Logo、音乐和素材原声
+净版：无项目新增字幕、标题、来源条、Logo或音乐；现场原声仅限导演批准片段
 QC：自动QC通过 + 两遍导演审核通过
 SHA-256：<qc/sha256.txt>
 来源记录：production/footage-ledger.json
-说明：无水印准入不等同于版权授权
+说明：用户允许保留来源水印不等同于版权授权
 ```
+
+## 普通人真情类选题的前置限制
+
+普通人真情、美好、善意类内容只有在 `ordinary_life_moment` 强制准入门通过后，才能进入口播、素材设计和 V5 制作。制作端不得把以下内容包装成普通人真实瞬间：职业博主策划公益、挑战栏目、送礼栏目、剧情摆拍或无法找到原始记录者的媒体二剪。具体核验字段和淘汰标准见 `docs/runbooks/manual-hotspot-sampling.md`。 这里的主体必须是个人生活记录账号中的普通人，事件必须发生在原本存在的日常场景，并提供可观察的自然真情或善意证据；“博主拍普通人”不能等同于“普通人记录自己的生活”。

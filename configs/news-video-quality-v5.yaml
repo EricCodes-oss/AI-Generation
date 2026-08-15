@@ -18,7 +18,7 @@ clean_master:
   source_overlay: false
   logo: false
   background_music: false
-  footage_audio: false
+  footage_audio: director_selected
 host:
   id: host-c2-pro-candidate-2-final
   display_name: C2-Pro候选2短发主持人
@@ -30,11 +30,17 @@ voice:
   voice_id: cobra_design_20250717_162347_664524
   identity_lock: strict
 broll:
+  selection_mode: director_dynamic
+  count_fixed: false
+  guidance_min_count: 1
+  guidance_max_count: 5
   min_clip_seconds: 4.5
-  preferred_clip_seconds: 5.0
-  max_clip_seconds: 8.0
-  target_ratio_min: 0.25
-  target_ratio_max: 0.38
+  preferred_clip_seconds: 9.0
+  max_clip_seconds: 12.0
+  target_ratio_min: 0.20
+  target_ratio_max: 0.45
+  prefer_coherent_blocks: true
+  avoid_frequent_short_cuts: true
   prohibit_reverse: true
   prohibit_loop: true
   prohibit_ping_pong: true

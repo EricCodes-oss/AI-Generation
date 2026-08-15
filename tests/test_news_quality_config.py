@@ -20,7 +20,15 @@ def test_canonical_v5_quality_config_is_locked():
         "939324593eb718cd2a39be4c171f74178a6a48442f7e0d61afe8a875011e8a47"
     )
     assert config.voice.voice_id == "cobra_design_20250717_162347_664524"
-    assert not any(config.clean_master.model_dump().values())
+    clean_master = config.clean_master.model_dump()
+    assert clean_master.pop("footage_audio") == "director_selected"
+    assert not any(clean_master.values())
+    assert config.broll.selection_mode == "director_dynamic"
+    assert config.broll.count_fixed is False
+    assert config.broll.prefer_coherent_blocks is True
+    assert config.broll.avoid_frequent_short_cuts is True
+    assert config.broll.max_clip_seconds == 12.0
+    assert config.broll.target_ratio_max == 0.45
 
 
 def test_quality_config_rejects_non_v5_duration_output_and_clean_master():
