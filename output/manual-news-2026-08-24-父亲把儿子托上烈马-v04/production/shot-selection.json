@@ -1,0 +1,122 @@
+{
+  "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+  "shots": [
+    {
+      "shot_id": "shot-01-father-lifts-son",
+      "asset_id": "asset-01-father-lifts-son",
+      "script_segment_id": "broll-heritage",
+      "semantic_role": "父亲和现场长辈稳定马匹、托举九岁男孩上马，建立传承起点",
+      "source_in": 9.0,
+      "source_out": 13.5,
+      "target_duration_seconds": 4.5,
+      "continuous_action": true,
+      "forward_playback": true,
+      "visual_quality_passed": true,
+      "director_approved": true
+    },
+    {
+      "shot_id": "shot-02-youth-rides-away",
+      "asset_id": "asset-02-youth-rides-away",
+      "script_segment_id": "broll-first-ride",
+      "semantic_role": "九岁少年脱离协助后独自策马离开，完成由托举到独立的动作闭环",
+      "source_in": 28.7,
+      "source_out": 33.2,
+      "target_duration_seconds": 4.5,
+      "continuous_action": true,
+      "forward_playback": true,
+      "visual_quality_passed": true,
+      "director_approved": true
+    },
+    {
+      "shot_id": "shot-03-youth-black-horse-gallop",
+      "asset_id": "asset-03-youth-black-horse-gallop",
+      "script_segment_id": "broll-speed",
+      "semantic_role": "少年骑黑马高速疾驰，低位跟拍突出马匹步态、速度与少年神态",
+      "source_in": 0.3,
+      "source_out": 6.3,
+      "target_duration_seconds": 6.0,
+      "continuous_action": true,
+      "forward_playback": true,
+      "visual_quality_passed": true,
+      "director_approved": true
+    },
+    {
+      "shot_id": "shot-04-grassland-youth-rider",
+      "asset_id": "asset-04-grassland-youth-rider",
+      "script_segment_id": "broll-grassland",
+      "semantic_role": "戴头盔少年在辽阔草原独立骑行，补足环境尺度与迎风向前的意境",
+      "source_in": 118.7,
+      "source_out": 124.2,
+      "target_duration_seconds": 5.5,
+      "continuous_action": true,
+      "forward_playback": true,
+      "visual_quality_passed": true,
+      "director_approved": true
+    },
+    {
+      "shot_id": "shot-05-youth-mounted-archery",
+      "asset_id": "asset-05-youth-mounted-archery",
+      "script_segment_id": "broll-archery",
+      "semantic_role": "儿童骑射连续特写，保留搭箭、拉弓、瞄准动作和眼神力量",
+      "source_in": 1.8,
+      "source_out": 6.8,
+      "target_duration_seconds": 5.0,
+      "continuous_action": true,
+      "forward_playback": true,
+      "visual_quality_passed": true,
+      "director_approved": true
+    },
+    {
+      "shot_id": "shot-06-child-bokh-throw",
+      "asset_id": "asset-06-child-bokh-throw",
+      "script_segment_id": "broll-bokh-one",
+      "semantic_role": "两名儿童完成抓握、角力和摔投，动作连续完整",
+      "source_in": 120.2,
+      "source_out": 126.2,
+      "target_duration_seconds": 6.0,
+      "continuous_action": true,
+      "forward_playback": true,
+      "visual_quality_passed": true,
+      "director_approved": true
+    },
+    {
+      "shot_id": "shot-07-child-bokh-power",
+      "asset_id": "asset-07-child-bokh-power",
+      "script_segment_id": "broll-bokh-two",
+      "semantic_role": "另一组儿童搏克的抱摔和腾空动作，强化力量高潮且不重复上一对抗",
+      "source_in": 201.5,
+      "source_out": 206.5,
+      "target_duration_seconds": 5.0,
+      "continuous_action": true,
+      "forward_playback": true,
+      "visual_quality_passed": true,
+      "director_approved": true
+    },
+    {
+      "shot_id": "shot-08-thousand-horses",
+      "asset_id": "asset-08-thousand-horses",
+      "script_segment_id": "broll-herd",
+      "semantic_role": "航拍万马奔腾形成规模高潮，人物不可辨识",
+      "source_in": 0.0,
+      "source_out": 4.5,
+      "target_duration_seconds": 4.5,
+      "continuous_action": true,
+      "forward_playback": true,
+      "visual_quality_passed": true,
+      "director_approved": true
+    },
+    {
+      "shot_id": "shot-09-white-horses-dust-finale",
+      "asset_id": "asset-09-white-horses-dust-finale",
+      "script_segment_id": "broll-finale",
+      "semantic_role": "白马群在夕照和扬尘中驰骋，以辽阔、远方和余韵收束混剪",
+      "source_in": 10.5,
+      "source_out": 14.5,
+      "target_duration_seconds": 4.0,
+      "continuous_action": true,
+      "forward_playback": true,
+      "visual_quality_passed": true,
+      "director_approved": true
+    }
+  ]
+}

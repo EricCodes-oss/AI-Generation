@@ -1,0 +1,11 @@
+{
+  "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+  "status": "ready_to_deliver",
+  "automatic_qc_passed": true,
+  "director_review_passed": true,
+  "tests_pending": false,
+  "final_video_sha256": "b6e50c83cc288289c01a96cae6e9897f4d0a5ce3a9f7a56157c1083e33e00c29",
+  "tests_passed": true,
+  "test_command": "PYTHONPATH=.:src .venv/bin/pytest -q",
+  "test_result": "271 passed in 6.99s"
+}

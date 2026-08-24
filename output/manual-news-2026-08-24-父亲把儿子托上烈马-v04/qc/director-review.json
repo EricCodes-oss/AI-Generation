@@ -1,0 +1,78 @@
+{
+  "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+  "approved": true,
+  "checks": [
+    {
+      "id": "host_identity",
+      "description": "锁定短发C2主持人的身份、服装、机位和背景保持一致",
+      "passed": true,
+      "note": "开场与结尾均为短发C2候选2，白衬衣、深色西装与蓝色演播室一致。",
+      "evidence_path": "qc/avatar-contact.jpg"
+    },
+    {
+      "id": "facial_naturalness",
+      "description": "主持人五官清晰自然，无明显模糊、漂移或畸变",
+      "passed": true,
+      "note": "开场、结尾和尾帧抽检中五官、发型和脸部轮廓稳定。",
+      "evidence_path": "qc/avatar-contact.jpg"
+    },
+    {
+      "id": "lip_sync",
+      "description": "主持人口型与未来科技解说音轨同步",
+      "passed": true,
+      "note": "最终音轨与母带相关度超过0.99999，时移0毫秒；主播口型连续。",
+      "evidence_path": "qc/audio-comparison.json"
+    },
+    {
+      "id": "script_clarity",
+      "description": "口播短句有起势、有画面感并完整收束",
+      "passed": true,
+      "note": "开场建立父辈托举与少年接缰，结尾以策马、骑射、搏克和千骑豪情完整收束。",
+      "evidence_path": "copy/voiceover.txt"
+    },
+    {
+      "id": "footage_relevance",
+      "description": "真实素材服务少年骑手、骑射、儿童搏克和草原气势",
+      "passed": true,
+      "note": "可辨识人物镜头中少年约87.7%，成年人只承担父亲托举；九段均服务主题。",
+      "evidence_path": "production/age-matching-qc.json"
+    },
+    {
+      "id": "edit_rhythm",
+      "description": "插播数量、时长和连续性服从热血混剪效果",
+      "passed": true,
+      "note": "45秒连续静音插播由9个完整动作组成，中段不切回主持人，单镜头4至6秒。",
+      "evidence_path": "qc/boundary-contact.jpg"
+    },
+    {
+      "id": "no_watermarks_text",
+      "description": "不新增字幕、新闻标题或评论框；来源标识按允许边界披露",
+      "passed": true,
+      "note": "成片没有项目新增文字层；首两段采用重构裁切降低原有文字干扰，小型来源标识按账本披露。",
+      "evidence_path": "production/usage-rights-note.json"
+    },
+    {
+      "id": "no_reverse_repeat",
+      "description": "动作正向连续，无倒放、循环、乒乓或重复补时",
+      "passed": true,
+      "note": "九段均按源区间正向连续播放，渲染脚本没有reverse、loop或pingpong。",
+      "evidence_path": "production/shot-selection.json"
+    },
+    {
+      "id": "ending_complete",
+      "description": "最后一句及主持人画面完整自然收束",
+      "passed": true,
+      "note": "插播后回到主播，结尾约24.37秒，末句完整并保留0.4秒自然停顿。",
+      "evidence_path": "qc/tail-contact.jpg"
+    },
+    {
+      "id": "overall_news_effect",
+      "description": "整体形成英姿飒爽、热血昂扬、令人向往草原驰骋的效果",
+      "passed": true,
+      "note": "托举、少年疾驰、骑射、儿童搏克、万马与扬尘白马形成从传承到远方的递进。",
+      "evidence_path": "qc/contact-sheet.jpg"
+    }
+  ],
+  "reviewed_at": "2026-08-24T17:20:05.641746+08:00",
+  "actor": "director"
+}

@@ -1,0 +1,365 @@
+{
+  "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+  "overall_passed": true,
+  "checks": [
+    {
+      "id": "evidence_ffprobe",
+      "category": "deliverable",
+      "severity": "hard_block",
+      "expected": "required QC evidence exists",
+      "actual": "present",
+      "status": "PASS",
+      "evidence_path": "qc/ffprobe.json",
+      "checked_at": "2026-08-24T09:20:05.831608Z"
+    },
+    {
+      "id": "evidence_blackdetect",
+      "category": "deliverable",
+      "severity": "hard_block",
+      "expected": "required QC evidence exists",
+      "actual": "present",
+      "status": "PASS",
+      "evidence_path": "qc/blackdetect.log",
+      "checked_at": "2026-08-24T09:20:05.831813Z"
+    },
+    {
+      "id": "evidence_silencedetect",
+      "category": "deliverable",
+      "severity": "hard_block",
+      "expected": "required QC evidence exists",
+      "actual": "present",
+      "status": "PASS",
+      "evidence_path": "qc/silencedetect.log",
+      "checked_at": "2026-08-24T09:20:05.831835Z"
+    },
+    {
+      "id": "evidence_decode-errors",
+      "category": "deliverable",
+      "severity": "hard_block",
+      "expected": "required QC evidence exists",
+      "actual": "present",
+      "status": "PASS",
+      "evidence_path": "qc/decode-errors.log",
+      "checked_at": "2026-08-24T09:20:05.831849Z"
+    },
+    {
+      "id": "evidence_audio-comparison",
+      "category": "deliverable",
+      "severity": "hard_block",
+      "expected": "required QC evidence exists",
+      "actual": "present",
+      "status": "PASS",
+      "evidence_path": "qc/audio-comparison.json",
+      "checked_at": "2026-08-24T09:20:05.831864Z"
+    },
+    {
+      "id": "streams",
+      "category": "technical",
+      "severity": "hard_block",
+      "expected": "1 video stream and 1 audio stream",
+      "actual": "video=1, audio=1",
+      "status": "PASS",
+      "evidence_path": "qc/ffprobe.json",
+      "checked_at": "2026-08-24T09:20:05.831954Z"
+    },
+    {
+      "id": "video_spec",
+      "category": "technical",
+      "severity": "hard_block",
+      "expected": "H.264, 1080x1920, 25fps",
+      "actual": "h264, 1080x1920, 25/1",
+      "status": "PASS",
+      "evidence_path": "qc/ffprobe.json",
+      "checked_at": "2026-08-24T09:20:05.831975Z"
+    },
+    {
+      "id": "audio_spec",
+      "category": "audio",
+      "severity": "hard_block",
+      "expected": "AAC, 48kHz, mono",
+      "actual": "aac, 48000Hz, channels=1",
+      "status": "PASS",
+      "evidence_path": "qc/ffprobe.json",
+      "checked_at": "2026-08-24T09:20:05.831978Z"
+    },
+    {
+      "id": "duration",
+      "category": "technical",
+      "severity": "hard_block",
+      "expected": "audio/video duration difference <= 0.050s",
+      "actual": "video=80.200s, audio=80.223s",
+      "status": "PASS",
+      "evidence_path": "qc/ffprobe.json",
+      "checked_at": "2026-08-24T09:20:05.831985Z"
+    },
+    {
+      "id": "no_black_frames",
+      "category": "technical",
+      "severity": "hard_block",
+      "expected": "no detected black-frame events",
+      "actual": "events=0",
+      "status": "PASS",
+      "evidence_path": "qc/blackdetect.log",
+      "checked_at": "2026-08-24T09:20:05.832062Z"
+    },
+    {
+      "id": "no_long_silence",
+      "category": "audio",
+      "severity": "hard_block",
+      "expected": "no unexpected silence longer than 1.000s",
+      "actual": "unexpected=[]; approved=[]",
+      "status": "PASS",
+      "evidence_path": "qc/silencedetect.log",
+      "checked_at": "2026-08-24T09:20:05.832281Z"
+    },
+    {
+      "id": "decode_clean",
+      "category": "technical",
+      "severity": "hard_block",
+      "expected": "empty decode error log",
+      "actual": "bytes=0",
+      "status": "PASS",
+      "evidence_path": "qc/decode-errors.log",
+      "checked_at": "2026-08-24T09:20:05.832296Z"
+    },
+    {
+      "id": "audio_integrity",
+      "category": "audio",
+      "severity": "hard_block",
+      "expected": "correlation >= 0.99, lag <= 40ms, identical sample count",
+      "actual": "correlation=0.9999943910350495, lag_ms=0.0, same_samples=True",
+      "status": "PASS",
+      "evidence_path": "qc/audio-comparison.json",
+      "checked_at": "2026-08-24T09:20:05.832336Z"
+    },
+    {
+      "id": "host_identity",
+      "category": "identity",
+      "severity": "hard_block",
+      "expected": "host-c2-pro-candidate-2-final:939324593eb718cd2a39be4c171f74178a6a48442f7e0d61afe8a875011e8a47",
+      "actual": "host-c2-pro-candidate-2-final:939324593eb718cd2a39be4c171f74178a6a48442f7e0d61afe8a875011e8a47",
+      "status": "PASS",
+      "evidence_path": "production/run-manifest.json",
+      "checked_at": "2026-08-24T09:20:05.836552Z"
+    },
+    {
+      "id": "voice_identity",
+      "category": "identity",
+      "severity": "hard_block",
+      "expected": "cobra_design_20250717_162347_664524",
+      "actual": "cobra_design_20250717_162347_664524",
+      "status": "PASS",
+      "evidence_path": "production/run-manifest.json",
+      "checked_at": "2026-08-24T09:20:05.836560Z"
+    },
+    {
+      "id": "timeline_structure",
+      "category": "timeline",
+      "severity": "hard_block",
+      "expected": "contiguous timeline, B-roll semantic references, anchor close",
+      "actual": "segments=11, broll=9",
+      "status": "PASS",
+      "evidence_path": "production/timeline.json",
+      "checked_at": "2026-08-24T09:20:05.836563Z"
+    },
+    {
+      "id": "continuous_anchor_tail",
+      "category": "timeline",
+      "severity": "hard_block",
+      "expected": ">= 16.045s",
+      "actual": "24.366s",
+      "status": "PASS",
+      "evidence_path": "production/timeline.json",
+      "checked_at": "2026-08-24T09:20:05.836566Z"
+    },
+    {
+      "id": "broll_ratio",
+      "category": "timeline",
+      "severity": "advisory",
+      "expected": "0.20-0.45 advisory range; final ratio is director-decided",
+      "actual": "0.5609",
+      "status": "PASS",
+      "evidence_path": "production/timeline.json",
+      "checked_at": "2026-08-24T09:20:05.836570Z"
+    },
+    {
+      "id": "director_host_identity",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "开场与结尾均为短发C2候选2，白衬衣、深色西装与蓝色演播室一致。",
+      "status": "PASS",
+      "evidence_path": "qc/avatar-contact.jpg",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    },
+    {
+      "id": "director_facial_naturalness",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "开场、结尾和尾帧抽检中五官、发型和脸部轮廓稳定。",
+      "status": "PASS",
+      "evidence_path": "qc/avatar-contact.jpg",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    },
+    {
+      "id": "director_lip_sync",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "最终音轨与母带相关度超过0.99999，时移0毫秒；主播口型连续。",
+      "status": "PASS",
+      "evidence_path": "qc/audio-comparison.json",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    },
+    {
+      "id": "director_script_clarity",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "开场建立父辈托举与少年接缰，结尾以策马、骑射、搏克和千骑豪情完整收束。",
+      "status": "PASS",
+      "evidence_path": "copy/voiceover.txt",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    },
+    {
+      "id": "director_footage_relevance",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "可辨识人物镜头中少年约87.7%，成年人只承担父亲托举；九段均服务主题。",
+      "status": "PASS",
+      "evidence_path": "production/age-matching-qc.json",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    },
+    {
+      "id": "director_edit_rhythm",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "45秒连续静音插播由9个完整动作组成，中段不切回主持人，单镜头4至6秒。",
+      "status": "PASS",
+      "evidence_path": "qc/boundary-contact.jpg",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    },
+    {
+      "id": "director_no_watermarks_text",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "成片没有项目新增文字层；首两段采用重构裁切降低原有文字干扰，小型来源标识按账本披露。",
+      "status": "PASS",
+      "evidence_path": "production/usage-rights-note.json",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    },
+    {
+      "id": "director_no_reverse_repeat",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "九段均按源区间正向连续播放，渲染脚本没有reverse、loop或pingpong。",
+      "status": "PASS",
+      "evidence_path": "production/shot-selection.json",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    },
+    {
+      "id": "director_ending_complete",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "插播后回到主播，结尾约24.37秒，末句完整并保留0.4秒自然停顿。",
+      "status": "PASS",
+      "evidence_path": "qc/tail-contact.jpg",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    },
+    {
+      "id": "director_overall_news_effect",
+      "category": "director",
+      "severity": "director_review",
+      "expected": "director check passed",
+      "actual": "托举、少年疾驰、骑射、儿童搏克、万马与扬尘白马形成从传承到远方的递进。",
+      "status": "PASS",
+      "evidence_path": "qc/contact-sheet.jpg",
+      "checked_at": "2026-08-24T17:20:05.641746+08:00"
+    }
+  ],
+  "director_review": {
+    "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+    "approved": true,
+    "checks": [
+      {
+        "id": "host_identity",
+        "description": "锁定短发C2主持人的身份、服装、机位和背景保持一致",
+        "passed": true,
+        "note": "开场与结尾均为短发C2候选2，白衬衣、深色西装与蓝色演播室一致。",
+        "evidence_path": "qc/avatar-contact.jpg"
+      },
+      {
+        "id": "facial_naturalness",
+        "description": "主持人五官清晰自然，无明显模糊、漂移或畸变",
+        "passed": true,
+        "note": "开场、结尾和尾帧抽检中五官、发型和脸部轮廓稳定。",
+        "evidence_path": "qc/avatar-contact.jpg"
+      },
+      {
+        "id": "lip_sync",
+        "description": "主持人口型与未来科技解说音轨同步",
+        "passed": true,
+        "note": "最终音轨与母带相关度超过0.99999，时移0毫秒；主播口型连续。",
+        "evidence_path": "qc/audio-comparison.json"
+      },
+      {
+        "id": "script_clarity",
+        "description": "口播短句有起势、有画面感并完整收束",
+        "passed": true,
+        "note": "开场建立父辈托举与少年接缰，结尾以策马、骑射、搏克和千骑豪情完整收束。",
+        "evidence_path": "copy/voiceover.txt"
+      },
+      {
+        "id": "footage_relevance",
+        "description": "真实素材服务少年骑手、骑射、儿童搏克和草原气势",
+        "passed": true,
+        "note": "可辨识人物镜头中少年约87.7%，成年人只承担父亲托举；九段均服务主题。",
+        "evidence_path": "production/age-matching-qc.json"
+      },
+      {
+        "id": "edit_rhythm",
+        "description": "插播数量、时长和连续性服从热血混剪效果",
+        "passed": true,
+        "note": "45秒连续静音插播由9个完整动作组成，中段不切回主持人，单镜头4至6秒。",
+        "evidence_path": "qc/boundary-contact.jpg"
+      },
+      {
+        "id": "no_watermarks_text",
+        "description": "不新增字幕、新闻标题或评论框；来源标识按允许边界披露",
+        "passed": true,
+        "note": "成片没有项目新增文字层；首两段采用重构裁切降低原有文字干扰，小型来源标识按账本披露。",
+        "evidence_path": "production/usage-rights-note.json"
+      },
+      {
+        "id": "no_reverse_repeat",
+        "description": "动作正向连续，无倒放、循环、乒乓或重复补时",
+        "passed": true,
+        "note": "九段均按源区间正向连续播放，渲染脚本没有reverse、loop或pingpong。",
+        "evidence_path": "production/shot-selection.json"
+      },
+      {
+        "id": "ending_complete",
+        "description": "最后一句及主持人画面完整自然收束",
+        "passed": true,
+        "note": "插播后回到主播，结尾约24.37秒，末句完整并保留0.4秒自然停顿。",
+        "evidence_path": "qc/tail-contact.jpg"
+      },
+      {
+        "id": "overall_news_effect",
+        "description": "整体形成英姿飒爽、热血昂扬、令人向往草原驰骋的效果",
+        "passed": true,
+        "note": "托举、少年疾驰、骑射、儿童搏克、万马与扬尘白马形成从传承到远方的递进。",
+        "evidence_path": "qc/contact-sheet.jpg"
+      }
+    ],
+    "reviewed_at": "2026-08-24T17:20:05.641746+08:00",
+    "actor": "director"
+  },
+  "final_video_sha256": "b6e50c83cc288289c01a96cae6e9897f4d0a5ce3a9f7a56157c1083e33e00c29"
+}

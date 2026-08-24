@@ -1,0 +1,51 @@
+{
+  "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+  "output": "video/final-clean.mp4",
+  "video": {
+    "codec": "h264",
+    "width": 1080,
+    "height": 1920,
+    "fps": 25,
+    "pixel_format": "yuv420p"
+  },
+  "audio": {
+    "codec": "aac",
+    "sample_rate": 48000,
+    "channels": 1,
+    "source": "audio/master-voiceover.wav"
+  },
+  "edit": {
+    "presenter_source": "video/anchor-generated.mp4",
+    "broll_source": "media/approved/grassland-youth-montage.mp4",
+    "opening_avatar_source": [
+      0.0,
+      10.857042
+    ],
+    "closing_avatar_source": [
+      11.107042,
+      35.473042
+    ],
+    "broll_target": [
+      10.857042,
+      55.857042
+    ],
+    "source_audio_used": false,
+    "background_music_used": false,
+    "approved_silent_broll": true,
+    "text_overlay_used": false,
+    "subtitles_used": false,
+    "reverse_loop_pingpong": false,
+    "broll_shot_count": 9,
+    "broll_shot_durations_seconds": [
+      4.5,
+      4.5,
+      6.0,
+      5.5,
+      5.0,
+      6.0,
+      5.0,
+      4.5,
+      4.0
+    ]
+  }
+}

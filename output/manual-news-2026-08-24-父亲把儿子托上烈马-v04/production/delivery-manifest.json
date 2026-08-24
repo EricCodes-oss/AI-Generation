@@ -1,0 +1,60 @@
+{
+  "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+  "status": "ready_to_deliver",
+  "generated_at": "2026-08-24T17:21:22.077892+08:00",
+  "final_video": "video/final-clean.mp4",
+  "final_video_sha256": "b6e50c83cc288289c01a96cae6e9897f4d0a5ce3a9f7a56157c1083e33e00c29",
+  "duration_seconds": 80.223,
+  "resolution": "1080x1920",
+  "fps": 25,
+  "audio": "AAC 48kHz mono",
+  "silent_broll_seconds": 45.0,
+  "youth_ratio": 0.8767123287671232,
+  "deliverables": [
+    {
+      "path": "video/final-clean.mp4",
+      "exists": true,
+      "bytes": 67012167
+    },
+    {
+      "path": "copy/title.txt",
+      "exists": true,
+      "bytes": 61
+    },
+    {
+      "path": "copy/voiceover.txt",
+      "exists": true,
+      "bytes": 477
+    },
+    {
+      "path": "copy/full-program-transcript.txt",
+      "exists": true,
+      "bytes": 1525
+    },
+    {
+      "path": "copy/source-links.txt",
+      "exists": true,
+      "bytes": 2465
+    },
+    {
+      "path": "production/footage-ledger.json",
+      "exists": true,
+      "bytes": 6879
+    },
+    {
+      "path": "production/usage-rights-note.json",
+      "exists": true,
+      "bytes": 720
+    },
+    {
+      "path": "qc/final-qc-report.json",
+      "exists": true,
+      "bytes": 13721
+    },
+    {
+      "path": "qc/sha256.txt",
+      "exists": true,
+      "bytes": 150
+    }
+  ]
+}

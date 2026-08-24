@@ -1,0 +1,20 @@
+{
+  "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+  "quality_profile": "v5_vertical_anchor_news",
+  "quality_profile_version": "1.0",
+  "production_mode": "manual_directed",
+  "topic": "内蒙古那达慕少年骑手、父辈托举与草原传承",
+  "topic_selection_id": "user-confirmed-nadam-youth-riders-v04-20260824",
+  "target_duration_seconds": 80.223042,
+  "host_id": "host-c2-pro-candidate-2-final",
+  "host_reference_image": "output/host-v12-c2-pro/GPT-Image-2-Pro-C2-Pro-主持人最终选定.png",
+  "host_sha256": "939324593eb718cd2a39be4c171f74178a6a48442f7e0d61afe8a875011e8a47",
+  "voice_id": "cobra_design_20250717_162347_664524",
+  "clean_master": true,
+  "status": "ready_to_deliver",
+  "parent_run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v03",
+  "final_video_path": "video/final-clean.mp4",
+  "final_video_sha256": "b6e50c83cc288289c01a96cae6e9897f4d0a5ce3a9f7a56157c1083e33e00c29",
+  "created_at": "2026-08-24T07:56:25.395432Z",
+  "updated_at": "2026-08-24T09:20:56.721769Z"
+}

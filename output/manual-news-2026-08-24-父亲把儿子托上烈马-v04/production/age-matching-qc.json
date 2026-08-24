@@ -1,0 +1,14 @@
+{
+  "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+  "recognizable_person_seconds": 36.5,
+  "youth_seconds": 32.0,
+  "adult_seconds": 4.5,
+  "youth_ratio": 0.8767123287671232,
+  "adult_ratio": 0.1232876712328767,
+  "requirements": {
+    "youth_ratio_min": 0.8,
+    "adult_ratio_max": 0.2
+  },
+  "passed": true,
+  "note": "第二段开头仍可见短暂现场协助者，但视觉主体和叙事主体为独立策马少年；按保守口径纳入父辈传承镜头亦不影响比例通过。"
+}

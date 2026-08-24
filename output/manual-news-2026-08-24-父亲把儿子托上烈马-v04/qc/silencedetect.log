@@ -1,0 +1,40 @@
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'output/manual-news-2026-08-24-父亲把儿子托上烈马-v04/video/final-clean.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Duration: 00:01:20.22, start: 0.000000, bitrate: 6682 kb/s
+  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709/unknown/unknown, progressive), 1080x1920 [SAR 1:1 DAR 9:16], 6600 kb/s, 25 fps, 25 tbr, 12800 tbn (default)
+      Metadata:
+        handler_name    : VideoHandler
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 libx264
+  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, mono, fltp, 78 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+Stream mapping:
+  Stream #0:1 -> #0:0 (aac (native) -> pcm_s16le (native))
+Press [q] to stop, [?] for help
+Output #0, null, to 'pipe:':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf61.7.100
+  Stream #0:0(und): Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s (default)
+      Metadata:
+        handler_name    : SoundHandler
+        vendor_id       : [0][0][0][0]
+        encoder         : Lavc61.19.101 pcm_s16le
+[silencedetect @ 0x600000a28000] silence_start: 10.398375
+[silencedetect @ 0x600000a28000] silence_end: 56.366458 | silence_duration: 45.968083
+[silencedetect @ 0x600000a28000] silence_start: 67.680042
+[silencedetect @ 0x600000a28000] silence_end: 67.955812 | silence_duration: 0.275771
+[silencedetect @ 0x600000a28000] silence_start: 74.735729
+[silencedetect @ 0x600000a28000] silence_end: 75.110479 | silence_duration: 0.37475
+[silencedetect @ 0x600000a28000] silence_start: 79.672083
+[silencedetect @ 0x600000a28000] silence_end: 80.234667 | silence_duration: 0.562583
+[out#0/null @ 0x600001b2c600] video:0KiB audio:7522KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+size=N/A time=00:01:20.23 bitrate=N/A speed=2.67e+03x

@@ -1,0 +1,94 @@
+{
+  "run_id": "manual-news-2026-08-24-父亲把儿子托上烈马-v04",
+  "audio_duration_seconds": 80.223042,
+  "segments": [
+    {
+      "type": "anchor",
+      "start": 0.0,
+      "end": 10.857042,
+      "script_segment_id": "anchor-opening",
+      "shot_id": null,
+      "expected_silence": false
+    },
+    {
+      "type": "broll",
+      "start": 10.857042,
+      "end": 15.357042,
+      "script_segment_id": "broll-heritage",
+      "shot_id": "shot-01-father-lifts-son",
+      "expected_silence": true
+    },
+    {
+      "type": "broll",
+      "start": 15.357042,
+      "end": 19.857042,
+      "script_segment_id": "broll-first-ride",
+      "shot_id": "shot-02-youth-rides-away",
+      "expected_silence": true
+    },
+    {
+      "type": "broll",
+      "start": 19.857042,
+      "end": 25.857042,
+      "script_segment_id": "broll-speed",
+      "shot_id": "shot-03-youth-black-horse-gallop",
+      "expected_silence": true
+    },
+    {
+      "type": "broll",
+      "start": 25.857042,
+      "end": 31.357042,
+      "script_segment_id": "broll-grassland",
+      "shot_id": "shot-04-grassland-youth-rider",
+      "expected_silence": true
+    },
+    {
+      "type": "broll",
+      "start": 31.357042,
+      "end": 36.357042,
+      "script_segment_id": "broll-archery",
+      "shot_id": "shot-05-youth-mounted-archery",
+      "expected_silence": true
+    },
+    {
+      "type": "broll",
+      "start": 36.357042,
+      "end": 42.357042,
+      "script_segment_id": "broll-bokh-one",
+      "shot_id": "shot-06-child-bokh-throw",
+      "expected_silence": true
+    },
+    {
+      "type": "broll",
+      "start": 42.357042,
+      "end": 47.357042,
+      "script_segment_id": "broll-bokh-two",
+      "shot_id": "shot-07-child-bokh-power",
+      "expected_silence": true
+    },
+    {
+      "type": "broll",
+      "start": 47.357042,
+      "end": 51.857042,
+      "script_segment_id": "broll-herd",
+      "shot_id": "shot-08-thousand-horses",
+      "expected_silence": true
+    },
+    {
+      "type": "broll",
+      "start": 51.857042,
+      "end": 55.857042,
+      "script_segment_id": "broll-finale",
+      "shot_id": "shot-09-white-horses-dust-finale",
+      "expected_silence": true
+    },
+    {
+      "type": "anchor",
+      "start": 55.857042,
+      "end": 80.223042,
+      "script_segment_id": "anchor-closing",
+      "shot_id": null,
+      "expected_silence": false
+    }
+  ]
+}
