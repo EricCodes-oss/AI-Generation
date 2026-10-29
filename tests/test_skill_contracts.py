@@ -43,6 +43,24 @@ def test_target_skill_contracts_expose_provider_and_content_first_fields():
     assert contracts[SkillKind.AVATAR].required_inputs["audio_path"] == "string"
 
 
+def test_news_script_contract_rejects_viewer_prompting_fillers():
+    script_rules = "\n".join(
+        load_contracts(Path("skills/contracts"))[SkillKind.NEWS_SCRIPT_WRITER].safety_constraints
+    )
+    assert "近日在平台上引发关注" in script_rules
+    assert "我们先看画面" in script_rules
+    assert "让我们先看画面" in script_rules
+
+
+def test_news_script_contract_requires_observation_meaning_and_takeaway():
+    script_rules = "\n".join(
+        load_contracts(Path("skills/contracts"))[SkillKind.NEWS_SCRIPT_WRITER].safety_constraints
+    )
+    assert "表述现象" in script_rules
+    assert "说明本质" in script_rules
+    assert "给出启发" in script_rules
+
+
 def test_v5_news_contracts_lock_duration_identity_clean_master_and_quality_evidence():
     contracts = load_contracts(Path("skills/contracts"))
     v5_kinds = {
@@ -87,6 +105,25 @@ def test_v5_news_contracts_lock_duration_identity_clean_master_and_quality_evide
     quality_rules = "\n".join(quality.safety_constraints)
     assert "主持人" in quality_rules and "音色" in quality_rules
     assert "连续主持人结尾" in quality_rules
+
+
+def test_reference_remix_lessons_are_locked_into_contracts():
+    """五星红旗一期返工教训：插播来源、画幅、主持人分工、OCR自检与例外记录不得丢失。"""
+    contracts = load_contracts(Path("skills/contracts"))
+
+    clipper_rules = "\n".join(contracts[SkillKind.FOOTAGE_CLIPPER].safety_constraints)
+    assert "插播用参考视频" in clipper_rules
+    assert "BVID" in clipper_rules
+    assert "最小条带" in clipper_rules
+    assert "片尾卡" in clipper_rules
+
+    compositor_rules = "\n".join(contracts[SkillKind.COMPOSITOR].safety_constraints)
+    assert "撑满1080宽度" in compositor_rules and "禁止左右黑边" in compositor_rules
+    assert "不得由主持人口播复述" in compositor_rules
+
+    quality_rules = "\n".join(contracts[SkillKind.QUALITY_CONTROL].safety_constraints)
+    assert "正样本自检" in quality_rules and "Vision" in quality_rules
+    assert "override" in quality_rules
 
 
 def test_verbatim_replica_lessons_are_locked_into_contracts():
