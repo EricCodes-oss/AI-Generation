@@ -235,6 +235,83 @@ def _default_ordinary_life_moment_gate() -> OrdinaryLifeMomentGateConfig:
     )
 
 
+class MajorDisasterScanConfig(StrictModel):
+    enabled: Literal[True]
+    domestic_only: Literal[True]
+    run_every_hotspot_cycle: Literal[True]
+    event_keywords: list[str] = Field(min_length=3)
+    impact_keywords: list[str] = Field(min_length=3)
+    authoritative_sources: list[str] = Field(min_length=3)
+    require_authoritative_confirmation: Literal[True]
+    require_concrete_impact: Literal[True]
+    reject_warning_only: Literal[True]
+    reject_old_footage_mismatch: Literal[True]
+    require_status_timestamp: Literal[True]
+    require_footage_time_location_verification: Literal[True]
+
+    @model_validator(mode="after")
+    def validate_disaster_scan_policy(self) -> MajorDisasterScanConfig:
+        required_events = {"地震", "洪水", "山体滑坡"}
+        if not required_events.issubset(self.event_keywords):
+            raise ValueError("major disaster scan must cover earthquakes, floods and landslides")
+        required_impacts = {"伤亡", "失联", "被困", "应急响应"}
+        if not required_impacts.issubset(self.impact_keywords):
+            raise ValueError("major disaster scan must cover concrete human and response impacts")
+        required_sources = {"应急管理部", "中国地震台网", "中国气象局", "水利部"}
+        if not required_sources.issubset(self.authoritative_sources):
+            raise ValueError("major disaster scan must include core authoritative agencies")
+        return self
+
+
+def _default_major_disaster_scan() -> MajorDisasterScanConfig:
+    return MajorDisasterScanConfig(
+        enabled=True,
+        domestic_only=True,
+        run_every_hotspot_cycle=True,
+        event_keywords=[
+            "地震",
+            "洪水",
+            "洪涝",
+            "山洪",
+            "台风",
+            "山火",
+            "森林火灾",
+            "山体滑坡",
+            "滑坡",
+            "泥石流",
+            "极端高温",
+        ],
+        impact_keywords=[
+            "伤亡",
+            "失联",
+            "被困",
+            "转移",
+            "道路中断",
+            "通信中断",
+            "停电",
+            "应急响应",
+            "次生灾害",
+        ],
+        authoritative_sources=[
+            "应急管理部",
+            "中国地震台网",
+            "中国气象局",
+            "中央气象台",
+            "水利部",
+            "国家消防救援局",
+            "省市县应急管理部门",
+            "新华社",
+            "央视新闻",
+        ],
+        require_authoritative_confirmation=True,
+        require_concrete_impact=True,
+        reject_warning_only=True,
+        reject_old_footage_mismatch=True,
+        require_status_timestamp=True,
+        require_footage_time_location_verification=True,
+    )
+
+
 class HotspotSelectionConfig(StrictModel):
     target_min_candidates: int | None = Field(default=None, ge=0, le=8)
     min_candidates: int | None = Field(default=None, ge=0, le=8)
@@ -247,6 +324,9 @@ class HotspotSelectionConfig(StrictModel):
     preferred_authoritative_media: list[PreferredAuthoritativeMediaConfig] = Field(min_length=1)
     ordinary_life_moment_gate: OrdinaryLifeMomentGateConfig = Field(
         default_factory=_default_ordinary_life_moment_gate
+    )
+    major_disaster_scan: MajorDisasterScanConfig = Field(
+        default_factory=_default_major_disaster_scan
     )
 
     @model_validator(mode="after")

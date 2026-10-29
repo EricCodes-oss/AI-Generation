@@ -171,6 +171,48 @@ hotspot_selection:
     max_staging_risk: 0.35
     require_original_recorder: true
     require_continuous_scene: true
+  major_disaster_scan:
+    enabled: true
+    domestic_only: true
+    run_every_hotspot_cycle: true
+    event_keywords:
+      - 地震
+      - 洪水
+      - 洪涝
+      - 山洪
+      - 台风
+      - 山火
+      - 森林火灾
+      - 山体滑坡
+      - 滑坡
+      - 泥石流
+      - 极端高温
+    impact_keywords:
+      - 伤亡
+      - 失联
+      - 被困
+      - 转移
+      - 道路中断
+      - 通信中断
+      - 停电
+      - 应急响应
+      - 次生灾害
+    authoritative_sources:
+      - 应急管理部
+      - 中国地震台网
+      - 中国气象局
+      - 中央气象台
+      - 水利部
+      - 国家消防救援局
+      - 省市县应急管理部门
+      - 新华社
+      - 央视新闻
+    require_authoritative_confirmation: true
+    require_concrete_impact: true
+    reject_warning_only: true
+    reject_old_footage_mismatch: true
+    require_status_timestamp: true
+    require_footage_time_location_verification: true
   preferred_authoritative_media:
     - name: 新华网
       platform: xinhuanet

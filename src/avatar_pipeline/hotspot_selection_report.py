@@ -101,6 +101,67 @@ def render_candidate_pool_markdown(pool: HotspotCandidatePool) -> str:
                 f"- **导演评级：** {candidate.director_rating.value}",
             ]
         )
+        livelihood = candidate.livelihood_assessment
+        if livelihood is not None:
+            effective_date = (
+                livelihood.effective_date.isoformat()
+                if livelihood.effective_date is not None
+                else "无单一生效日期/持续发展"
+            )
+            lines.extend(
+                [
+                    f"- **民生利益评分：{livelihood.total_score}/100**",
+                    f"  - 影响人群：{_list_cell(livelihood.affected_groups)}",
+                    f"  - 切身利益：{livelihood.direct_interest}",
+                    f"  - 生效/关键日期：{effective_date}",
+                    f"  - 旧规则：{livelihood.previous_rule}",
+                    f"  - 新规则：{livelihood.new_rule}",
+                    f"  - 网络误解：{livelihood.misconception_to_clarify}",
+                    f"  - 公众是否需要行动：{livelihood.required_action}",
+                    f"  - 适用范围：{livelihood.national_or_local_scope}",
+                    f"  - 例外与边界：{livelihood.exceptions_and_boundaries}",
+                    (
+                        "  - 评分拆分："
+                        f"直接影响 {livelihood.direct_impact_score}/25；"
+                        f"时效性 {livelihood.recency_score}/20；"
+                        f"认知冲突 {livelihood.cognitive_conflict_score}/20；"
+                        f"影响人群 {livelihood.affected_population_score}/15；"
+                        f"画面条件 {livelihood.visual_material_score}/10；"
+                        f"权威证据 {livelihood.authoritative_evidence_score}/10"
+                    ),
+                    f"  - 成功案例反馈标签：{_list_cell(livelihood.editorial_feedback_tags)}",
+                ]
+            )
+        disaster = candidate.disaster_assessment
+        if disaster is not None:
+            lines.extend(
+                [
+                    (
+                        "- **重大灾害突发通道："
+                        f"{'已进入' if disaster.qualifies_for_fast_lane else '未进入'}**"
+                    ),
+                    f"  - 灾害类型：{disaster.event_type.value}",
+                    f"  - 地点：{disaster.location}",
+                    f"  - 发生时间：{disaster.occurred_at.isoformat()}",
+                    f"  - 灾情更新时间：{disaster.status_updated_at.isoformat()}",
+                    (
+                        "  - 严重性依据："
+                        f"伤亡/失联={'是' if disaster.casualties_or_missing_reported else '否'}；"
+                        f"大规模转移={'是' if disaster.mass_evacuation_reported else '否'}；"
+                        "基础设施中断="
+                        f"{'是' if disaster.infrastructure_disruption_reported else '否'}；"
+                        "官方应急响应="
+                        f"{'是' if disaster.official_emergency_response_started else '否'}；"
+                        f"次生风险={'是' if disaster.secondary_risk_reported else '否'}"
+                    ),
+                    (
+                        "  - 素材时地核验："
+                        f"{'已完成' if disaster.footage_time_location_verified else '未完成'}"
+                    ),
+                    f"  - 公共安全价值：{disaster.public_safety_value}",
+                    f"  - 尊严与隐私风险：{disaster.dignity_or_privacy_risk}",
+                ]
+            )
         assessment = candidate.ordinary_moment_assessment
         if assessment is not None:
             lines.extend(

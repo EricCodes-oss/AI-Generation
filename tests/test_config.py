@@ -145,6 +145,25 @@ def test_legacy_v1_hotspot_and_selection_config_remain_parseable():
     assert legacy.hotspot_selection.max_candidates == 12
 
 
+def test_default_config_requires_independent_domestic_major_disaster_scan():
+    selection = load_config(Path("configs/default.yaml")).hotspot_selection
+    scan = selection.major_disaster_scan
+    assert scan.enabled is True
+    assert scan.domestic_only is True
+    assert scan.run_every_hotspot_cycle is True
+    assert {"地震", "洪水", "山体滑坡"}.issubset(scan.event_keywords)
+    assert {"伤亡", "失联", "被困", "应急响应"}.issubset(scan.impact_keywords)
+    assert {"应急管理部", "中国地震台网", "中国气象局", "水利部"}.issubset(
+        scan.authoritative_sources
+    )
+    assert scan.require_authoritative_confirmation is True
+    assert scan.require_concrete_impact is True
+    assert scan.reject_warning_only is True
+    assert scan.reject_old_footage_mismatch is True
+    assert scan.require_status_timestamp is True
+    assert scan.require_footage_time_location_verification is True
+
+
 def test_default_config_locks_ordinary_life_moment_hard_gate():
     selection = load_config(Path("configs/default.yaml")).hotspot_selection
     assert "ordinary_life_moment" in selection.categories
