@@ -87,3 +87,42 @@ def test_v5_news_contracts_lock_duration_identity_clean_master_and_quality_evide
     quality_rules = "\n".join(quality.safety_constraints)
     assert "主持人" in quality_rules and "音色" in quality_rules
     assert "连续主持人结尾" in quality_rules
+
+
+def test_verbatim_replica_lessons_are_locked_into_contracts():
+    """BV1Gknm6kE78 一期教训：先估时长再配音、结构改动须问用户、镜头标签先验、静态源标记、分辨率与逐句ASR。"""
+    contracts = load_contracts(Path("skills/contracts"))
+
+    script_rules = "\n".join(contracts[SkillKind.NEWS_SCRIPT_WRITER].safety_constraints)
+    assert "先按默认音色估算朗读时长" in script_rules
+    assert "4字每秒" in script_rules
+    assert "必须先征求用户意见" in script_rules and "atempo" in script_rules
+
+    clipper_rules = "\n".join(contracts[SkillKind.FOOTAGE_CLIPPER].safety_constraints)
+    assert "首帧、中帧、末帧" in clipper_rules
+    assert "static_source=true" in clipper_rules
+
+    avatar_rules = "\n".join(contracts[SkillKind.AVATAR].safety_constraints)
+    assert "核对分辨率" in avatar_rules and "1080" in avatar_rules
+
+    quality_rules = "\n".join(contracts[SkillKind.QUALITY_CONTROL].safety_constraints)
+    assert "逐句复核" in quality_rules
+    assert "static_source=true" in quality_rules and "freezedetect" in quality_rules
+    assert "fact_flags" in quality_rules
+    assert "不构成授权凭证" in quality_rules
+
+
+def test_verbatim_replica_lessons_are_in_agents_and_skill_reference():
+    agents = Path("AGENTS.md").read_text()
+    assert "Verbatim replica: plan timing before paid generation" in agents
+    assert "static_source=true" in agents
+    assert "sentence by sentence" in agents
+
+    reference = Path(
+        "/Users/liuweidong/.codex/skills/video-generator/references/news-editorial-quality.md"
+    )
+    if reference.exists():
+        text = reference.read_text()
+        assert "## 6. 逐字复刻：先定时长与镜头，再付费生成" in text
+        assert "必须先征求用户意见" in text
+        assert "static_source=true" in text
