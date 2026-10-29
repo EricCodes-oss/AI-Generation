@@ -101,6 +101,36 @@ class ScriptReview(ProductionModel):
         return self
 
 
+class CreativeLock(ProductionModel):
+    """The immutable creative contract that downstream production must preserve."""
+
+    run_id: str = Field(min_length=1)
+    status: Literal["draft", "locked"] = "draft"
+    core_subject: str = Field(min_length=1)
+    narrative_promise: str = Field(min_length=1)
+    required_visual_tags: list[str] = Field(min_length=1)
+    non_negotiables: list[str] = Field(min_length=1)
+    replaceable_elements: list[str] = Field(default_factory=list)
+    prohibited_substitutions: list[str] = Field(default_factory=list)
+    uncertainty_policy: str = Field(min_length=1)
+    approval_basis: Literal["user_confirmed", "director_confirmed"] = "director_confirmed"
+    locked_by: str | None = None
+    locked_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_lock(self) -> CreativeLock:
+        if any(not tag.strip() for tag in self.required_visual_tags):
+            raise ValueError("creative lock required visual tags cannot be empty")
+        tags = [tag.strip().casefold() for tag in self.required_visual_tags]
+        if len(tags) != len(set(tags)):
+            raise ValueError("creative lock required visual tags must be unique")
+        if any(not item.strip() for item in self.non_negotiables):
+            raise ValueError("creative lock non-negotiables cannot be empty")
+        if self.status == "locked" and (not self.locked_by or not self.locked_by.strip() or self.locked_at is None):
+            raise ValueError("locked creative brief requires locked_by and locked_at")
+        return self
+
+
 class FootageAsset(ProductionModel):
     asset_id: str = Field(min_length=1)
     source_platform: str = Field(min_length=1)
@@ -116,6 +146,13 @@ class FootageAsset(ProductionModel):
     burned_captions_allowed_by_user: bool = False
     visual_relevance: str = Field(min_length=1)
     user_usage_rule_passed: bool
+    china_context_verified: bool = True
+    foreign_person_detected: bool = False
+    people_identity_check: str = Field(
+        default="逐帧确认：无可辨识人物，仅动物主体",
+        min_length=1,
+    )
+    rights_note: str | None = None
 
     @model_validator(mode="after")
     def validate_usage_rule(self) -> FootageAsset:
@@ -160,6 +197,7 @@ class ShotSelectionRecord(ProductionModel):
     forward_playback: bool
     visual_quality_passed: bool
     director_approved: bool
+    creative_tags: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_shot(self) -> ShotSelectionRecord:
@@ -195,6 +233,7 @@ class TimelineSegment(ProductionModel):
     end: float = Field(gt=0)
     script_segment_id: str = Field(min_length=1)
     shot_id: str | None = None
+    expected_silence: bool = False
 
     @model_validator(mode="after")
     def validate_segment(self) -> TimelineSegment:
@@ -204,6 +243,8 @@ class TimelineSegment(ProductionModel):
             raise ValueError("B-roll timeline segment requires a shot ID")
         if self.type == "anchor" and self.shot_id is not None:
             raise ValueError("anchor timeline segment cannot reference a shot")
+        if self.expected_silence and self.type != "broll":
+            raise ValueError("expected silence is only allowed for B-roll segments")
         return self
 
 

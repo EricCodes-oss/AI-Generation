@@ -28,7 +28,7 @@ def test_canonical_v5_quality_config_is_locked():
     assert config.broll.prefer_coherent_blocks is True
     assert config.broll.avoid_frequent_short_cuts is True
     assert config.broll.max_clip_seconds == 12.0
-    assert config.broll.target_ratio_max == 0.45
+    assert config.broll.target_ratio_max == 0.80
 
 
 def test_quality_config_rejects_non_v5_duration_output_and_clean_master():
@@ -58,3 +58,15 @@ def test_quality_config_rejects_blank_locked_identity():
         changed[section][field] = ""
         with pytest.raises(ValidationError):
             NewsVideoQualityConfig.model_validate(changed)
+
+
+def test_v5_profile_locks_three_part_structure_and_uniform_inserts():
+    config = load_news_quality_config(Path("configs/news-video-quality-v5.yaml"))
+
+    assert config.structure.mode == "three_part"
+    assert config.structure.max_presenter_insert_alternations == 1
+    assert config.broll.insert_format == "landscape_16x9_on_portrait_canvas"
+    assert config.broll.require_uniform_insert_format is True
+    assert config.broll.min_source_height >= 1080
+    assert config.broll.background_fill == "black"
+    assert config.broll.clip_duration_policy == "follow_reference_pacing"

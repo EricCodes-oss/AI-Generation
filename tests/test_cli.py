@@ -254,7 +254,7 @@ def test_news_v5_guidance_reports_dynamic_director_rhythm_for_52_seconds():
     assert payload["maximum_count"] == 5
     assert payload["minimum_clip_seconds"] == 4.5
     assert payload["maximum_clip_seconds"] == 12.0
-    assert payload["maximum_ratio"] == 0.45
+    assert payload["maximum_ratio"] == 0.80
     assert payload["prefer_coherent_blocks"] is True
     assert payload["avoid_frequent_short_cuts"] is True
 
@@ -685,6 +685,48 @@ def test_cli_builds_v2_editorial_report_and_keeps_selection_gate(tmp_path):
     assert "前三秒开场" in report
     assert Path(payload["pool_path"]).is_file()
 
+
+
+def test_cli_editorial_report_excludes_recently_produced_topic(tmp_path):
+    produced = tmp_path / "output" / "manual-news-2026-08-15-three-boys" / "production"
+    produced.mkdir(parents=True)
+    (produced / "topic-selection.json").write_text(
+        json.dumps(
+            {
+                "day": "2026-08-15",
+                "candidate_id": "ordinary-moment-original",
+                "title": "三个男孩得知小店即将闭店，凑出10.5元鼓励老板要挺住",
+                "category": "ordinary_life_moment",
+                "pool_sha256": "a" * 64,
+                "approved": True,
+                "actor": "owner",
+                "reason": "confirmed",
+                "approved_at": "2026-08-15T14:28:00+08:00",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    item = _editorial_opportunity_payload()
+    item["opportunity_id"] = "resurfaced-three-boys"
+    item["title"] = "3名男孩10.5元为倒闭便利店融资"
+    source = tmp_path / "opportunities.json"
+    source.write_text(json.dumps([item], ensure_ascii=False), encoding="utf-8")
+
+    result = run_cli(
+        tmp_path,
+        "editorial-build-report",
+        "--date",
+        "2026-08-17",
+        "--file",
+        str(source),
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["candidate_count"] == 0
+    saved = json.loads(Path(payload["pool_path"]).read_text(encoding="utf-8"))
+    assert saved["candidates"] == []
 
 def test_cli_v2_report_does_not_pad_and_can_report_no_s_tier(tmp_path):
     item = _editorial_opportunity_payload()

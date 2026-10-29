@@ -56,10 +56,12 @@ from avatar_pipeline.models import (
 from avatar_pipeline.news_intelligence_models import (
     EditorialGrade,
     EditorialOpportunity,
+    PoolQualityStatus,
 )
 from avatar_pipeline.news_production import (
     build_full_program_transcript,
     initialize_news_run,
+    lock_creative_brief,
     load_run_record,
     mark_rendered,
     recommend_broll,
@@ -187,6 +189,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="legacy compatibility only; bypass the required joint topic-evaluation gate",
     )
+
+    news_v5_lock_creative = subparsers.add_parser("news-v5-lock-creative")
+    news_v5_lock_creative.add_argument("--run-dir", required=True, type=Path)
+    news_v5_lock_creative.add_argument("--file", required=True, type=Path)
 
     news_v5_guidance = subparsers.add_parser("news-v5-guidance")
     news_v5_guidance.add_argument("--duration", required=True, type=float)
@@ -528,8 +534,32 @@ def _dispatch_editorial(args: argparse.Namespace) -> dict[str, Any]:
     )
     pool = build_opportunity_pool(args.date, opportunities, policy=policy)
     repository = HotspotSelectionRepository(args.workspace)
-    legacy_pool = _legacy_pool_from_editorial(pool)
-    repository.save_pool(args.date, legacy_pool)
+    selection_service = HotspotSelectionService(repository)
+    legacy_pool = selection_service.import_pool(args.date, _legacy_pool_from_editorial(pool))
+    allowed_ids = {candidate.candidate_id for candidate in legacy_pool.candidates}
+    removed_ids = {
+        candidate.opportunity_id
+        for candidate in pool.candidates
+        if candidate.opportunity_id not in allowed_ids
+    }
+    if removed_ids:
+        rejected_reasons = dict(pool.rejected_reasons)
+        for opportunity_id in removed_ids:
+            rejected_reasons[opportunity_id] = ["recently_produced_topic_cooldown"]
+        candidates = [
+            candidate for candidate in pool.candidates if candidate.opportunity_id in allowed_ids
+        ]
+        pool = pool.model_copy(
+            update={
+                "candidates": candidates,
+                "quality_status": (
+                    PoolQualityStatus.HAS_S_TIER
+                    if any(candidate.grade is EditorialGrade.S for candidate in candidates)
+                    else PoolQualityStatus.NO_S_TIER
+                ),
+                "rejected_reasons": rejected_reasons,
+            }
+        )
     report = render_editorial_opportunity_report(pool)
     report_path = repository.save_pool_report(args.date, report)
     editorial_pool_path = report_path.with_name("editorial-opportunity-pool.json")
@@ -556,7 +586,7 @@ def _dispatch_hotspot(args: argparse.Namespace) -> dict[str, Any]:
         selection_service = HotspotSelectionService(selection_repository)
         if args.command == "hotspot-pool-import":
             pool = load_candidate_pool(args.file)
-            selection_service.import_pool(args.date, pool)
+            pool = selection_service.import_pool(args.date, pool)
             report_path = selection_repository.save_pool_report(
                 args.date, render_candidate_pool_markdown(pool)
             )
@@ -675,6 +705,7 @@ def _news_v5_status(run_dir: Path) -> dict[str, Any]:
     record_paths = {
         "manifest": "production/run-manifest.json",
         "quality_profile": "production/quality-profile.yaml",
+        "creative_lock": "production/creative-lock.json",
         "topic_selection": "production/topic-selection.json",
         "fact_evidence": "production/fact-evidence.json",
         "script_review": "production/script-review.json",
@@ -719,6 +750,8 @@ def _dispatch_news_v5(args: argparse.Namespace) -> dict[str, Any]:
         )
         payload = _news_v5_status(run_dir)
         return {"run_dir": str(run_dir), **payload}
+    if args.command == "news-v5-lock-creative":
+        return lock_creative_brief(args.run_dir, args.file).model_dump(mode="json")
     if args.command == "news-v5-guidance":
         config = load_news_quality_config(args.quality_config)
         guidance = recommend_broll(args.duration, config)

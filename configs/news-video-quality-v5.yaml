@@ -29,16 +29,37 @@ voice:
   display_name: 未来科技解说
   voice_id: cobra_design_20250717_162347_664524
   identity_lock: strict
+structure:
+  mode: three_part          # 主持人开头 — 连续插播主体 — 主持人结尾
+  opening_seconds_min: 5
+  opening_seconds_max: 15
+  closing_seconds_min: 8
+  closing_seconds_max: 20
+  max_presenter_insert_alternations: 1
 broll:
   selection_mode: director_dynamic
+  insert_format: landscape_16x9_on_portrait_canvas
+  require_uniform_insert_format: true
+  require_uniform_display_size: true
+  min_source_height: 1080
+  allow_below_1080p_only_when_justified: true
+  prefer_source_fps: [25, 50]
+  background_fill: black     # 不使用放大/模糊背景层
+  china_context_required: true
+  require_chinese_people_when_people_visible: true
+  prohibit_foreign_people: true
+  prohibit_unverified_people_identity: true
+  prohibit_unverified_overseas_context: true
+  identity_review: frame_by_frame
   count_fixed: false
   guidance_min_count: 1
   guidance_max_count: 5
+  clip_duration_policy: follow_reference_pacing   # 有参考视频时跟随参考节奏；下列数值仅在无参考时作指引
   min_clip_seconds: 4.5
   preferred_clip_seconds: 9.0
   max_clip_seconds: 12.0
-  target_ratio_min: 0.20
-  target_ratio_max: 0.45
+  target_ratio_min: 0.50
+  target_ratio_max: 0.80
   prefer_coherent_blocks: true
   avoid_frequent_short_cuts: true
   prohibit_reverse: true
@@ -46,7 +67,7 @@ broll:
   prohibit_ping_pong: true
   require_semantic_mapping: true
 ending:
-  min_anchor_ratio: 0.20
+  min_anchor_ratio: 0.10
   preferred_anchor_seconds: 10
   require_complete_sentence: true
 quality:

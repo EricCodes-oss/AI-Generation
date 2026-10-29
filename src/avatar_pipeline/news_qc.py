@@ -9,17 +9,21 @@ from datetime import UTC, datetime
 from fractions import Fraction
 from pathlib import Path
 
+from avatar_pipeline.creative_consistency import creative_consistency_failures
 from avatar_pipeline.news_production import (
+    NewsProductionGateError,
     load_run_record,
     save_manifest,
     validate_full_program_transcript,
 )
 from avatar_pipeline.news_production_models import (
+    CreativeLock,
     DirectorReview,
     FinalQualityReport,
     NewsRunManifest,
     NewsRunStatus,
     NewsTimeline,
+    ShotSelection,
     QualityCheck,
 )
 from avatar_pipeline.news_quality_config import load_news_quality_config
@@ -36,6 +40,7 @@ REQUIRED_DIRECTOR_CHECK_IDS = frozenset(
         "no_reverse_repeat",
         "ending_complete",
         "overall_news_effect",
+        "creative_consistency",
     }
 )
 
@@ -55,6 +60,7 @@ _REQUIRED_DELIVERABLES = (
     "copy/title.txt",
     "production/run-manifest.json",
     "production/quality-profile.yaml",
+    "production/creative-lock.json",
     "production/fact-evidence.json",
     "production/script-review.json",
     "production/shot-selection.json",
@@ -240,16 +246,51 @@ def _silence_check(run_dir: Path, audio_duration: float, maximum: float) -> Qual
     ):
         start, end, duration = (float(value) for value in match.groups())
         events.append((start, end, duration))
-    unexpected = [
-        event
-        for event in events
-        if event[2] > maximum and not (audio_duration > 0 and event[0] >= audio_duration - 1)
-    ]
+
+    approved_intervals: list[tuple[float, float]] = []
+    try:
+        timeline = load_run_record(run_dir, "production/timeline.json", NewsTimeline)
+        approved_intervals = [
+            (segment.start, segment.end)
+            for segment in timeline.segments
+            if segment.expected_silence
+        ]
+    except ValueError:
+        pass
+
+    unexpected: list[tuple[float, float, float]] = []
+    approved: list[tuple[float, float, float]] = []
+    for event in events:
+        start, end, duration = event
+        if duration <= maximum or (audio_duration > 0 and start >= audio_duration - 1):
+            continue
+        residual = [(start, end)]
+        for approved_start, approved_end in approved_intervals:
+            remaining = []
+            for residual_start, residual_end in residual:
+                if approved_end <= residual_start or approved_start >= residual_end:
+                    remaining.append((residual_start, residual_end))
+                    continue
+                if residual_start < approved_start:
+                    remaining.append((residual_start, approved_start))
+                if approved_end < residual_end:
+                    remaining.append((approved_end, residual_end))
+            residual = remaining
+        residual_long = [
+            (residual_start, residual_end, residual_end - residual_start)
+            for residual_start, residual_end in residual
+            if residual_end - residual_start > maximum
+        ]
+        if residual_long:
+            unexpected.extend(residual_long)
+        elif approved_intervals:
+            approved.append(event)
+
     return _check(
         identifier="no_long_silence",
         category="audio",
         expected=f"no unexpected silence longer than {maximum:.3f}s",
-        actual=f"unexpected={unexpected}",
+        actual=f"unexpected={unexpected}; approved={approved}",
         passed=not unexpected,
         evidence_path=relative,
     )
@@ -300,7 +341,10 @@ def _identity_and_timeline_checks(run_dir: Path) -> list[QualityCheck]:
     broll = [item for item in timeline.segments if item.type == "broll"]
     broll_total = sum(item.end - item.start for item in broll)
     tail = timeline.segments[-1].end - timeline.segments[-1].start
-    required_tail = timeline.audio_duration_seconds * config.ending.min_anchor_ratio
+    required_tail = max(
+        timeline.audio_duration_seconds * config.ending.min_anchor_ratio,
+        config.structure.closing_seconds_min,
+    )
     return [
         _check(
             identifier="host_identity",
@@ -354,6 +398,38 @@ def _identity_and_timeline_checks(run_dir: Path) -> list[QualityCheck]:
     ]
 
 
+def _creative_consistency_check(run_dir: Path) -> QualityCheck:
+    """Verify the finished timeline still contains the approved story contract."""
+
+    evidence_path = "production/creative-lock.json"
+    try:
+        lock = load_run_record(run_dir, evidence_path, CreativeLock)
+        selection = load_run_record(run_dir, "production/shot-selection.json", ShotSelection)
+        timeline = load_run_record(run_dir, "production/timeline.json", NewsTimeline)
+        failures = creative_consistency_failures(lock, selection, timeline)
+        actual = "PASS" if not failures else "; ".join(failures)
+        return _check(
+            identifier="creative_consistency",
+            category="director",
+            expected=(
+                "locked creative brief, approved shots, and every required visual tag "
+                "covered by the final timeline"
+            ),
+            actual=actual,
+            passed=not failures,
+            evidence_path=evidence_path,
+        )
+    except (NewsProductionGateError, ValueError, json.JSONDecodeError) as error:
+        return _check(
+            identifier="creative_consistency",
+            category="director",
+            expected="valid creative lock and timeline records",
+            actual=str(error),
+            passed=False,
+            evidence_path=evidence_path,
+        )
+
+
 def build_automatic_qc_report(run_dir: Path) -> FinalQualityReport:
     """Build the automatic report and stop short of director approval."""
 
@@ -388,6 +464,7 @@ def build_automatic_qc_report(run_dir: Path) -> FinalQualityReport:
                 evidence_path="production/",
             )
         )
+    checks.append(_creative_consistency_check(run_dir))
 
     final_hash = _sha256(final_path)
     failed = [item for item in checks if item.status == "FAIL"]

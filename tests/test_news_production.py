@@ -9,6 +9,7 @@ from avatar_pipeline.news_production import (
     NewsProductionGateError,
     build_full_program_transcript,
     initialize_news_run,
+    lock_creative_brief,
     mark_rendered,
     recommend_broll,
     validate_generation_preflight,
@@ -33,7 +34,7 @@ def sha(path: Path) -> str:
 
 def initialized_run(tmp_path: Path, project_root: Path | None = None) -> Path:
     root = project_root or Path.cwd()
-    return initialize_news_run(
+    run_dir = initialize_news_run(
         tmp_path,
         day=date(2026, 8, 12),
         slug="storm",
@@ -41,6 +42,27 @@ def initialized_run(tmp_path: Path, project_root: Path | None = None) -> Path:
         version=1,
         quality_config_path=root / CONFIG,
     )
+    manifest = NewsRunManifest.model_validate_json(
+        (run_dir / "production/run-manifest.json").read_text(encoding="utf-8")
+    )
+    write_json(
+        run_dir / "production/creative-lock.json",
+        {
+            "run_id": manifest.run_id,
+            "status": "locked",
+            "core_subject": "台风新闻",
+            "narrative_promise": "让观众快速理解强风影响。",
+            "required_visual_tags": ["weather-impact"],
+            "non_negotiables": ["必须展示强风影响。"],
+            "replaceable_elements": ["城市远景"],
+            "prohibited_substitutions": ["不得用无关风景代替天气影响。"],
+            "uncertainty_policy": "不确定地点不写入口播，只描述可见影响。",
+            "approval_basis": "director_confirmed",
+            "locked_by": "test-director",
+            "locked_at": NOW.isoformat(),
+        },
+    )
+    return run_dir
 
 
 def add_generation_records(run_dir: Path):
@@ -131,6 +153,7 @@ def add_timeline_records(run_dir: Path):
                     "forward_playback": True,
                     "visual_quality_passed": True,
                     "director_approved": True,
+                    "creative_tags": ["weather-impact"],
                 }
             ],
         },
@@ -180,6 +203,56 @@ def test_initialize_run_is_version_safe_and_copies_profile(tmp_path):
         initialized_run(tmp_path)
 
 
+def test_generation_preflight_blocks_unlocked_creative_brief(tmp_path):
+    run_dir = initialized_run(tmp_path)
+    lock = json.loads((run_dir / "production/creative-lock.json").read_text(encoding="utf-8"))
+    lock["status"] = "draft"
+    lock["locked_by"] = None
+    lock["locked_at"] = None
+    write_json(run_dir / "production/creative-lock.json", lock)
+    add_generation_records(run_dir)
+
+    with pytest.raises(NewsProductionGateError, match="creative_lock:not_locked"):
+        validate_generation_preflight(run_dir, Path.cwd())
+
+
+def test_lock_creative_brief_requires_locked_director_contract(tmp_path):
+    run_dir = initialize_news_run(
+        tmp_path,
+        day=date(2026, 8, 12),
+        slug="lock-test",
+        topic="台风新闻",
+        version=1,
+        quality_config_path=Path.cwd() / CONFIG,
+    )
+    brief = tmp_path / "creative-lock.json"
+    write_json(
+        brief,
+        {
+            "run_id": run_dir.name,
+            "status": "locked",
+            "core_subject": "台风新闻",
+            "narrative_promise": "让观众快速理解强风影响。",
+            "required_visual_tags": ["weather-impact"],
+            "non_negotiables": ["必须展示强风影响。"],
+            "replaceable_elements": [],
+            "prohibited_substitutions": ["不得用无关风景代替天气影响。"],
+            "uncertainty_policy": "不确定地点不写入口播，只描述可见影响。",
+            "approval_basis": "user_confirmed",
+            "locked_by": "user",
+            "locked_at": NOW.isoformat(),
+        },
+    )
+
+    result = lock_creative_brief(run_dir, brief)
+
+    assert result.status == "locked"
+    installed = json.loads(
+        (run_dir / "production/creative-lock.json").read_text(encoding="utf-8")
+    )
+    assert installed["required_visual_tags"] == ["weather-impact"]
+
+
 def test_broll_guidance_is_director_dynamic_instead_of_count_fixed():
     config = load_news_quality_config(CONFIG)
     for duration in (52.128, 60, 80):
@@ -191,7 +264,7 @@ def test_broll_guidance_is_director_dynamic_instead_of_count_fixed():
         assert guidance.maximum_count == 5
         assert guidance.minimum_clip_seconds == 4.5
         assert guidance.maximum_clip_seconds == 12.0
-        assert guidance.maximum_ratio == 0.45
+        assert guidance.maximum_ratio == 0.80
     with pytest.raises(ValueError, match="45-90"):
         recommend_broll(40, config)
 
@@ -244,7 +317,7 @@ def test_timeline_preflight_joins_assets_shots_and_semantics(tmp_path):
     assert manifest.status is NewsRunStatus.TIMELINE_READY
 
 
-def test_timeline_preflight_accepts_three_long_coherent_blocks_without_advisory(tmp_path):
+def test_timeline_preflight_accepts_three_part_programme_without_advisory(tmp_path):
     run_dir = initialized_run(tmp_path)
     advance_generation(run_dir, Path.cwd())
     add_timeline_records(run_dir)
@@ -262,6 +335,7 @@ def test_timeline_preflight_accepts_three_long_coherent_blocks_without_advisory(
             "forward_playback": True,
             "visual_quality_passed": True,
             "director_approved": True,
+            "creative_tags": ["weather-impact"],
         }
         for index in range(1, 4)
     ]
@@ -270,38 +344,42 @@ def test_timeline_preflight_accepts_three_long_coherent_blocks_without_advisory(
         run_dir / "production/timeline.json",
         {
             "run_id": run_dir.name,
-            "audio_duration_seconds": 80.0,
+            "audio_duration_seconds": 55.0,
             "segments": [
                 {"type": "anchor", "start": 0, "end": 10, "script_segment_id": "script-a1"},
-                {
-                    "type": "broll",
-                    "start": 10,
-                    "end": 21,
-                    "script_segment_id": "script-broll-1",
-                    "shot_id": "shot-1",
-                },
-                {"type": "anchor", "start": 21, "end": 30, "script_segment_id": "script-a2"},
-                {
-                    "type": "broll",
-                    "start": 30,
-                    "end": 41,
-                    "script_segment_id": "script-broll-2",
-                    "shot_id": "shot-2",
-                },
-                {"type": "anchor", "start": 41, "end": 50, "script_segment_id": "script-a3"},
-                {
-                    "type": "broll",
-                    "start": 50,
-                    "end": 61,
-                    "script_segment_id": "script-broll-3",
-                    "shot_id": "shot-3",
-                },
-                {"type": "anchor", "start": 61, "end": 80, "script_segment_id": "script-ending"},
+                *[
+                    {
+                        "type": "broll",
+                        "start": 10 + (index - 1) * 11,
+                        "end": 10 + index * 11,
+                        "script_segment_id": f"script-broll-{index}",
+                        "shot_id": f"shot-{index}",
+                    }
+                    for index in range(1, 4)
+                ],
+                {"type": "anchor", "start": 43, "end": 55, "script_segment_id": "script-ending"},
             ],
         },
     )
     result = validate_timeline_preflight(run_dir)
     assert result.advisories == []
+
+
+def test_timeline_preflight_rejects_alternating_presenter_and_inserts(tmp_path):
+    run_dir = initialized_run(tmp_path)
+    advance_generation(run_dir, Path.cwd())
+    add_timeline_records(run_dir)
+    timeline = json.loads((run_dir / "production/timeline.json").read_text(encoding="utf-8"))
+    timeline["segments"] = [
+        {"type": "anchor", "start": 0, "end": 7, "script_segment_id": "script-1"},
+        {"type": "broll", "start": 7, "end": 12.5, "script_segment_id": "script-2", "shot_id": "shot-1"},
+        {"type": "anchor", "start": 12.5, "end": 30, "script_segment_id": "script-3"},
+        {"type": "broll", "start": 30, "end": 35.5, "script_segment_id": "script-2", "shot_id": "shot-1"},
+        {"type": "anchor", "start": 35.5, "end": 52, "script_segment_id": "script-3"},
+    ]
+    write_json(run_dir / "production/timeline.json", timeline)
+    with pytest.raises(NewsProductionGateError, match="structure_not_three_part"):
+        validate_timeline_preflight(run_dir)
 
 
 def test_timeline_preflight_rejects_asset_hash_and_unknown_shot(tmp_path):

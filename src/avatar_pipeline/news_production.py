@@ -15,7 +15,9 @@ from typing import TypeVar
 from pydantic import BaseModel, ValidationError
 
 from avatar_pipeline.hotspot_selection import TopicSelectionApproval
+from avatar_pipeline.creative_consistency import creative_consistency_failures
 from avatar_pipeline.news_production_models import (
+    CreativeLock,
     FactEvidence,
     FootageLedger,
     NewsRunManifest,
@@ -198,12 +200,48 @@ def initialize_news_run(
             created_at=_utc_now(),
         )
         _write_json(run_dir / "production/run-manifest.json", manifest)
+        _write_json(
+            run_dir / "production/creative-lock.json",
+            CreativeLock(
+                run_id=run_id,
+                status="draft",
+                core_subject=topic,
+                narrative_promise="先明确观众必须记住的核心人物、动作、关系或冲突。",
+                required_visual_tags=["REPLACE_ME_CORE_VISUAL"],
+                non_negotiables=["不得用泛化氛围素材替换核心人物或核心动作。"],
+                replaceable_elements=[],
+                prohibited_substitutions=[
+                    "未经重新确认，不得把核心人物替换为其他年龄、身份或关系的人物。"
+                ],
+                uncertainty_policy=(
+                    "事实无法核验时，只收窄口播表述，不得删除或擅自替换已确认的核心画面。"
+                ),
+            ),
+        )
         if topic_selection_path is not None:
             shutil.copy2(topic_selection_path, run_dir / "production/topic-selection.json")
     except Exception:
         shutil.rmtree(run_dir)
         raise
     return run_dir
+
+
+def lock_creative_brief(run_dir: Path, brief_path: Path) -> CreativeLock:
+    """Validate and atomically install the user/director-approved creative lock."""
+
+    run_dir = Path(run_dir)
+    brief_path = Path(brief_path)
+    manifest = load_run_record(run_dir, "production/run-manifest.json", NewsRunManifest)
+    try:
+        lock = CreativeLock.model_validate_json(brief_path.read_text(encoding="utf-8"))
+    except (OSError, ValidationError, ValueError) as error:
+        raise NewsProductionGateError("creative_lock", [f"invalid:{brief_path}:{error}"]) from error
+    if lock.run_id != manifest.run_id:
+        raise NewsProductionGateError("creative_lock", ["run_id:CreativeLock"])
+    if lock.status != "locked":
+        raise NewsProductionGateError("creative_lock", ["status:not_locked"])
+    _write_json(run_dir / "production/creative-lock.json", lock)
+    return lock
 
 
 def recommend_broll(duration_seconds: float, config: NewsVideoQualityConfig) -> BrollGuidance:
@@ -348,9 +386,12 @@ def validate_generation_preflight(run_dir: Path, project_root: Path) -> StageVal
         failures.append("voice_id")
 
     try:
+        lock = load_run_record(run_dir, "production/creative-lock.json", CreativeLock)
         facts = load_run_record(run_dir, "production/fact-evidence.json", FactEvidence)
         review = load_run_record(run_dir, "production/script-review.json", ScriptReview)
-        failures.extend(_require_same_run(manifest.run_id, facts, review))
+        failures.extend(_require_same_run(manifest.run_id, lock, facts, review))
+        if lock.status != "locked":
+            failures.append("creative_lock:not_locked")
         if not review.director_approved:
             failures.append("script_review:director_approval")
         for label, relative_path in (
@@ -381,10 +422,11 @@ def validate_timeline_preflight(run_dir: Path) -> StageValidationResult:
     if manifest.status not in {NewsRunStatus.GENERATION_READY, NewsRunStatus.TIMELINE_READY}:
         failures.append(f"status:{manifest.status.value}")
     try:
+        lock = load_run_record(run_dir, "production/creative-lock.json", CreativeLock)
         ledger = load_run_record(run_dir, "production/footage-ledger.json", FootageLedger)
         selection = load_run_record(run_dir, "production/shot-selection.json", ShotSelection)
         timeline = load_run_record(run_dir, "production/timeline.json", NewsTimeline)
-        failures.extend(_require_same_run(manifest.run_id, ledger, selection, timeline))
+        failures.extend(_require_same_run(manifest.run_id, lock, ledger, selection, timeline))
     except NewsProductionGateError as error:
         raise NewsProductionGateError("timeline", error.failures) from error
 
@@ -404,6 +446,7 @@ def validate_timeline_preflight(run_dir: Path) -> StageValidationResult:
         if not shot.director_approved:
             failures.append(f"shot_approval:{shot.shot_id}")
     broll_segments = [item for item in timeline.segments if item.type == "broll"]
+    failures.extend(creative_consistency_failures(lock, selection, timeline))
     for segment in broll_segments:
         shot = shots.get(segment.shot_id or "")
         if shot is None:
@@ -413,8 +456,16 @@ def validate_timeline_preflight(run_dir: Path) -> StageValidationResult:
             failures.append(f"semantic_mapping:{shot.shot_id}")
         if abs((segment.end - segment.start) - shot.target_duration_seconds) > 0.01:
             failures.append(f"shot_duration:{shot.shot_id}")
+    # 三段式硬门：主持人开头 — 连续插播主体 — 主持人结尾，不允许多次穿插。
+    runs = [segment.type for segment in timeline.segments]
+    runs = [kind for index, kind in enumerate(runs) if index == 0 or kind != runs[index - 1]]
+    if runs != ["anchor", "broll", "anchor"]:
+        failures.append(f"structure_not_three_part:{'-'.join(runs)}")
     tail = timeline.segments[-1].end - timeline.segments[-1].start
-    required_tail = timeline.audio_duration_seconds * config.ending.min_anchor_ratio
+    required_tail = max(
+        timeline.audio_duration_seconds * config.ending.min_anchor_ratio,
+        config.structure.closing_seconds_min,
+    )
     if tail + 0.01 < required_tail:
         failures.append(f"anchor_tail:{tail:.3f}<{required_tail:.3f}")
 
@@ -423,10 +474,11 @@ def validate_timeline_preflight(run_dir: Path) -> StageValidationResult:
     ratio = broll_total / timeline.audio_duration_seconds
     if not guidance.minimum_count <= len(broll_segments) <= guidance.maximum_count:
         advisories.append(f"broll_count:{len(broll_segments)}")
-    for segment in broll_segments:
-        duration = segment.end - segment.start
-        if not guidance.minimum_clip_seconds <= duration <= guidance.maximum_clip_seconds:
-            advisories.append(f"broll_duration:{duration:.3f}")
+    if config.broll.clip_duration_policy == "guidance":
+        for segment in broll_segments:
+            duration = segment.end - segment.start
+            if not guidance.minimum_clip_seconds <= duration <= guidance.maximum_clip_seconds:
+                advisories.append(f"broll_duration:{duration:.3f}")
     if not guidance.minimum_ratio <= ratio <= guidance.maximum_ratio:
         advisories.append(f"broll_ratio:{ratio:.4f}")
 

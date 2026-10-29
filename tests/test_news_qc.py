@@ -58,6 +58,63 @@ def prepared_run(tmp_path: Path) -> Path:
     ):
         write_json(run_dir / relative, {"run_id": manifest.run_id, "recorded": True})
     write_json(
+        run_dir / "production/creative-lock.json",
+        {
+            "run_id": manifest.run_id,
+            "status": "locked",
+            "core_subject": "台风新闻",
+            "narrative_promise": "让观众快速理解强风影响。",
+            "required_visual_tags": ["weather-impact"],
+            "non_negotiables": ["必须展示强风影响。"],
+            "replaceable_elements": [],
+            "prohibited_substitutions": ["不得用无关风景代替天气影响。"],
+            "uncertainty_policy": "不确定地点不写入口播，只描述可见影响。",
+            "approval_basis": "director_confirmed",
+            "locked_by": "test-director",
+            "locked_at": NOW.isoformat(),
+        },
+    )
+    write_json(
+        run_dir / "production/shot-selection.json",
+        {
+            "run_id": manifest.run_id,
+            "shots": [{
+                "shot_id": "shot-1",
+                "asset_id": "asset-1",
+                "script_segment_id": "s2",
+                "semantic_role": "展示强风影响",
+                "source_in": 0,
+                "source_out": 5,
+                "target_duration_seconds": 5,
+                "continuous_action": True,
+                "forward_playback": True,
+                "visual_quality_passed": True,
+                "director_approved": True,
+                "creative_tags": ["weather-impact"],
+            }],
+        },
+    )
+    write_json(
+        run_dir / "production/footage-ledger.json",
+        {
+            "run_id": manifest.run_id,
+            "assets": [{
+                "asset_id": "asset-1",
+                "source_platform": "bilibili",
+                "source_url": "https://example.com/video",
+                "downloaded_at": NOW.isoformat(),
+                "local_path": "media/storm.mp4",
+                "sha256": "a" * 64,
+                "watermark_free": True,
+                "platform_logo_free": True,
+                "account_mark_free": True,
+                "burned_caption_free": True,
+                "visual_relevance": "strong_wind",
+                "user_usage_rule_passed": True,
+            }],
+        },
+    )
+    write_json(
         run_dir / "production/program-transcript.json",
         {
             "run_id": manifest.run_id,
@@ -188,6 +245,24 @@ def test_automatic_qc_builds_evidence_rich_report_and_advances_status(tmp_path):
     assert manifest.status is NewsRunStatus.AUTOMATIC_QC_PASSED
     assert (run_dir / "qc/final-qc-report.json").exists()
     assert (run_dir / "qc/sha256.txt").read_text(encoding="utf-8").strip()
+
+
+def test_automatic_qc_allows_director_approved_silent_broll(tmp_path):
+    run_dir = prepared_run(tmp_path)
+    timeline_path = run_dir / "production/timeline.json"
+    timeline = json.loads(timeline_path.read_text(encoding="utf-8"))
+    timeline["segments"][1]["expected_silence"] = True
+    write_json(timeline_path, timeline)
+    (run_dir / "qc/silencedetect.log").write_text(
+        "silence_start: 6.45 | silence_end: 11.55 | silence_duration: 5.10\n",
+        encoding="utf-8",
+    )
+
+    report = build_automatic_qc_report(run_dir)
+
+    silence_check = next(item for item in report.checks if item.id == "no_long_silence")
+    assert silence_check.status == "PASS"
+    assert "approved" in silence_check.actual
 
 
 def test_automatic_qc_marks_changes_required_for_stream_black_silence_and_audio_failures(tmp_path):

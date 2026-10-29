@@ -64,6 +64,7 @@ def approved_shot():
         forward_playback=True,
         visual_quality_passed=True,
         director_approved=True,
+        creative_tags=["weather-impact"],
     )
 
 
@@ -163,6 +164,27 @@ def test_timeline_must_be_contiguous_and_close_with_anchor():
             run_id="run-1",
             audio_duration_seconds=52,
             segments=[valid[0], valid[1].model_copy(update={"end": 52})],
+        )
+
+
+def test_expected_silence_is_only_allowed_for_broll():
+    segment = TimelineSegment(
+        type="broll",
+        start=7,
+        end=12.5,
+        script_segment_id="script-2",
+        shot_id="shot-1",
+        expected_silence=True,
+    )
+    assert segment.expected_silence is True
+
+    with pytest.raises(ValidationError, match="expected silence"):
+        TimelineSegment(
+            type="anchor",
+            start=0,
+            end=7,
+            script_segment_id="script-1",
+            expected_silence=True,
         )
 
 
