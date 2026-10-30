@@ -91,6 +91,7 @@
 - Pexels and Pixabay block scripted access from this environment. Mixkit free-stock video is reachable and serves up to 4K; for each candidate try `2160`, then `1440`, then `1080`, then `720` under `https://assets.mixkit.co/videos/<id>/<id>-<res>.mp4`.
 - Record every attempted source, its resolution ceiling, and the reason for rejection in the source search log.
 - Run frame OCR (every 0.5 s) on each candidate source interval before approval. Reject any interval showing readable text, barcodes, labels, or brand marks, even when the text is small or at the frame edge.
+- For generated inserts, inspect garment and prop regions at source resolution throughout each used interval. OCR misses tiny synthetic glyphs; a clean contact sheet at reduced size is insufficient. After local mark removal, inspect the repaired region across motion and rerun OCR and final-canvas QC on the rebuilt MP4.
 
 ## Reference-video remix: insert source and presenter role
 

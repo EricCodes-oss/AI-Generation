@@ -163,3 +163,15 @@ def test_verbatim_replica_lessons_are_in_agents_and_skill_reference():
         assert "## 6. 逐字复刻：先定时长与镜头，再付费生成" in text
         assert "必须先征求用户意见" in text
         assert "static_source=true" in text
+
+
+def test_generated_insert_tiny_mark_regression_rule():
+    quality_rules = "\n".join(
+        load_contracts(Path("skills/contracts"))[SkillKind.QUALITY_CONTROL].safety_constraints
+    )
+    assert "源分辨率检查细小生成标记" in quality_rules
+    assert "OCR零命中" in quality_rules
+    assert "局部修复后" in quality_rules
+    agents = Path("AGENTS.md").read_text()
+    assert "garment and prop regions at source resolution" in agents
+    assert "OCR misses tiny synthetic glyphs" in agents
