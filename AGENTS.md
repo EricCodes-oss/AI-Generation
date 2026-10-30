@@ -127,6 +127,7 @@
 
 - When the user asks to reuse a reference narration word for word, estimate the default-voice reading time before submitting TTS. The default `cobra` voice reads about 4 characters per second; reference narrators often read 6 to 7, so the same text can need almost twice the time. Compare the estimate with the usable insert footage and choose the sentence split first.
 - If narration still exceeds the footage, apply one uniform `atempo` to the whole insert narration first and record the factor and final characters per second. Moving insert sentences into the presenter opening or closing changes the programme structure even when the words stay the same; ask the user before doing it.
+- In a verbatim replica the opening, insert body and closing must be a contiguous prefix, middle and suffix of the reference script. Do not move sentences across parts to match the reference's own shot alternation; verify the full sentence order before submitting TTS or avatar jobs.
 - Record the source, scope and confirmation time of any licence to reuse another publisher's narration. Selecting an option in a question dialog is not licence evidence. Disputed facts kept at the user's request go into the QC report as `fact_flags`, never as verified facts.
 
 ## Shot labels, static sources and resolution checks

@@ -175,3 +175,11 @@ def test_generated_insert_tiny_mark_regression_rule():
     agents = Path("AGENTS.md").read_text()
     assert "garment and prop regions at source resolution" in agents
     assert "OCR misses tiny synthetic glyphs" in agents
+
+
+def test_verbatim_replica_split_must_be_contiguous():
+    script_rules = "\n".join(
+        load_contracts(Path("skills/contracts"))[SkillKind.NEWS_SCRIPT_WRITER].safety_constraints
+    )
+    assert "连续前段、中段、后段" in script_rules
+    assert "contiguous prefix, middle and suffix" in Path("AGENTS.md").read_text()
