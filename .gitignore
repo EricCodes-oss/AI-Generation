@@ -12,3 +12,8 @@ workspace/
 htmlcov/
 
 .local/
+
+# 本地产物与临时素材（体积大，不入库）
+output/
+tmp/
+.venv-tools/

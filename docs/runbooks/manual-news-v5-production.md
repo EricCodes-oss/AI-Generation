@@ -59,7 +59,7 @@ python -m avatar_pipeline.cli news-v5-lock-creative \
 在项目根目录执行：
 
 ```bash
-cd /Users/liuweidong/Desktop/AI-Avatar-Scripts-Video
+cd /Users/liuweidong/Projects/AI-Avatar-Scripts-Video
 source .venv/bin/activate
 export PYTHONPATH=src
 ```
